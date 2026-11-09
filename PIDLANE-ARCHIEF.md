@@ -15,6 +15,62 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 09-11-2026 (nacht) — Aankooprapport: "geen terugroepacties bekend" won van de RDW-vlag
+
+**Gevonden** bij het bouwen van het papierenrapport (#705), op een schermafdruk:
+RDW `openstaande_terugroepactie_indicator = Ja`, en toch een groene regel
+"Geen terugroepacties bekend". `PLRecall.check()` geeft `niveau: 'ok'` met
+`aantalTotaal: 0` als de detailtabellen niets opleveren, en
+`PLAankoop.signalen()` keek eerst naar die uitkomst en pas daarna naar de
+vlag. Nul gevonden acties tegenover een vlag die "open" zegt betekent dat
+het koppelen leeg bleef, niet dat de auto schoon is. Nu wint de vlag zolang
+er geen enkele actie gevonden is. Getoetst via de echte `signalen()` in
+`test-zonderuit.js`, met de tegenproef (acties gevonden en uitgevoerd →
+groen); mutatie in `plmutate.sh`.
+
+## 09-11-2026 (avond) — De app met en zonder adapter, nagemeten in de draaiende app
+
+**Aanleiding.** De eigenaar: verbinden liep dood (achter het doek van de
+strook was niets aan te raken), en de app moet ook zonder adapter de moeite
+waard zijn. Gemeten met de echte `index.html` in Chromium, ingelogd als klant,
+niet verbonden: elke tegel geopend en elke wizardmodule via `PLWizard.draai()`.
+
+**Wat zonder adapter al werkte (en werkt).** Kenteken-check met RDW, NAP,
+terugroepacties in detail en techniek (`PLZonder`, `PLRecall`); "Dit is mijn
+auto" met de APK op het startscherm; APK- en onderhoudsherinneringen als
+lokale melding (`PLHerinner`); foutcode opzoeken (offline); Lampje brandt?,
+ook met een foto (`PLLampjes`); "Wat we al weten" met de zwakke punten per merk
+(`PLWeten`); winterprofiel met weer (`PLWinter`); Mijn voertuigen; de demo met
+de eigen auto; de handleiding. De vier doelen onder Snel naar (Er is iets mis,
+Rit starten, Kopen of verkopen, Voorbereiden) openen allemaal en lopen tot en
+met het plan.
+
+**Wat stukging: het einde van elk plan.** Alle zestien wizardmodules meten aan
+de auto, en zonder verbinding liep elk zijn eigen weg:
+
+| module | wat de klant zag |
+|---|---|
+| systeem | verzamelscherm: "0 sensoren gemeten over 0 s … verbinding verbroken tijdens het verzamelen" |
+| dtc, conditie, verbruik, aimonteur, onderdeel | stil een ander tabblad, geen melding |
+| klimaat, trekken | het meetdashboard alsof er gemeten kan worden |
+| accu, evaccu | "Verbind eerst de adapter" — de enige goede |
+| diep | de vragenlijst (terecht: die kan zonder auto) |
+
+Daarbovenop telde de verbindstrook (08/09-11) als doodlopende weg: het doek
+dekte de app af, en er was geen knop om te stoppen.
+
+**Wat er nu is.** Een knop Stoppen in de strook (`plVerbindStop()`, met een
+pogingteller zodat een nalopende poging stil blijft), en één poort in de wizard
+(`adapterNodig()`/`toonAdapterNodig()`): een kaart met Verbinden, wat zonder
+adapter al kan, en terug naar het plan. Het plan zegt vooraf "nog geen adapter
+verbonden". De poort zit in `draai()`, `start()` en `onderzoek()` — een poort
+op één van de paden is geen poort (dezelfde les als de meetfase-poort).
+
+**Wat bewust níét gebouwd is in deze ronde.** Modules die zonder adapter een
+eigen, kleinere uitkomst kunnen geven (onderhoud uit km en leeftijd, een
+papierenrapport voor de koper, banden zonder TPMS). Dat is per module een
+ontwerpvraag en geen poort; zie het issue van vandaag.
+
 ## 09-11-2026 — Mijn voertuigen: ACTIEF over de rand, de bewaarbalk met doorkijk
 
 **Waarom het stukging.** Twee modules gebruikten dezelfde klassenaam.

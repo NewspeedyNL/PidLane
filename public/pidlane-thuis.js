@@ -339,6 +339,9 @@
   function teken() {
     if (!bouw()) return;
     var c = context(), t = toestand(c), hk = hoofdknop(t), ch = chips(c), ind = huidig();
+    // Zonder auto (geen adapter, geen demo) krijgt elke meetkaart onder Alle
+    // functies een 🔌 (pidlane.css, #705): wat er na het verbinden vrijkomt.
+    document.body.classList.toggle('pl-zonder-auto', t === 'geen');
     var nu = kandidaten(c);
     var snel = ind.snel.filter(function (id) { return (!SNEL[id].klant || isKlant()) && cfgAan(SNEL[id]); });
     var sleutel = JSON.stringify([t, hk, ch, c.naam, c.sub, c.foto, nu.map(function (x) { return x.id + x.titel; }), ind, snel, isKlant(), _nuI]);

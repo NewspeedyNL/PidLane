@@ -111,9 +111,10 @@ const rust = (ms) => new Promise(r => setTimeout(r, ms));
     toets('de koopcheck nog eens openen wist de proefrit niet', await app.ev(`_koopProefritData==='Stationair: ok'`), await app.ev(`String(_koopProefritData)`));
 
     console.log('\n5. Een proefrit uit het plan loopt via de koopcheck');
-    await app.ev(`window._koopProefritActief=false; PLWizard.terugNaarPlan(); PLWizard.start(); 'ok'`);
+    // Met een auto: zonder adapter houdt de wizard de rit sinds 09-11-2026 tegen (bproef-zonderadapter.js).
+    await app.ev(`window._koopProefritActief=false; connected=true; PLWizard.terugNaarPlan(); PLWizard.start(); 'ok'`);
     toets('de rit is gemarkeerd als koopproefrit: de uitslag komt terug in het oordeel', await app.ev(`window._koopProefritActief===true`));
-    await app.ev(`try{ stopRitAnalyse && stopRitAnalyse(); }catch(e){} window._koopProefritActief=false; try{ closeRitAnalyse(); }catch(e){} PLWizard.sluit(); 'ok'`);
+    await app.ev(`try{ stopRitAnalyse && stopRitAnalyse(); }catch(e){} window._koopProefritActief=false; try{ closeRitAnalyse(); }catch(e){} connected=false; PLWizard.sluit(); 'ok'`);
 
     console.log('\n6. Een lege kaart wordt overgeslagen');
     await app.ev(`window.__gv=window.getVehicle; window.getVehicle=function(){ return {}; }; PLWizard.open('handel'); PLWizard.kies(1); PLWizard.kentekenVerder(true); 'ok'`);

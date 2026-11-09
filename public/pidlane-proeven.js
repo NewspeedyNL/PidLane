@@ -38,6 +38,39 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Zonder adapter een eigen uitkomst (#705, 09-11-2026) ──
+  {
+    issue: '#705',
+    naam: 'Zonder adapter: papierenrapport voor kopers, onderhoud volgens richtwaarden, lange rit en verbruik uit tankbeurten; 🔌 en de adapterkaart onder Alle functies',
+    waarom: 'De adapterkaart was een eindpunt. Valt PLZonderUit of de poort in wcBind weg in de draaiende app, dan opent een meetkaart weer een dashboard dat niets meet, of zegt het papierenrapport "groen" zonder dat er iets uitgelezen is.',
+    proef: async function () {
+      if (!window.PLZonderUit || !PLZonderUit._kern) return { staat: 'FOUT', detail: 'PLZonderUit ontbreekt — herladen?' };
+      if (!window.PLAankoop) return { staat: 'FOUT', detail: 'PLAankoop ontbreekt: het papierenrapport heeft geen signalen' };
+      var p = PLZonderUit._kern.papieren({ kenteken: 'AB123C', ts: Date.now(), rdw: { tellerstandoordeel: 'Logisch', openstaande_terugroepactie_indicator: 'Nee' } });
+      if (p.oordeel === 'groen') return { staat: 'FOUT', detail: 'het papierenrapport geeft groen zonder uitlezing' };
+      var los = Object.keys(PLZonderUit._kern.KAART).filter(function (id) { return !document.getElementById(id); });
+      if (los.length) return { staat: 'FOUT', detail: 'KAART noemt kaarten die er niet zijn: ' + los.join(', ') };
+      var zonder = document.body.classList.contains('pl-zonder-auto');
+      if (zonder === PLZonderUit.heeftAuto()) return { staat: 'LET OP', detail: 'het startscherm is nog niet bijgetekend na een verbindingswissel' };
+      return { staat: 'OK', detail: PLZonderUit.heeftAuto() ? 'met auto: de kaarten openen gewoon' : 'zonder auto: 🔌 bij de meetkaarten, de adapterkaart met een eigen uitkomst' };
+    }
+  },
+
+  // ── Zonder adapter: een uitweg tijdens verbinden, een kaart in de wizard (09-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Verbinden heeft een knop Stoppen; zonder adapter toont de wizard bij elke meetmodule één kaart (verbinden, Kenteken-check, demo) in plaats van een lege meting',
+    waarom: 'Achter het doek van de verbindstrook was niets meer aan te raken, en zonder adapter "verzamelde" de sensorcontrole 0 sensoren in 0 s terwijl vijf andere modules stil van tabblad wisselden.',
+    proef: async function () {
+      if (typeof window.plVerbindStop !== 'function' || !window.PLStrook || typeof PLStrook._stop !== 'function') return { staat: 'FOUT', detail: 'plVerbindStop of PLStrook._stop ontbreekt — herladen?' };
+      if (!window.PLWizard || !PLWizard._kern || typeof PLWizard._kern.adapterNodig !== 'function') return { staat: 'FOUT', detail: 'PLWizard._kern.adapterNodig ontbreekt — oude pidlane-wizard.js?' };
+      if (PLWizard._kern.adapterNodig('diep')) return { staat: 'FOUT', detail: 'de vragenlijst van Storing vangen wordt tegengehouden' };
+      var auto = !!(connected || demoMode);
+      if (PLWizard._kern.adapterNodig('systeem') === auto) return { staat: 'FOUT', detail: 'de poort volgt de verbinding niet (verbonden of demo: ' + auto + ')' };
+      return { staat: 'OK', detail: auto ? 'verbonden: de modules staan vrij' : 'niet verbonden: de wizard toont de adapterkaart' };
+    }
+  },
+
   // ── Lichter opstarten (#690, 08-11-2026) ──
   {
     issue: '#690',

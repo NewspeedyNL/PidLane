@@ -85,7 +85,10 @@ function toets(naam, waar, uitleg) {
     const waakKaart = await app.ev(`(function(){
       document.getElementById('welcomeScreen').classList.remove('hidden');
       openDoor('live');
-      document.getElementById('wc-waak').click();
+      // Met een auto: zonder adapter toont de kaart sinds 09-11-2026 de
+      // adapterkaart (#705, bproef-zonderadapter.js). Hier gaat het om de bedrading.
+      connected = true;
+      try { document.getElementById('wc-waak').click(); } finally { connected = false; }
       const ov = document.getElementById('wkvOv');
       const open = !!ov && getComputedStyle(ov).display !== 'none';
       if (window.PLWaakUI) PLWaakUI.sluit();

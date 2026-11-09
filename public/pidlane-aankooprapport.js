@@ -323,7 +323,11 @@
     }
 
     // 8. Terugroepacties
-    const rc = v.recall;
+    // Een lege uitkomst van de detailtabellen (0 acties gevonden) mag de
+    // RDW-vlag "Ja" niet overschrijven: dan was het opzoeken leeg, niet de
+    // auto schoon. Zonder detail telt de vlag (09-11-2026, #705).
+    let rc = v.recall;
+    if (rc && rc.niveau === 'ok' && !rc.aantalTotaal && v.rdw && ja(v.rdw.openstaande_terugroepactie_indicator)) rc = null;
     if (rc && rc.niveau === 'kritiek') {
       s('recall', 'Terugroepacties', 'oranje', tekst(rc.tekst) || 'Er staat een terugroepactie open',
         'De fabrikant heeft een reparatie aangekondigd die op deze auto nog niet is uitgevoerd. Die is gratis bij de dealer.',

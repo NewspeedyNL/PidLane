@@ -55,6 +55,22 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     toets('zonder bekende adapter: het verbindscherm  <- tegenproef: eerste keer kiezen', await app.ev(zichtbaar('#connOv')));
     await app.ev(`closeConnOv(); 'ok'`);
 
+    console.log('\n1b. Tijdens het verbinden is er een uitweg (09-11-2026)');
+    // Een poging die loopt (adapter zoeken): daarachter ligt het doek, en
+    // zonder Stoppen was de app op dat moment niet meer te gebruiken.
+    await app.ev(`PLStrook.start(); 'ok'`);
+    toets('tijdens het verbinden: het doek ligt er', await app.ev(zichtbaar('#plStrookDoek')));
+    toets('en de strook heeft een knop Stoppen', await app.ev(zichtbaar('#plStrookStop')));
+    await app.ev(`document.getElementById('plStrookStop').click(); 'ok'`);
+    toets('Stoppen: strook en doek weg', await wacht(`!document.getElementById('plStrook') || document.getElementById('plStrook').hidden`, 3000) && !(await app.ev(zichtbaar('#plStrookDoek'))));
+    toets('de poging is als gestopt gemarkeerd', await app.ev(`plPogingGestopt(_plPoging)`));
+    await app.ev(`_strook(function(S){ S.fout('nalopende poging'); }); 'ok'`);
+    toets('een nalopende poging opent de strook niet opnieuw', await app.ev(`!document.getElementById('plStrook') || document.getElementById('plStrook').hidden`));
+    toets('niet verbonden, en de app staat open (geen doek)', await app.ev(`!connected`) && !(await app.ev(zichtbaar('#plStrookDoek'))));
+    await app.ev(`_plPoging++; _strook(function(S){ S.start(); }); 'ok'`);
+    toets('TEGENPROEF: een nieuwe poging meldt weer gewoon', await app.ev(zichtbaar('#plStrook')));
+    await app.ev(`PLStrook.sluit(); 'ok'`);
+
     console.log('\n2. Stil verbinden met een nieuwe auto: geen enkel venster');
     const p = VLOOT.find(a => a.id === 'cx5_18') || VLOOT[0];
     await app.ev(NEP);

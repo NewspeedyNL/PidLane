@@ -1305,6 +1305,14 @@
     '#plGarOv label.gr-veld{display:block;font-size:11px;color:var(--tx3);margin:8px 0 3px}' +
     '#plGarOv .gr-veld input,#plGarOv .gr-veld select,#plGarOv .gr-veld textarea{width:100%;box-sizing:border-box;padding:9px 10px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:500 14px var(--f)}' +
     '#plGarOv .gr-2{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}' +
+    /* RR-formulier (09-11-2026): het vinkje, de naam en de eenheid stonden
+       los door elkaar met een witte systeemkeuzelijst. Eén regel per sensor:
+       vinkje + naam links (breekt af), eenheid rechts in vaste breedte. */
+    '#plGarOv .gr-chk{display:flex;gap:8px;align-items:center;min-width:0;font:600 13px var(--f);color:var(--tx);cursor:pointer;overflow-wrap:anywhere}' +
+    '#plGarOv .gr-chk input{flex:0 0 auto;width:18px;height:18px;margin:0;accent-color:var(--bl)}' +
+    '#plGarOv .rr-sens{grid-template-columns:minmax(0,1fr) 96px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd)}' +
+    '#plGarOv .rr-sens > .gr-klein{text-align:center}' +
+    '#plGarOv .gr-2 > select,#plGarOv .gr-2 > span > select,#plGarOv .gr-2 > span > input{width:100%;min-width:0;box-sizing:border-box;padding:7px 8px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font:500 13px var(--f)}' +
     '#plGarOv .gr-melding{font-size:12px;padding:9px 11px;border-radius:9px;margin-bottom:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.4);color:var(--tx2)}' +
     '#plGarOv .gr-melding.rood{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.45)}' +
     '#plGarOv .gr-meekijkcode{font:800 28px ui-monospace,monospace;letter-spacing:.18em;color:var(--tx);text-align:center;padding:8px 0 4px;user-select:all}' +
@@ -2667,6 +2675,8 @@
     dossier: dossier,
     dossierBewaar: dossierBewaar,
     actief: actief,
+    // De tankbeurten van een voertuig, voor PLZonderUit (verbruik zonder adapter).
+    tanken: async function (vid) { await laad(vid, 'tanken'); return cacheVan(vid).tanken || []; },
     // De status van één voertuig (APK, open punten, accu …) voor het startscherm (PLThuis).
     status: function (v) { return status(v); },
     foto: foto,

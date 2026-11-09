@@ -706,6 +706,18 @@ const NEPSERVER = `(function(){
     toets('Rapporten heeft het RR-blok met ➕ Nieuwe RR', await wacht(`/RR — eigen meetopdrachten/.test(document.getElementById('plGarBody').textContent) && !!document.querySelector('[onclick*="_rrNieuw"]')`, 5000));
     await app.ev(`if (!discoveredPIDDefs.some(function (d) { return d.pid === '0105'; })) discoveredPIDDefs.push({ pid: '0105', name: 'Koelwater', unit: '°C' }); PLGarage._rrNieuw(); 'ok'`);
     toets('het formulier opent met de sensoren van deze auto', await wacht(`!!document.getElementById('rr_naam') && !!document.querySelector('#plGarBody input[data-pid="0105"]')`, 3000));
+    // De opmaak (09-11-2026): vinkje naast de naam, eenheid in de donkere stijl.
+    const rrOpmaak = await app.ev(`(function () {
+      const rij = document.querySelector('#plGarBody .rr-sens'); if (!rij) return null;
+      const chk = rij.querySelector('input[type=checkbox]'), lab = rij.querySelector('.gr-chk');
+      const c = chk.getBoundingClientRect(), l = lab.getBoundingClientRect();
+      const sel = document.querySelector('#plGarBody .rr-sens select');
+      return { naastElkaar: c.top >= l.top - 1 && c.bottom <= l.bottom + 1 && getComputedStyle(lab).display === 'flex',
+        selAchter: sel ? getComputedStyle(sel).backgroundColor : 'geen select', rijRechts: Math.round(rij.getBoundingClientRect().right), body: Math.round(document.getElementById('plGarBody').getBoundingClientRect().right) };
+    })()`);
+    toets('RR: het vinkje staat naast de sensornaam, niet erboven', !!rrOpmaak && rrOpmaak.naastElkaar, JSON.stringify(rrOpmaak));
+    toets('RR: de eenheidkeuze is donker, geen witte systeemlijst', !!rrOpmaak && (function (m) { return !!m && (+m[1] + +m[2] + +m[3]) < 400; })(/rgba?\((\d+), (\d+), (\d+)/.exec(rrOpmaak.selAchter)), JSON.stringify(rrOpmaak));
+    toets('RR: een sensorregel blijft binnen het venster', !!rrOpmaak && rrOpmaak.rijRechts <= rrOpmaak.body + 1, JSON.stringify(rrOpmaak));
     await app.ev(`PLGarage._rrBewaar(); 'ok'`);
     toets('zonder naam en sensor: een melding, niets bewaard', await wacht(`/naam/.test((document.getElementById('rrFout') || {}).textContent || '')`, 3000));
     await app.ev(`(function () {

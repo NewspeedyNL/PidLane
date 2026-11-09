@@ -727,6 +727,11 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
    "Wat is er met mijn auto?". */
 #welcomeScreen .welcome-scroll { padding-bottom:calc(24px + var(--pl-sab)); }
 .choice-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+/* Zonder auto (#705, 09-11-2026): de kaarten achter de deuren meten allemaal
+   aan de auto. PLThuis zet body.pl-zonder-auto; dan zegt elke kaart dat de
+   adapter nodig is, in plaats van een dashboard te openen dat niets meet. */
+body.pl-zonder-auto .wm-door-panel .choice-card .choice-head { justify-content:flex-start; }
+body.pl-zonder-auto .wm-door-panel .choice-card .choice-head::after { content:'🔌 adapter'; flex:none; margin-left:auto; margin-right:44px; font-size:11px; font-weight:700; color:var(--tx3); border:1px solid var(--bd); border-radius:999px; padding:2px 8px; }
 
 /* ══ LAAGORDENING ══════════════════════════════════════════════════
    27-08-2026 — één plek die zegt wat er bovenop wat ligt. Aanleiding: de

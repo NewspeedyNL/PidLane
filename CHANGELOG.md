@@ -10,6 +10,49 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 (nacht) — Zonder adapter een eigen uitkomst (#705)
+ ═══════════════════════════════════════════════════════════
+
+ - Papierenrapport voor de koper: RDW, NAP, APK, export, terugroepacties,
+   bekende zwakke punten van het merk, wat je bij de bezichtiging zelf
+   nakijkt en vragen voor de verkoper. Te bewaren in Rapporten. Nooit
+   "groen": de elektronica is niet uitgelezen, en dat staat erbij.
+ - Onderhoud volgens leeftijd en km (algemene richtwaarden, het boekje gaat
+   voor), een checklist voor een lange rit, en het echte verbruik uit je
+   tankbeurten naast de typekeuring.
+ - Er is iets mis zonder adapter gaat naar de klachtenwijzer, met de
+   klachten die je al koos.
+ - Alle functies: een 🔌 bij elke kaart die meet, en zonder adapter een
+   kaart met verbinden, de uitkomst zonder adapter en de demo.
+ - Aankooprapport: een leeg opgezochte terugroepactie won van de RDW-vlag
+   "openstaand" en gaf groen. Nu telt dan de vlag.
+
+ ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — Zonder adapter: plannen kan, meten wacht op de adapter
+ ═══════════════════════════════════════════════════════════
+
+ - Er is iets mis, Rit starten, Kopen of verkopen en Voorbereiden werken
+   zonder adapter tot en met het plan. Wie dan iets start dat meet, krijgt
+   één kaart: Verbinden, wat zonder adapter al kan (Kenteken-check, Foutcode
+   opzoeken, demo) en terug naar het plan. Voorheen verzamelde de
+   sensorcontrole 0 sensoren in 0 s en wisselden vijf modules stil van tab.
+
+ ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — RR-formulier: één nette regel per sensor
+ ═══════════════════════════════════════════════════════════
+
+ - Vinkje en sensornaam staan naast elkaar, de eenheid rechts in een donkere
+   keuzelijst in plaats van een witte systeemlijst.
+
+ ═══════════════════════════════════════════════════════════
+ 09-11-2026 (avond) — Verbinden heeft weer een uitweg
+ ═══════════════════════════════════════════════════════════
+
+ - Tijdens het verbinden staat er een knop Stoppen in de strook. Hij sluit
+   wat openstaat en haalt het doek weg; de app werkt verder zonder adapter.
+   Een poging die nog naloopt meldt daarna niets meer.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 — Mijn voertuigen: niets meer over de schermrand
  ═══════════════════════════════════════════════════════════
 
