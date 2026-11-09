@@ -665,7 +665,11 @@ console.log('\n13b. elke PLMeetkamer-aanroep in de testrun bestaat ook echt');
      kant geen gedrag is dat in node te draaien valt: pidlane-testrun.js is
      één IIFE met een app eromheen. Wat er getoetst wordt is wél gedrag — de
      module wordt echt geladen en er wordt echt gekeken wat hij uitdeelt. */
-  const bron = fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8');
+  // Sinds 08-11-2026 staan de proeven van blok 5 in pidlane-proeven.js (#690),
+  // en daar staat de aanroep die het hier om gaat. Allebei lezen: een
+  // aanroep die verhuist mag deze controle niet ontlopen.
+  const bron = ['pidlane-testrun.js', 'pidlane-proeven.js']
+    .map(function (f) { return fs.readFileSync(__dirname + '/' + f, 'utf8'); }).join('\n');
   const namen = [];
   const re = /PLMeetkamer\.([A-Za-z_$][\w$]*)/;
 

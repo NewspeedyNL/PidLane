@@ -316,7 +316,7 @@ MUTATIES=(
 "public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
 "public/pidlane-proeven.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
-"public/pidlane-testrun.js@@'BLOK 5 DEKT DEZE RONDE: ' + _dekkingB5().join(', ')@@'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
+"public/pidlane-testrun.js@@  return 'BLOK 5 DEKT DEZE RONDE: ' + d.join(', ')@@  return 'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
 "public/pidlane-uitgebreid.js@@schoon.indexOf(hdr) >= 0;@@true;@@test-mode21.js@@de uitgebreide probe accepteert elk antwoord"
 "public/pidlane-uitgebreid.js@@      if (!force && _herkansT < PROBE_HERKANS && connected) {@@      if (false) {@@test-mode21.js@@een probe die de bus bezet trof komt die sessie nooit meer terug"
 "public/pidlane-uitgebreid.js@@  const UITGEBREID_DEFS = {\n@@  const UITGEBREID_DEFS = {\n    '2101': { name: 'Motorolie temp', unit: '°C', cat: 'Temperatuur', min: -40, max: 150, merk: 'MAZDA', vervangt: '015C', parse: b => b[0] - 40 },\n@@test-mode21.js@@2101 staat weer als Mazda-vervanger van 015C, terwijl hij op de CX-5 NO DATA geeft (19-08-2026)"
