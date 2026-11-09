@@ -15,6 +15,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 09-11-2026 — Mijn voertuigen: ACTIEF over de rand, de bewaarbalk met doorkijk
+
+**Waarom het stukging.** Twee modules gebruikten dezelfde klassenaam.
+`pidlane.css` had sinds de grafiek-herbouw (27/28-10) globale regels voor
+`.gr-naam`, `.gr-kop` en `.gr-waarde`; `pidlane-garage.js` gebruikt die namen
+voor iets anders. De grafiekregel `.gr-naam { white-space:nowrap }` gold dus
+ook voor de voertuignaam: de tekstkolom kon niet smaller dan de hele naam op
+één regel, en bij tekstgrootte L met een lange naam ("MAZDA MAZDA CX-5") duwde
+dat ACTIEF buiten de kaart. "Opeens" is dus geen nieuwe code maar een naam die
+lang genoeg is bij een tekst die groot genoeg is; de botsing stond er al.
+Dezelfde vorm als bij `gr-groep` (toen opgelost door de garage te hernoemen naar
+`gr-sgroep`); nu staan de grafiekregels onder `#pane-graph`, zodat een
+volgende gedeelde naam niet opnieuw lekt.
+
+**De bewaarbalk.** Chrome laat een sticky element stoppen op de padding van
+de scrollcontainer (`#plGarOv`: 16px + `--pl-sab`). Daaronder scrolde de lijst
+zichtbaar door. Daarbovenop telde de balk `env(safe-area-inset-bottom)` nog
+eens (zwart vlak), en had de uitgeschakelde knop `opacity:.45` met een
+transparant verloop: de lijst scheen er doorheen. Nu een negatieve
+`bottom` die de padding opheft, `--pl-sab` in plaats van `env()`, en een dichte
+balk. Dit was de enige sticky-onderbalk in de app.
+
+**Toets.** `bproef-garage.js` §4d: L, lange naam, ACTIEF in de kaart, naam
+heel, balk tot de schermrand en dicht. Tegenproef op de oude CSS: vier keer
+rood, ACTIEF op 563 px bij een kaart tot 377 px.
+
 ## 08-11-2026 (nacht) — #691: elke timer van de boot geteld
 
 **Waarom de eerste ronde (07-11) niet genoeg was.** Het issue noemde acht

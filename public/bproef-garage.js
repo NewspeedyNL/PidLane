@@ -726,6 +726,31 @@ const NEPSERVER = `(function(){
     toets('en het rapport staat bij het voertuig (soort rr)', await wacht(`window._nepPlatform.rapporten.some(function (r) { return r.soort === 'rr' && /Proef koelwater/.test(r.titel) && /Koelwater|0105/.test(r.tekst); })`, 5000));
     await app.ev(`(function () { const id = PLGarage.actief().id; window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.rr = []; }); PLGarage.actief().rr = []; PLGarage.sluit(); return 'ok'; })()`);
 
+    console.log('\n── 4d. grote tekst: niets over de schermrand (09-11-2026) ──');
+    // Tekstgrootte L en een lange naam. De grafiek had een globale .gr-naam
+    // met white-space:nowrap; die gold ook hier, en dan duwde de naam ACTIEF
+    // en het hele venster over de rand.
+    await app.ev(`(function () { document.body.classList.add('uiL'); const v = PLGarage.actief(); window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === v.id) x.naam = 'Mazda CX-5 Signature Edition AWD Automaat'; }); v.naam = 'Mazda CX-5 Signature Edition AWD Automaat'; PLGarage.sluit(); PLGarage.open(); return 'ok'; })()`);
+    await wacht(`!!document.querySelector('#plGarBody .gr-auto')`, 3000);
+    const rand = await app.ev(`(function () { const r = (e) => e.getBoundingClientRect(); const blok = document.querySelector('#plGarBody .gr-blok .gr-auto').parentNode;
+      const act = [...blok.querySelectorAll('.gr-auto > span.gr-klein')].filter(function (x) { return /ACTIEF/.test(x.textContent); })[0];
+      const doos = document.querySelector('#plGarOv .gr-doos'), b = document.documentElement.clientWidth; // getBoundingClientRect geeft schermpixels, ook onder zoom
+      return { actief: act ? Math.round(r(act).right) : null, blok: Math.round(r(blok).right), doos: Math.round(r(doos).right), scherm: Math.round(b) }; })()`);
+    toets('de lange naam staat in de lijst', /Signature Edition/.test(await app.ev(`document.getElementById('plGarBody').textContent`)));
+    toets('ACTIEF blijft binnen de kaart', rand.actief !== null && rand.actief <= rand.blok, JSON.stringify(rand));
+    toets('de naam staat er helemaal, niet afgekapt', await app.ev(`(function () { const n = document.querySelector('#plGarBody .gr-auto .gr-naam'); return !!n && n.scrollWidth <= n.clientWidth + 1 && getComputedStyle(n).whiteSpace !== 'nowrap'; })()`));
+    toets('het venster blijft binnen het scherm', rand.doos <= rand.scherm, JSON.stringify(rand));
+    await app.ev(`(function () { PLGarage.open(PLGarage.actief().id); PLGarage._tab('sensoren'); return 'ok'; })()`);
+    await wacht(`!!document.querySelector('#plGarOv .gr-bewaarbalk')`, 5000);
+    const balk = await app.ev(`(function () { const ov = document.getElementById('plGarOv'); ov.scrollTop = 0;
+      const b = document.querySelector('#plGarOv .gr-bewaarbalk'), k = b.querySelector('.gr-k');
+      const st = getComputedStyle(b);
+      return { onder: Math.round(b.getBoundingClientRect().bottom), scherm: innerHeight, plakt: st.position, achter: st.backgroundImage === 'none' ? st.backgroundColor : st.backgroundImage, knopDicht: getComputedStyle(k).opacity, hoog: ov.scrollHeight > ov.clientHeight }; })()`);
+    if (balk.hoog) toets('de bewaarbalk loopt door tot de schermrand: er scrolt niets onder door', balk.onder >= balk.scherm - 1, JSON.stringify(balk));
+    else toets('LET OP: het blad is te kort om de plakkende balk te toetsen', true, JSON.stringify(balk));
+    toets('de bewaarbalk is dicht (geen doorkijk naar de lijst)', !/transparent|rgba\([^)]*,\s*0(\.\d+)?\)/.test(balk.achter) && balk.knopDicht === '1', JSON.stringify(balk));
+    await app.ev(`(function () { document.body.classList.remove('uiL'); (function () { const id = PLGarage.actief().id; window._nepPlatform.voertuigen.forEach(function (x) { if (x.id === id) x.naam = 'Blauwe Mazda'; }); })(); PLGarage.actief().naam = 'Blauwe Mazda'; PLGarage.sluit(); return 'ok'; })()`);
+
     console.log('\n── 5. de terugknop en het startscherm ──');
     await app.ev(`PLGarage.open(); 'ok'`);
     await app.ev(`appBack(); 'ok'`);

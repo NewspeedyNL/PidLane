@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 — Mijn voertuigen: niets meer over de schermrand
+ ═══════════════════════════════════════════════════════════
+
+ - ACTIEF bleef bij grote tekst en een lange autonaam buiten de kaart:
+   de grafiek had een algemene regel voor de klassenaam die Mijn voertuigen
+   ook gebruikt. De grafiekregels gelden nu alleen nog in de grafiek.
+ - De balk "Bewaren / Alles bewaard" onder Sensoren is dicht en loopt door
+   tot de onderrand; de lijst schijnt er niet meer doorheen.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 — Verbindstrook: rustig scherm tijdens het verbinden
  ═══════════════════════════════════════════════════════════
 

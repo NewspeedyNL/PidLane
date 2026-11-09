@@ -2814,19 +2814,19 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 
 /* ══ GRAPH ══ */
 /* Grafiek (herbouwd 26-09-2026): één baan per sensor, op één tijdas. */
-.gr-kop { display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
-.gr-kop .fsel { flex:1; min-width:150px; }
-.gr-groep { font-family:var(--f); font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; white-space:nowrap; }
-.gr-groep.active { background:var(--bl); border-color:var(--bl); color:#fff; }
-.gr-tel { font-family:var(--m); font-size:12px; color:var(--tx3); }
-.gr-baan { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:8px 10px 6px; margin-bottom:8px; }
-.gr-baan-kop { display:flex; align-items:baseline; gap:8px; }
-.gr-naam { flex:1; min-width:0; font-size:12px; font-weight:700; color:var(--tx2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gr-waarde { font-family:var(--m); font-size:18px; font-weight:700; color:var(--tx); }
-.gr-waarde.buiten, .gr-zin.buiten { color:var(--rd); }
-.gr-weg { flex:none; width:24px; height:24px; border:0; border-radius:6px; background:transparent; color:var(--tx3); font-size:14px; cursor:pointer; }
-.gr-doek { display:block; width:100%; height:96px; margin-top:4px; }
-.gr-zin { font-size:11px; color:var(--tx3); margin-top:2px; }
+#pane-graph .gr-kop { display:flex; gap:7px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+#pane-graph .gr-kop .fsel { flex:1; min-width:150px; }
+#pane-graph .gr-groep { font-family:var(--f); font-size:12px; font-weight:600; padding:6px 12px; border-radius:999px; border:1.5px solid var(--bd); background:var(--sur2); color:var(--tx2); cursor:pointer; white-space:nowrap; }
+#pane-graph .gr-groep.active { background:var(--bl); border-color:var(--bl); color:#fff; }
+#pane-graph .gr-tel { font-family:var(--m); font-size:12px; color:var(--tx3); }
+#pane-graph .gr-baan { background:var(--sur); border:1px solid var(--bd); border-radius:var(--r); padding:8px 10px 6px; margin-bottom:8px; }
+#pane-graph .gr-baan-kop { display:flex; align-items:baseline; gap:8px; }
+#pane-graph .gr-naam { flex:1; min-width:0; font-size:12px; font-weight:700; color:var(--tx2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+#pane-graph .gr-waarde { font-family:var(--m); font-size:18px; font-weight:700; color:var(--tx); }
+#pane-graph .gr-waarde.buiten, #pane-graph .gr-zin.buiten { color:var(--rd); }
+#pane-graph .gr-weg { flex:none; width:24px; height:24px; border:0; border-radius:6px; background:transparent; color:var(--tx3); font-size:14px; cursor:pointer; }
+#pane-graph .gr-doek { display:block; width:100%; height:96px; margin-top:4px; }
+#pane-graph .gr-zin { font-size:11px; color:var(--tx3); margin-top:2px; }
 .fsel { font-family:var(--f); font-size:13px; background:var(--sur); border:1px solid var(--bd); border-radius:7px; padding:6px 10px; color:var(--tx); outline:none; cursor:pointer; min-width:180px; }
 
 /* ══ FUEL ══ */
