@@ -4440,6 +4440,9 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
 #connOv.pl-stil{display:none!important}
 .pl-strook{position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 6px);z-index:var(--z-modal,9600);max-width:480px;margin:0 auto;background:var(--sur2,#1b2333);border:1px solid var(--bd,#28324a);border-radius:12px;padding:8px 10px;font:500 13px var(--f);color:var(--tx,#eef2fa);box-shadow:0 6px 20px rgba(0,0,0,.35)}
 .pl-strook[hidden]{display:none}
+/* Doek achter de strook zolang het verbinden loopt: net onder de modal-band, zodat het verbindscherm (#connOv) er bij een vraag gewoon overheen komt. */
+.pl-strook-doek{position:fixed;inset:0;z-index:calc(var(--z-modal,9600) - 1);background:var(--bg,#0a0e17)}
+.pl-strook-doek[hidden]{display:none}
 .pl-strook-kop{display:flex;width:100%;justify-content:space-between;align-items:center;gap:8px;background:none;border:0;color:inherit;font:inherit;padding:2px 0;cursor:pointer;text-align:left}
 .pl-strook-kop b{font-weight:800}
 .pl-strook-kop span{color:var(--tx2,#a9b4c8)}

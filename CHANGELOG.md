@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 09-11-2026 — Verbindstrook: rustig scherm tijdens het verbinden
+ ═══════════════════════════════════════════════════════════
+
+ - Zolang het verbinden loopt, ligt er een doek achter de strook: de
+   schermen eronder springen niet meer heen en weer. Bij een fout, een
+   kentekenvraag of het verbindscherm gaat het doek weg.
+ - Staat alles goed, dan verdwijnt de strook helemaal in plaats van als
+   balk "Verbonden" bovenin te blijven hangen.
+
+ ═══════════════════════════════════════════════════════════
  08-11-2026 (nacht) — Zuiniger: geen timers meer zonder reden (#691)
  ═══════════════════════════════════════════════════════════
 
