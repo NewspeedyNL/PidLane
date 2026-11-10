@@ -33,7 +33,7 @@
    vinkje "altijd automatisch" (`pl_verbind_altijd`). Met dat vinkje begint
    het verbinden meteen.
 
-   PUUR (_kern): nieuw, zet, inklappen, afdekken, foutcodeRegel, aftelDeel,
+   PUUR (_kern): nieuw, zet, inklappen, magWeg, afdekken, foutcodeRegel, aftelDeel,
    magKentekenVragen, bekendeAdapter. Getoetst in test-strook.js.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
@@ -49,6 +49,7 @@
   var STATUS = ['wacht', 'bezig', 'ok', 'let', 'fout', 'over'];
   var AFTEL_MS = 5000;
   var KLAAR_MS = 4000;
+  var LET_MS = 8000;   // een "let" mag iets langer gelezen worden
   var STIL_KMH = 2;
   var OPSLAG = { altijd: 'pl_verbind_altijd' };
 
@@ -73,6 +74,19 @@
   function inklappen(st) {
     if (!st || st.fout || st.vraag || st.inricht) return false;
     return st.stappen.every(function (s) { return s.status === 'ok' || s.status === 'over'; });
+  }
+  /* Mag de strook helemaal weg (10-11-2026)? Hij bleef bovenin hangen met
+     "Verbinden ▾" zodra er één regel op "let" stond (foutcodes niet gelezen,
+     kenteken later, het verbindscherm nam over) — ook als de auto allang
+     verbonden was. Nu: zolang er iets loopt of iets van de klant vraagt
+     (fout, kenteken, Inrichten) blijft hij; staat de verbinding en loopt er
+     niets meer, dan gaat hij weg. Een "let" is dan informatie, en die staat
+     ook in Check mijn auto en bij Rapporten. */
+  function magWeg(st, verbonden) {
+    if (!st) return true;
+    if (st.fout || st.vraag || st.inricht) return false;
+    if (st.stappen.some(function (s) { return s.status === 'bezig'; })) return false;
+    return inklappen(st) || !!verbonden;
   }
   /* Het stoplicht van PLFoutcodes → een regel. Grijs is "niet gelezen", en
      dat is nooit ok: dezelfde regel als in stoplicht() zelf. */
@@ -134,7 +148,7 @@
   }
 
   // ── staat ────────────────────────────────────────────────────────
-  var _st = null, _open = false, _ingeklapt = false, _dichtT = null, _aftel = null, _kentT = null;
+  var _st = null, _open = false, _ingeklapt = false, _dichtT = null, _aftel = null, _kentT = null, _pollT = null;
 
   function wortel() {
     var w = el('plStrook');
@@ -244,9 +258,22 @@
   }
   function plan() {
     clearTimeout(_dichtT);
+    if (!_open || !_st || _aftel) return;
     // Alles klaar: de strook verdwijnt helemaal (wens eigenaar, 09-11-2026).
     // _st blijft staan: blok 5 leest de laatste verbinding uit staat().
-    if (_st && inklappen(_st)) _dichtT = setTimeout(function () { _open = false; _ingeklapt = false; teken(); }, KLAAR_MS);
+    if (magWeg(_st, isVerbonden())) { _dichtT = setTimeout(weg, inklappen(_st) ? KLAAR_MS : LET_MS); return; }
+    // Wacht hij alleen nog op de verbinding: straks opnieuw kijken. Niet elke
+    // stap meldt zich bij de strook (het gewone verbindscherm bijvoorbeeld).
+    if (!_st.fout && !_st.vraag && !_st.inricht && !_pollT) {
+      _pollT = setInterval(function () {
+        if (!_open || !_st || _aftel) { clearInterval(_pollT); _pollT = null; return; }
+        if (magWeg(_st, isVerbonden())) { clearInterval(_pollT); _pollT = null; plan(); }
+      }, 2000);
+    }
+  }
+  function weg() {
+    if (!magWeg(_st, isVerbonden())) { plan(); return; }
+    _open = false; _ingeklapt = false; teken();
   }
 
   // ── openbaar: de stappen ─────────────────────────────────────────
@@ -488,6 +515,9 @@
     catch (e) { console.warn('PLStrook: Check mijn auto opent niet', e); }
   }
   function _wissel() {
+    // Inklappen is wegdoen zodra er niets meer loopt of vraagt: een strook
+    // die alleen nog "Verbinden ▾" zegt, hoort niet in beeld te blijven.
+    if (!_ingeklapt && magWeg(_st, isVerbonden())) { clearTimeout(_dichtT); _open = false; _ingeklapt = false; teken(); return; }
     _ingeklapt = !_ingeklapt;
     if (!_ingeklapt) clearTimeout(_dichtT);
     teken();
@@ -506,7 +536,7 @@
     staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
     _nu: _nu, _annuleer: _annuleer, _stop: _stop, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
     _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater, _inrichten: _inrichten, _nietNu: _nietNu,
-    _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, nieuw: nieuw, zet: zet, inklappen: inklappen, afdekken: afdekken,
+    _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, LET_MS: LET_MS, nieuw: nieuw, zet: zet, inklappen: inklappen, magWeg: magWeg, afdekken: afdekken,
       foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter }
   };
 })();

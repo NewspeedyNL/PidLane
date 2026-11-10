@@ -38,6 +38,28 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Verbindstrook weg na verbinden, nieuwe lampjes motor/accu (10-11-2026) ──
+  {
+    issue: '—',
+    naam: 'De verbindstrook verdwijnt zodra de auto verbonden is en niets meer vraagt; motor en accu zijn één chip met een ring',
+    waarom: 'De strook bleef met "Verbinden ▾" bovenin hangen bij één regel op "let", en het balkje van de lampjes liep buiten de chip.',
+    proef: async function () {
+      if (!window.PLStrook || !PLStrook._kern || typeof PLStrook._kern.magWeg !== 'function') return { staat: 'FOUT', detail: 'PLStrook.magWeg ontbreekt — herladen?' };
+      var K = PLStrook._kern, st = K.nieuw();
+      st.stappen.forEach(function (s) { s.status = 'ok'; }); K.zet(st, 'codes', 'let');
+      if (!K.magWeg(st, true)) return { staat: 'FOUT', detail: 'verbonden met een "let" blijft de strook staan' };
+      st.vraag = 'kenteken';
+      if (K.magWeg(st, true)) return { staat: 'FOUT', detail: 'de strook gaat weg terwijl hij om het kenteken vraagt' };
+      if (!window.PLVisueel || typeof PLVisueel.lampHtml !== 'function') return { staat: 'FOUT', detail: 'PLVisueel.lampHtml ontbreekt — herladen?' };
+      var h = PLVisueel.lampHtml({ kop: 'Motor aan', waarde: '33%', icoon: 'motor', balk: 33 });
+      if (!/vl-boog/.test(h) || /vis-lamp-balk/.test(h)) return { staat: 'FOUT', detail: 'het lampje heeft geen ring of nog een balkje' };
+      var S = PLStrook.staat(), w = document.getElementById('plStrook');
+      if (typeof connected !== 'undefined' && connected && w && !w.hidden && S.st && K.magWeg(S.st, true))
+        return { staat: 'LET OP', detail: 'verbonden en niets loopt, maar de strook staat nog in beeld — wacht 8 s en draai opnieuw' };
+      return { staat: 'OK', detail: 'strook ' + (w && !w.hidden ? 'in beeld (er loopt of vraagt iets)' : 'weg') + '; lampjes met ring' };
+    }
+  },
+
   // ── Zonder adapter een eigen uitkomst (#705, 09-11-2026) ──
   {
     issue: '#705',

@@ -1393,16 +1393,24 @@ function leesAandrijving(){
   try{ return (window.PLAandrijving && typeof window.PLAandrijving.laatste==='function') ? window.PLAandrijving.laatste() : null; }
   catch(e){ console.warn('PLVisueel: PLAandrijving.laatste() mislukt', e); return null; }
 }
+/* NIEUW ONTWERP (10-11-2026, wens eigenaar). Het balkje onderin liep in de
+   glazen look buiten de chip, en motor en accu zagen er elk anders uit. Nu
+   hebben beide lampjes dezelfde bouw: een ring om het icoon (de meter: motor-
+   belasting, accu- of aandrijfaccustand), daarnaast een kop en een waarde.
+   Een ring kan niet buiten zijn vak lopen; zonder getal is hij alleen spoor.
+   De hybride krijgt dezelfde vorm: "Aandrijf 62%" met de 12 V er klein achter.
+   De kop is kort en kapt af met …; de volle tekst staat in de titel. */
 function lampHtml(l){
+  const b=(l.balk===null || l.balk===undefined) ? null : Math.max(0, Math.min(100, Math.round(Number(l.balk)) || 0));
+  const ring='<span class="vis-lamp-ring">'+
+    '<svg class="vis-lamp-meter" viewBox="0 0 36 36" aria-hidden="true"><circle class="vl-spoor" cx="18" cy="18" r="16"/>'+
+      (b ? '<circle class="vl-boog" cx="18" cy="18" r="16" pathLength="100" stroke-dasharray="'+b+' 100"/>' : '')+'</svg>'+
+    '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg></span>';
   const tx = l.dubbel
-    // Twee regels en geen kop: dan is het even hoog als het motorlampje en
-    // schuift de meter niet omlaag zodra de auto een hybride blijkt. De
-    // toestand staat in de kleur (blauw actief, groen elektrisch) en de titel.
-    ? '<span class="vis-lamp-tx vis-lamp-duo"><i>Aandrijf</i><b>'+esc(l.hv)+'</b>'+
-        '<i>12 V</i><b class="'+(l.ernst12==='warn' || l.ernst12==='danger' ? l.ernst12 : '')+'">'+esc(l.volt)+'</b></span>'
+    ? '<span class="vis-lamp-tx"><small>Aandrijf</small><b>'+esc(l.hv)+
+        '<em class="'+(l.ernst12==='warn' || l.ernst12==='danger' ? l.ernst12 : '')+'">'+esc(l.volt)+'</em></b></span>'
     : '<span class="vis-lamp-tx"><small>'+esc(l.kop)+'</small><b>'+esc(l.waarde)+'</b></span>';
-  return '<svg class="vis-lamp-ic" viewBox="0 0 24 24" aria-hidden="true">'+icoonHtml(l.icoon)+'</svg>'+tx+
-         (l.balk!==null ? '<i class="vis-lamp-balk" style="width:'+l.balk+'%"></i>' : '');
+  return ring+tx;
 }
 /* Puls bij een lampje: null bij de eerste keer of geen verschil, 'grens'
    als de toestand (soort) wisselt, anders 'tik'. Een lampje dat verdwijnt
@@ -2028,7 +2036,7 @@ function stop(){
 window.PLVisueel = {
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
-  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
+  schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampHtml:lampHtml, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,
   stand:stand, tekst:tekst, plekOordeel:plekOordeel, plekGetal:plekGetal, plekEenheid:plekEenheid, boogSchaal:boogSchaal, getalKan:getalKan,
   plekKeten:plekKeten, plekStaat:plekStaat, kandidatenPlek:kandidatenPlek, zonderSchaal:zonderSchaal, toonWeergave:toonWeergave, eigenW:eigenW,
   VERMOGEN:VERMOGEN, VRAAG_KETEN:VRAAG_KETEN, naaldSoort:naaldSoort, vraagUit:vraagUit, laadUit:laadUit, vermogenStand:vermogenStand,

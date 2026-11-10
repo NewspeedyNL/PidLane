@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-11-2026 — Verbindstrook weg na verbinden, nieuwe lampjes motor/accu
+ ═══════════════════════════════════════════════════════════
+
+ - De strook "Verbinden ▾" bleef bovenin hangen zodra één regel op "let"
+   stond. Nu: verbonden en niets loopt of vraagt → weg (PLStrook magWeg).
+   Inklappen als er niets meer loopt is wegdoen.
+ - Motor- en acculampje boven de meter opnieuw ontworpen: één glazen chip
+   met een ring om het icoon als meter (belasting, accustand), geen balkje
+   meer dat buiten de chip loopt. Hybride in dezelfde vorm: "Aandrijf 62%"
+   met de 12 V erachter. Kop kapt af met …, volle tekst in de titel.
+
+ ═══════════════════════════════════════════════════════════
  09-11-2026 (nacht) — Zonder adapter een eigen uitkomst (#705)
  ═══════════════════════════════════════════════════════════
 

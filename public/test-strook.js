@@ -333,6 +333,45 @@ function laad(o) {
     toets('de laatste verbinding blijft leesbaar (blok 5)', !!s.PLStrook.staat().st);
   }
 
+  console.log('\n10. Weg zodra de auto verbonden is en niets meer loopt (10-11-2026)');
+  {
+    const K3 = laad().PLStrook._kern;
+    const le = K3.nieuw(); le.stappen.forEach(x => { x.status = 'ok'; }); K3.zet(le, 'codes', 'let', 'Niet gelezen');
+    toets('een "let" en verbonden → mag weg', K3.magWeg(le, true));
+    toets('TEGENPROEF: een "let" en (nog) niet verbonden → blijft', !K3.magWeg(le, false));
+    const bz = K3.nieuw(); K3.zet(bz, 'klaar', 'bezig');
+    toets('TEGENPROEF: er loopt nog een stap → blijft, ook verbonden', !K3.magWeg(bz, true));
+    const vr = K3.nieuw(); vr.stappen.forEach(x => { x.status = 'ok'; }); vr.vraag = 'kenteken';
+    toets('TEGENPROEF: een open kentekenvraag → blijft', !K3.magWeg(vr, true));
+    const ir = K3.nieuw(); ir.stappen.forEach(x => { x.status = 'ok'; }); ir.inricht = true;
+    toets('TEGENPROEF: de knop Inrichten → blijft', !K3.magWeg(ir, true));
+    const fo = K3.nieuw(); fo.fout = 'stuk';
+    toets('TEGENPROEF: een fout → blijft', !K3.magWeg(fo, true));
+    const ok = K3.nieuw(); ok.stappen.forEach(x => { x.status = 'ok'; });
+    toets('alles ok, ook zonder verbinding → mag weg', K3.magWeg(ok, false));
+  }
+  {
+    const s = laad({ nuTimers: true, verbonden: true });
+    s.PLStrook.start();
+    ['adapter', 'protocol', 'auto', 'klaar'].forEach(id => s.PLStrook.stap(id, 'ok'));
+    s.PLStrook.stap('codes', 'let', 'Niet gelezen');
+    toets('verbonden met een "let" bij Foutcodes: de strook gaat weg', s.elementen.plStrook.hidden && !s.PLStrook.staat().open, JSON.stringify(s.PLStrook.staat()));
+  }
+  {
+    const s = laad({ verbonden: true });
+    s.PLStrook.start();
+    ['adapter', 'protocol', 'auto', 'klaar'].forEach(id => s.PLStrook.stap(id, 'ok'));
+    s.PLStrook.stap('codes', 'let', 'Niet gelezen');
+    s.PLStrook._wissel();
+    toets('inklappen als er niets meer loopt = wegdoen, geen "Verbinden ▾"', s.elementen.plStrook.hidden && !s.PLStrook.staat().open, JSON.stringify(s.PLStrook.staat()));
+  }
+  {
+    const s = laad({ verbonden: true });
+    s.PLStrook.start();
+    s.PLStrook._wissel();
+    toets('TEGENPROEF: tijdens het verbinden klapt hij gewoon in', !s.elementen.plStrook.hidden && s.PLStrook.staat().ingeklapt, JSON.stringify(s.PLStrook.staat()));
+  }
+
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));
   process.exit(fout ? 1 : 0);
 })();

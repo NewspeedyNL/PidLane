@@ -1590,12 +1590,19 @@ body.uiL #vtag{ font-size:10px; padding:1px 5px; }
    en de hoeken zijn leeg. Een leeg lampje houdt zijn plek (visibility), zodat
    de meter niet verspringt als de aandrijving bekend wordt. */
 .vis-lampen { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:-12px; position:relative; z-index:1; pointer-events:none; }
-.vis-lamp { position:relative; overflow:hidden; display:inline-flex; align-items:center; gap:6px; max-width:40%; min-height:34px; padding:4px 9px 6px 7px;
-            border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx3); pointer-events:auto; }
+/* Nieuw ontwerp (10-11-2026): beide lampjes dezelfde glazen chip — een ring om
+   het icoon als meter, kop en waarde ernaast. De kleur van de toestand zit in
+   de rand, de ring en de kop; de waarde blijft wit. Niets steekt buiten. */
+.vis-lamp { position:relative; display:inline-flex; align-items:center; gap:7px; min-width:0; max-width:46%; height:40px; box-sizing:border-box; padding:3px 13px 3px 3px;
+            border-radius:999px; border:1px solid color-mix(in srgb, currentColor 30%, transparent); background:color-mix(in srgb, currentColor 9%, rgba(8,12,22,.55));
+            color:var(--tx3); pointer-events:auto; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.vis-lamp-ring { position:relative; flex:none; width:32px; height:32px; display:grid; place-items:center; }
+.vis-lamp-meter { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); overflow:visible; }
+.vis-lamp-meter .vl-spoor { fill:none; stroke:currentColor; stroke-width:2.6; opacity:.2; }
+.vis-lamp-meter .vl-boog { fill:none; stroke:currentColor; stroke-width:2.6; stroke-linecap:round; transition:stroke-dasharray .5s ease-out; }
 .vis-lamp.leeg { visibility:hidden; }
 /* De lampjes als kleine glazen chips (28-10-2026, Hyperlane-look). Op het volle
    scherm met Hyperlane of de schil bovenin het midden, boven de achtergrond. */
-.vis-lamp { border-radius:999px; -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen { position:fixed; top:calc(var(--pl-sat, 0px) + 14px); left:50%; transform:translateX(-50%);
   z-index:3; gap:10px; margin:0; justify-content:center; }
 /* Staand is het smal: de chips onder het knopje en het kruisje. */
@@ -1614,24 +1621,20 @@ body:not(.pl-vis-vol) .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vt-knop
    eronder, de meterring. De naam van de vorm staat op volledig scherm. */
 body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm { top:4px; left:6px; width:30px; height:30px; padding:0; font-size:0; }
 body:not(.pl-vis-vol) .vis.vhl-basis > .vhl-vorm::before { content:'◐'; font-size:15px; line-height:28px; }
-body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { min-height:0; padding:3px 9px; border-radius:999px; background:rgba(0,0,0,.35);
-  border-color:rgba(255,255,255,.18); max-width:none; }
-body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx { flex-direction:row; gap:6px; align-items:baseline; }
-.vis-lamp-ic { flex:none; width:18px; height:18px; overflow:visible; }
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { height:34px; padding:2px 11px 2px 2px; max-width:none; background:transparent; border-color:transparent; }
+body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-ring { width:28px; height:28px; }
+.vis-lamp-ic { position:relative; flex:none; width:16px; height:16px; overflow:visible; }
 /* De levende statusbalk (28-10-2026). In de Hyperlane-look één glazen capsule
    met de lampjes erin: het icoon ademt zacht in zijn toestandskleur, de
    meter is een gloeiende lijn onderin, en een nieuwe waarde geeft een korte
    puls (.tik) — een grens die gepasseerd wordt een sterkere (.grens). */
-.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:has(.vis-lamp:not(.leeg)) { justify-content:center; gap:4px; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:has(.vis-lamp:not(.leeg)) { justify-content:center; gap:8px; }
 body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:has(.vis-lamp:not(.leeg)) { padding:4px; border-radius:999px; gap:2px;
   background:linear-gradient(180deg, rgba(14,20,40,.62), rgba(4,6,14,.72)); -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
   border:1px solid color-mix(in srgb, var(--vhl-c, #4aa8ff) 32%, rgba(255,255,255,.08));
   box-shadow:0 0 24px color-mix(in srgb, var(--vhl-c, #4aa8ff) 22%, transparent), inset 0 1px 0 rgba(255,255,255,.07); }
-.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp { background:rgba(255,255,255,.035); border-color:transparent; overflow:visible; }
 .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp .vis-lamp-ic { filter:drop-shadow(0 0 5px currentColor); animation:vl-adem 3.6s ease-in-out infinite; }
-.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-tx b { font-variant-numeric:tabular-nums; text-shadow:0 0 10px currentColor; }
-.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-balk { left:14px; right:14px; bottom:1px; height:2px; border-radius:2px;
-  background:currentColor; box-shadow:0 0 8px currentColor; opacity:.9; transition:width .6s ease-out; }
+.vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp-meter .vl-boog { filter:drop-shadow(0 0 3px currentColor); }
 .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp.tik::after { content:''; position:absolute; inset:-1px; border-radius:inherit; pointer-events:none;
   animation:vl-tik .9s ease-out; }
 .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lamp.grens::after { animation:vl-grens 1.6s ease-out; }
@@ -1641,34 +1644,28 @@ body.pl-vis-vol .vis:is(:has(.vpf-hyper, .vhl-schil), .vhl-basis) .vis-lampen:ha
 @keyframes vl-grens { 0% { box-shadow:0 0 0 0 currentColor, inset 0 0 18px currentColor; opacity:1; } 40% { opacity:.8; } 100% { box-shadow:0 0 0 16px transparent, inset 0 0 0 transparent; opacity:0; } }
 @keyframes vl-alarm { 0%,100% { opacity:1; filter:drop-shadow(0 0 4px currentColor); } 50% { opacity:.55; filter:drop-shadow(0 0 12px currentColor); } }
 @media (prefers-reduced-motion:reduce) { .vis-lamp .vis-lamp-ic, .vis-lamp.tik::after { animation:none !important; } }
-.vis-lamp-tx { display:flex; flex-direction:column; min-width:0; line-height:1.1; }
-.vis-lamp-tx small { font-size:9.5px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; opacity:.8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.vis-lamp-tx b { font-size:12.5px; font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.vis-lamp.aan   { color:var(--gn); border-color:var(--gn); background:var(--gns); }
-.vis-lamp.ss    { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
-.vis-lamp.start { color:var(--or); border-color:var(--or); background:var(--ors); }
+.vis-lamp-tx { display:flex; flex-direction:column; justify-content:center; min-width:0; line-height:1.12; }
+.vis-lamp-tx small { font-size:9px; font-weight:800; letter-spacing:.5px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vis-lamp-tx b { font-size:14px; font-weight:800; color:var(--tx); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vis-lamp-tx b em { font-style:normal; font-size:10.5px; font-weight:700; color:var(--tx2); margin-left:5px; }
+.vis-lamp-tx b em.warn { color:var(--or); }
+.vis-lamp-tx b em.danger { color:var(--rd); }
+.vis-lamp.uit .vis-lamp-tx b, .vis-lamp.rust .vis-lamp-tx b { color:var(--tx2); }
+.vis-lamp.aan, .vis-lamp.ev { color:var(--gn); }
+.vis-lamp.ss, .vis-lamp.hyb { color:var(--bl); }
+.vis-lamp.start { color:var(--or); }
 .vis-lamp.uit, .vis-lamp.rust { color:var(--tx3); }
-.vis-lamp.ev    { color:var(--gn); border-color:var(--gn); background:var(--gns); }
-.vis-lamp.hyb   { color:var(--bl); border-color:var(--bl); background:rgba(26,111,255,.12); }
-.vis-lamp.twijfel { opacity:.6; border-style:dashed; }
+.vis-lamp.twijfel { opacity:.65; border-style:dashed; }
 /* Het accu-lampje opent de accupagina (PLAccu, 26-10-2026). */
 #vis-lamp-accu { cursor:pointer; }
 /* Accu met een oude spanning: blijft staan, maar dof (06-10-2026). */
 .vis-lamp.oud { opacity:.55; }
 /* Het acculampje rechtsboven (#371): groen als de spanning goed is, oranje
    als een draaiende dynamo niet laadt, rood buiten 12–15 V. Op een hybride
-   twee regels — aandrijfaccu en 12 V — met elk een eigen label ervoor, en
-   zonder kop, zodat het lampje even hoog blijft als het motorlampje. */
-.vis-lamp.accu.ok     { color:var(--gn); border-color:var(--gn); background:var(--gns); }
-.vis-lamp.accu.warn   { color:var(--or); border-color:var(--or); background:var(--ors); }
-.vis-lamp.accu.danger { color:var(--rd); border-color:var(--rd); background:var(--rds); }
-.vis-lamp-tx.vis-lamp-duo { display:grid; grid-template-columns:auto auto; column-gap:7px; row-gap:1px; align-items:baseline; }
-.vis-lamp-duo i { font-style:normal; font-size:9px; font-weight:700; letter-spacing:.3px; text-transform:uppercase; opacity:.7; }
-.vis-lamp-duo b { font-size:12px; text-align:right; }
-.vis-lamp-duo b.warn { color:var(--or); }
-.vis-lamp-duo b.danger { color:var(--rd); }
-/* Het balkje onderin: motorbelasting links, accupercentage rechts. */
-.vis-lamp-balk { position:absolute; left:0; bottom:0; height:3px; background:currentColor; opacity:.75; transition:width .3s linear; }
+   dezelfde chip: "Aandrijf 62%" met de 12 V er klein achter (10-11-2026). */
+.vis-lamp.accu.ok     { color:var(--gn); }
+.vis-lamp.accu.warn   { color:var(--or); }
+.vis-lamp.accu.danger { color:var(--rd); }
 .vis-plaat { fill:var(--sur); stroke:var(--bd2); stroke-width:2; }
 .vis-spoor { fill:none; stroke:var(--sur2); stroke-linecap:butt; }
 .vis-zone  { fill:none; stroke:var(--or); stroke-opacity:.35; stroke-linecap:butt; }

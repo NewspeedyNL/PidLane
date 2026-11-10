@@ -1014,5 +1014,31 @@ console.log('\n── De levende statusbalk: puls bij een nieuwe waarde (28-10-2
   waar('een lampje dat verdwijnt pulst niet', T(sl(acc('accu ok', '12,4 V')), null) === null);
 }
 
+// ── Het nieuwe lampontwerp (10-11-2026): een ring om het icoon, geen balkje ──
+{
+  const H = V.lampHtml, L2 = V.aandrijfLampjes;
+  const boog = h => { const m = h.match(/class="vl-boog"[^>]*stroke-dasharray="(\d+) 100"/); return m ? Number(m[1]) : null; };
+  const m = L2({ toestand: 'DRAAIT_STIL', zekerheid: 'hoog' }, 'benzine', { belasting: 33 }).motor;
+  const hm = H(m);
+  waar('motor met belasting: de ring staat op 33, kop en waarde ernaast', boog(hm) === 33 && /<small>Motor aan<\/small><b>33%<\/b>/.test(hm), hm);
+  waar('TEGENPROEF: er is geen balkje meer dat buiten de chip kan lopen', !/vis-lamp-balk/.test(hm), hm);
+  const ss = H(L2({ toestand: 'STARTSTOP', zekerheid: 'hoog' }, 'benzine', { belasting: 50 }).motor);
+  waar('start/stop: alleen het spoor, geen boog (geen belasting van een stille motor)', boog(ss) === null && /vl-spoor/.test(ss) && /Start\/stop/.test(ss), ss);
+  const cu = H(L2({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'benzine', { belasting: 40, contactUit: true }).motor);
+  waar('contact uit: "Contact uit", geen boog', boog(cu) === null && /<small>Contact<\/small><b>uit<\/b>/.test(cu), cu);
+  const nul = H({ kop: 'Motor aan', waarde: '0%', icoon: 'motor', balk: 0 });
+  waar('belasting 0: geen boog (een ronde kap zou een stip tekenen)', boog(nul) === null, nul);
+  const over = H({ kop: 'X', waarde: 'y', icoon: 'motor', balk: 180 });
+  waar('TEGENPROEF: een boog boven 100 wordt 100, niet meer dan de ring', boog(over) === 100, over);
+  const hy = L2({ toestand: 'DRAAIT_RIJDT', zekerheid: 'hoog' }, 'hybride', { accu: 62, volt: 12.4, rpm: 2000 }).accu;
+  const hh = H(hy);
+  waar('hybride: zelfde bouw — Aandrijf 62% met de 12 V er klein achter, ring op 62',
+    boog(hh) === 62 && /<small>Aandrijf<\/small><b>62%<em[^>]*>12,4 V<\/em><\/b>/.test(hh), hh);
+  const ac = H(L2(null, 'benzine', { volt: 12.4, rpm: 0 }).accu);
+  waar('gewone accu: "Accu 12,4 V" met een ring', /<small>Accu<\/small><b>12,4 V<\/b>/.test(ac) && boog(ac) !== null, ac);
+  const lang = H({ kop: '<b>lang</b>', waarde: '"x"', icoon: 'motor', balk: null });
+  waar('TEGENPROEF: tekst wordt ge-escaped', !/<b>lang<\/b>/.test(lang) && /&lt;b/.test(lang), lang);
+}
+
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');
 process.exit(fout ? 1 : 0);
