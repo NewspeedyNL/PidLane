@@ -418,13 +418,15 @@ function laad(o) {
   {
     const s = laad({ kentOnbekend: true, pidVals: { '010D': 70 } });
     s.PLStrook.start();
-    const v = await s.PLStrook.wachtKenteken();
+    // Race: een wachtmoment dat nooit loslaat mag de test niet stil laten
+    // eindigen (node stopt dan met exit 0, zonder samenvatting).
+    const v = await Promise.race([s.PLStrook.wachtKenteken(), new Promise(r => setTimeout(() => r('hangt'), 50))]);
     toets('TEGENPROEF: rijdend geen wachtmoment', v === false && !/id="plStrookKent"/.test(s.elementen.plStrook.innerHTML));
   }
   {
     const s = laad();
     s.PLStrook.start();
-    toets('TEGENPROEF: kenteken bekend → meteen door', (await s.PLStrook.wachtKenteken()) === true);
+    toets('TEGENPROEF: kenteken bekend → meteen door', (await Promise.race([s.PLStrook.wachtKenteken(), new Promise(r => setTimeout(() => r('hangt'), 50))])) === true);
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));
