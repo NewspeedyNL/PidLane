@@ -15,6 +15,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 10-11-2026 (avond) — Verbinden: schermen kwamen halverwege door het doek
+
+Screenshot eigenaar: strook op "Klaarzetten… 55 sensoren nakijken", Auto op
+"! nieuwe auto — kenteken volgt", en eronder de meetcoachkaart (Stoplichten,
+Snelweg, Start/Niet nu) en de knop Check connectie. Oorzaak: `afdekken()` haalde
+het doek weg bij élke "let", bedoeld voor het verbindscherm dat overneemt
+(`naarVenster`). Maar Auto kreeg die "let" ook als gewone mededeling, terwijl
+Klaarzetten nog liep. Nu draagt `naarVenster` een eigen vlag (`st.venster`);
+één betekenis per ding.
+
+Tweede klacht: het kenteken kwam pas ná Klaarzetten en Foutcodes, terwijl het
+in de strook bij Auto hoort. Het is nu een wachtmoment daar. Rijdend wacht hij
+niet: een verbinding die stil hangt tot de auto stopt is erger dan een vraag
+achteraf.
+
 ## 10-11-2026 (avond) — Hyperlane: de rijstijl in Auto sprong alle kanten op
 
 `modus()` had harde grenzen op .3/.55/.8 van de stemming (65% toeren tegen de

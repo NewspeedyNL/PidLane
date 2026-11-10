@@ -304,10 +304,13 @@ function laad(o) {
     toets('tijdens een stap: afdekken', K2.afdekken(st));
     const fo = K2.nieuw(); fo.fout = 'x';
     toets('TEGENPROEF: bij een fout geen doek', !K2.afdekken(fo));
-    const vr = K2.nieuw(); vr.vraag = 'kenteken';
-    toets('TEGENPROEF: bij een kentekenvraag geen doek', !K2.afdekken(vr));
-    const le = K2.nieuw(); K2.zet(le, 'protocol', 'let');
-    toets('TEGENPROEF: verbindscherm neemt over ("let") → geen doek', !K2.afdekken(le));
+    const vr = K2.nieuw(); vr.stappen.forEach(x => { x.status = 'ok'; }); vr.vraag = 'kenteken';
+    toets('kentekenvraag (wachtmoment): het doek blijft', K2.afdekken(vr, false));
+    toets('TEGENPROEF: kentekenvraag tijdens het rijden → geen doek', !K2.afdekken(vr, true));
+    const au = K2.nieuw(); K2.zet(au, 'auto', 'let', 'kenteken volgt'); K2.zet(au, 'klaar', 'bezig');
+    toets('Auto op "let" terwijl Klaarzetten loopt: het doek blijft (screenshot 10-11)', K2.afdekken(au));
+    const le = K2.nieuw(); le.venster = true; K2.zet(le, 'protocol', 'let');
+    toets('TEGENPROEF: verbindscherm neemt over → geen doek', !K2.afdekken(le));
     const ok = K2.nieuw(); ok.stappen.forEach(x => { x.status = 'ok'; });
     toets('TEGENPROEF: alles klaar → geen doek', !K2.afdekken(ok));
     toets('TEGENPROEF: zonder staat geen doek', !K2.afdekken(null));
@@ -370,6 +373,60 @@ function laad(o) {
     s.PLStrook.start();
     s.PLStrook._wissel();
     toets('TEGENPROEF: tijdens het verbinden klapt hij gewoon in', !s.elementen.plStrook.hidden && s.PLStrook.staat().ingeklapt, JSON.stringify(s.PLStrook.staat()));
+  }
+
+  console.log('\n11. Kenteken als wachtmoment bij Auto (10-11-2026)');
+  {
+    const s = laad({ kentOnbekend: true });
+    s.PLStrook.start();
+    s.PLStrook.stap('protocol', 'ok');
+    let klaar = null;
+    s.PLStrook.wachtKenteken().then(v => { klaar = v; });
+    await Promise.resolve();
+    const h = s.elementen.plStrook.innerHTML;
+    toets('het veld staat in de strook', /id="plStrookKent"/.test(h), h.slice(0, 300));
+    toets('het verbinden wacht nog', klaar === null);
+    toets('het doek ligt erachter', s.elementen.plStrookDoek && !s.elementen.plStrookDoek.hidden);
+    s.elementen.plStrookKent = { value: 'AB-123-C' };
+    s.elementen.plStrookKentSt = { textContent: '' };
+    s.rdwLookup = (a, b) => { s.PLIdentiteit.bevestig(b.kenteken); return Promise.resolve({ ok: true }); };
+    await s.PLStrook._kenteken();
+    await Promise.resolve();
+    toets('na Opzoeken gaat het verbinden verder, met kenteken', klaar === true);
+  }
+  {
+    const s = laad({ kentOnbekend: true });
+    s.PLStrook.start();
+    let klaar = null;
+    s.PLStrook.wachtKenteken().then(v => { klaar = v; });
+    s.PLStrook._kentLater();
+    await Promise.resolve();
+    toets('Later: verder zonder kenteken', klaar === false);
+    s.PLFoutcodes = null;
+    await s.PLStrook.naVerbinding({});
+    toets('TEGENPROEF: na Later vraagt naVerbinding niet nóg eens', !/id="plStrookKent"/.test(s.elementen.plStrook.innerHTML));
+  }
+  {
+    const s = laad({ kentOnbekend: true });
+    s.PLStrook.start();
+    let klaar = null;
+    s.PLStrook.wachtKenteken().then(v => { klaar = v; });
+    s.PLStrook.sluit();
+    await Promise.resolve();
+    toets('Stoppen/sluiten laat het wachtmoment los', klaar === false);
+  }
+  {
+    const s = laad({ kentOnbekend: true, pidVals: { '010D': 70 } });
+    s.PLStrook.start();
+    // Race: een wachtmoment dat nooit loslaat mag de test niet stil laten
+    // eindigen (node stopt dan met exit 0, zonder samenvatting).
+    const v = await Promise.race([s.PLStrook.wachtKenteken(), new Promise(r => setTimeout(() => r('hangt'), 50))]);
+    toets('TEGENPROEF: rijdend geen wachtmoment', v === false && !/id="plStrookKent"/.test(s.elementen.plStrook.innerHTML));
+  }
+  {
+    const s = laad();
+    s.PLStrook.start();
+    toets('TEGENPROEF: kenteken bekend → meteen door', (await Promise.race([s.PLStrook.wachtKenteken(), new Promise(r => setTimeout(() => r('hangt'), 50))])) === true);
   }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' toetsen ok'));

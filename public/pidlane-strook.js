@@ -99,11 +99,16 @@
   }
   /* Moet de app achter de strook afgedekt? Alleen zolang het verbinden
      loopt: de schermen eronder springen dan heen en weer (wens eigenaar,
-     09-11-2026). Een fout, een vraag of een "let" (het verbindscherm neemt
-     over) haalt het doek weg: dan moet de klant de app kunnen zien. */
-  function afdekken(st) {
-    if (!st || st.fout || st.vraag) return false;
-    if (st.stappen.some(function (s) { return s.status === 'let'; })) return false;
+     09-11-2026). Een fout, of het verbindscherm dat overneemt (st.venster,
+     naarVenster()), haalt het doek weg: dan moet de klant de app zien.
+     10-11-2026: een "let" haalt het doek níét meer weg. "Auto: nieuwe auto —
+     kenteken volgt" stond op let terwijl Klaarzetten nog liep, en dan kwamen
+     de meetcoach en "Check connectie" er halverwege doorheen (screenshot
+     eigenaar). De kentekenvraag zelf houdt het doek ook aan: de strook staat
+     erboven, het veld is te bereiken — behalve tijdens het rijden. */
+  function afdekken(st, rijdt) {
+    if (!st || st.fout || st.venster) return false;
+    if (st.vraag === 'kenteken') return !rijdt;
     return st.stappen.some(function (s) { return s.status === 'wacht' || s.status === 'bezig'; });
   }
   function aftelDeel(start, nu, ms) {
@@ -180,7 +185,7 @@
 
   function teken() {
     var w = wortel();
-    doek(!!(_open && !_aftel && afdekken(_st)));
+    doek(!!(_open && !_aftel && afdekken(_st, !magKentekenVragen(snelheid()))));
     // Een herteken (een stap die klaar is) mag getypte invoer niet wissen.
     var inv = el('plStrookKent'), getypt = inv ? inv.value : null, focus = !!inv && document.activeElement === inv;
     if (!_open) { w.hidden = true; return; }
@@ -202,7 +207,7 @@
     }
     if (!_st) { w.hidden = true; return; }
     var lopend = _st.stappen.filter(function (s) { return s.status === 'bezig'; })[0];
-    var kop = _st.fout ? 'Verbinden lukte niet' : (inklappen(_st) ? 'Verbonden' : (lopend ? lopend.naam + '…' : 'Verbinden'));
+    var kop = _st.fout ? 'Verbinden lukte niet' : (inklappen(_st) ? 'Verbonden' : (_st.vraag === 'kenteken' ? 'Kenteken van deze auto' : (lopend ? lopend.naam + '…' : 'Verbinden')));
     h += '<button type="button" class="pl-strook-kop" id="plStrookKop" onclick="PLStrook._wissel()" aria-expanded="' + (!_ingeklapt) + '">' +
       '<b>' + esc(kop) + '</b><span>' + (_ingeklapt ? '▾' : '▴') + '</span></button>';
     if (!_ingeklapt) {
@@ -251,7 +256,7 @@
     var sug = laatst();
     return '<div class="pl-strook-kent">' +
       (sug ? '<span class="pl-strook-t">Laatst gebruikt: ' + esc(sug) + ' — controleer of dit deze auto is</span>' : '') +
-      '<input id="plStrookKent" placeholder="Kenteken" maxlength="8" autocomplete="off" aria-label="Kenteken" value="' + esc(sug) + '">' +
+      '<input id="plStrookKent" placeholder="Kenteken" maxlength="8" autocomplete="off" autocapitalize="characters" enterkeyhint="search" aria-label="Kenteken" onkeydown="if(event.key===\'Enter\')PLStrook._kenteken()" value="' + esc(sug) + '">' +
       '<button type="button" class="pl-strook-k p" id="plStrookKentOk" onclick="PLStrook._kenteken()">Opzoeken</button>' +
       '<button type="button" class="pl-strook-k" onclick="PLStrook._kentLater()">Later</button>' +
       '<div class="pl-strook-t" id="plStrookKentSt"></div></div>';
@@ -303,6 +308,7 @@
     });
     if (!bezig) zet(_st, 'adapter', 'fout');
     _st.fout = String(msg || 'Onbekende fout');
+    klaarWacht(false);
     _open = true; _ingeklapt = false;
     clearTimeout(_dichtT);
     teken();
@@ -310,10 +316,11 @@
   /* Een stap kan niet zonder vraag: het gewone verbindscherm neemt over.
      De strook blijft staan en zegt waar de vraag is. */
   function naarVenster(id, tekst) {
+    if (_st) _st.venster = true;
     stap(id, 'let', tekst || 'kies in het verbindscherm');
   }
   function sluit() {
-    clearTimeout(_dichtT); stopAftel();
+    clearTimeout(_dichtT); stopAftel(); klaarWacht(false);
     _open = false; _st = null;
     teken();
   }
@@ -334,14 +341,38 @@
       if (heeftVeld !== magKentekenVragen(snelheid())) teken();
     }, 3000);
   }
+  /* WACHTMOMENT (10-11-2026, wens eigenaar). Het kenteken werd pas gevraagd
+     ná Klaarzetten en Foutcodes, en tot die tijd stond er "kenteken volgt".
+     Nu houdt het verbinden stil bij Auto: veld zichtbaar, doek aan, en
+     Klaarzetten begint pas na Opzoeken of Later. Het kenteken geeft de RDW-
+     brandstof, en die stuurt de sensorscan — dus vóór de scan is ook beter.
+     Rijdt de auto, dan geen wachtmoment: dan komt de vraag na het verbinden
+     (naVerbinding), zoals voorheen. Geeft een belofte: true = kenteken. */
+  var _kentWacht = null;
+  function klaarWacht(ok) {
+    var f = _kentWacht; _kentWacht = null;
+    if (f) f(!!ok);
+  }
+  function wachtKenteken() {
+    if (!_st || kentekenBekend()) return Promise.resolve(kentekenBekend());
+    if (!magKentekenVragen(snelheid())) {
+      zet(_st, 'auto', 'let', 'kenteken volgt — in stilstand');
+      teken();
+      return Promise.resolve(false);
+    }
+    klaarWacht(false);
+    vraagKenteken();
+    return new Promise(function (res) { _kentWacht = res; });
+  }
   function kentekenOk(tekst) {
     if (!_st) return;
-    _st.vraag = null; clearInterval(_kentT);
+    _st.vraag = null; _st.kentGevraagd = true; clearInterval(_kentT);
     zet(_st, 'auto', 'ok', tekst || '');
     // Zonder VIN is het kenteken nu de herkenning: de lus van PLGarage
     // (herkenAuto → selectieZonderVin) zet de selectie bij de volgende tik.
     inrichtVraag();
     teken(); plan();
+    klaarWacht(true);
   }
   function _kenteken() {
     var inp = el('plStrookKent'), st = el('plStrookKentSt');
@@ -362,9 +393,10 @@
   }
   function _kentLater() {
     if (!_st) return;
-    _st.vraag = null; clearInterval(_kentT);
+    _st.vraag = null; _st.kentGevraagd = true; clearInterval(_kentT);
     zet(_st, 'auto', 'let', 'zonder kenteken — later via Mijn auto');
     teken();
+    klaarWacht(false);
   }
   function kentekenNu() { return window.PLIdentiteit ? PLIdentiteit.kenteken() : ''; }
   function kentekenBekend() { return !!(window.PLIdentiteit && PLIdentiteit.bekend()); }
@@ -407,7 +439,8 @@
       if (s && s.status !== 'ok') s.status = 'ok';
     });
     _hervatNu = !!opties.hervat;
-    if (!kentekenBekend()) vraagKenteken();
+    // Al gevraagd bij het wachtmoment (en Later gekozen): niet nog eens.
+    if (!kentekenBekend() && !_st.kentGevraagd) vraagKenteken();
     else if (_st.stappen[2].status !== 'ok') zet(_st, 'auto', 'ok', autoTekst());
     inrichtVraag();
     teken();
@@ -531,7 +564,7 @@
   window.plVerbindOpen = verbind;
   window.PLStrook = {
     start: start, stap: stap, fout: fout, naarVenster: naarVenster, sluit: sluit, actief: actief,
-    vraagKenteken: vraagKenteken, naVerbinding: naVerbinding, aftellen: aftellen, verbind: verbind, verbindMag: verbindMag,
+    vraagKenteken: vraagKenteken, wachtKenteken: wachtKenteken, naVerbinding: naVerbinding, aftellen: aftellen, verbind: verbind, verbindMag: verbindMag,
     altijd: altijd, autoTekst: autoTekst,
     staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
     _nu: _nu, _annuleer: _annuleer, _stop: _stop, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,

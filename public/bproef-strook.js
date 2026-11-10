@@ -93,6 +93,12 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     })()`);
     toets('de route start zonder fout', route && route.fout.length === 0, JSON.stringify(route));
     toets('de kentekenstap is overgeslagen (geen #stepKent)', !(await app.ev(zichtbaar('#stepKent'))));
+    // Wachtmoment (10-11-2026): een nieuwe auto houdt stil bij Auto, met het
+    // veld in de strook en het doek erachter; Klaarzetten wacht.
+    toets('het verbinden wacht bij Auto op het kenteken', await wacht(`!!document.getElementById('plStrookKent')`, 60000));
+    toets('Klaarzetten is nog niet begonnen', await app.ev(`PLStrook.staat().st.stappen.find(function(s){ return s.id==='klaar'; }).status === 'wacht'`));
+    toets('het doek ligt erachter: geen meetcoach of Check connectie erdoorheen', await app.ev(zichtbaar('#plStrookDoek')));
+    await app.ev(`PLStrook._kentLater(); 'ok'`);
     const klaar = await wacht(`window._plVerbindingKlaar > 0 && PLStrook.staat().st && PLStrook.staat().st.stappen.find(function(s){ return s.id==='codes'; }).status !== 'wacht' && PLStrook.staat().st.stappen.find(function(s){ return s.id==='codes'; }).status !== 'bezig'`, 120000);
     toets('de hele weg komt aan, tot en met de foutcodes', klaar, JSON.stringify(await app.ev(`PLStrook.staat().st && PLStrook.staat().st.stappen.map(function(s){ return s.id+':'+s.status+':'+s.tekst; })`)));
     const st = await app.ev(`Object.fromEntries(PLStrook.staat().st.stappen.map(function(s){ return [s.id, s.status]; }))`);
@@ -134,8 +140,7 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
       PLStrook.start(); PLStrook.stap('adapter', 'ok', 'nep-adapter');
       await initELM327(); _kentPoortKlaar = false; await scanNetworks();
     })()`);
-    toets('de tweede verbinding komt aan', await wacht(`window._plVerbindingKlaar > 0`, 120000));
-    await rust(1500);
+    toets('de tweede verbinding wacht op het kenteken', await wacht(`!!document.getElementById('plStrookKent')`, 60000));
     const na = await app.ev(`(function(){ let p = {}; try { p = JSON.parse(localStorage.getItem('pl_vinprof_' + ${JSON.stringify(vin2)}) || '{}'); } catch (e) { console.warn(e); }
       return { rdw: window._PL_RDW, merk: vehicleInfo.merk, brandstof: vehicleFuelType(), profiel: p.kenteken || '', bekend: PLIdentiteit.bekend(),
         veld: (document.getElementById('plStrookKent') || {}).value || null }; })()`);
@@ -143,6 +148,8 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     toets('de auto blijft wat zijn VIN zegt, geen Peugeot diesel', na.merk !== 'Peugeot' && na.brandstof !== 'diesel', na.merk + ' / ' + na.brandstof);
     toets('het profiel van de nieuwe VIN krijgt geen kenteken', na.profiel === '', na.profiel);
     toets('de strook vraagt het, met OUD123 alleen als voorinvulling', !na.bekend && na.veld === 'OUD123', JSON.stringify(na));
+    await app.ev(`PLStrook._kentLater(); 'ok'`);
+    toets('na Later komt de tweede verbinding aan', await wacht(`window._plVerbindingKlaar > 0`, 120000));
 
     console.log('\n4. De strook zelf');
     const maat = await app.ev(`(function(){ const r=document.getElementById('plStrook').getBoundingClientRect(); return { l:r.left, r:r.right, b:window.innerWidth, t:r.top }; })()`);

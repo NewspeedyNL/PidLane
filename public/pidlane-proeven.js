@@ -38,6 +38,25 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Kenteken als wachtmoment bij Auto, doek blijft tot het verbinden klaar is (10-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Een nieuwe auto zonder kenteken: het verbinden houdt stil bij Auto met het veld in de strook, en de schermen eronder blijven afgedekt tot het verbinden klaar is',
+    waarom: 'Het kenteken kwam pas na Klaarzetten en Foutcodes, en een "let" bij Auto haalde het doek weg: de meetcoach en Check connectie verschenen halverwege het verbinden.',
+    proef: async function () {
+      if (!window.PLStrook || typeof PLStrook.wachtKenteken !== 'function') return { staat: 'FOUT', detail: 'PLStrook.wachtKenteken ontbreekt — herladen?' };
+      var K = PLStrook._kern, st = K.nieuw();
+      K.zet(st, 'auto', 'let', 'kenteken volgt'); K.zet(st, 'klaar', 'bezig');
+      if (!K.afdekken(st)) return { staat: 'FOUT', detail: 'Auto op "let" tijdens Klaarzetten haalt het doek weg' };
+      var vr = K.nieuw(); vr.stappen.forEach(function (s) { s.status = 'ok'; }); vr.vraag = 'kenteken';
+      if (!K.afdekken(vr, false)) return { staat: 'FOUT', detail: 'tijdens de kentekenvraag ligt er geen doek' };
+      if (K.afdekken(vr, true)) return { staat: 'FOUT', detail: 'rijdend wordt de app toch afgedekt' };
+      var ve = K.nieuw(); ve.venster = true;
+      if (K.afdekken(ve)) return { staat: 'FOUT', detail: 'het verbindscherm neemt over, maar het doek blijft liggen' };
+      return { staat: 'OK', detail: 'doek blijft bij "let", wachtmoment bij de kentekenvraag, weg als het verbindscherm overneemt' };
+    }
+  },
+
   // ── Hyperlane: de rijstijl in Auto met een buffer, het standmenu boven de lampjes (10-11-2026) ──
   {
     issue: '—',

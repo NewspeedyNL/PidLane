@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-11-2026 (avond) — Verbinden: kenteken als wachtmoment, doek tot het klaar is
+ ═══════════════════════════════════════════════════════════
+
+ - Een nieuwe auto zonder kenteken: het verbinden houdt stil bij Auto, met
+   het veld in de strook (PLStrook.wachtKenteken). Klaarzetten begint pas na
+   Opzoeken of Later, dus de RDW-brandstof stuurt de sensorscan al. Rijdend
+   geen wachtmoment; dan komt de vraag na het verbinden, zoals voorheen.
+ - Een "let" haalt het doek niet meer weg; alleen een fout of het
+   verbindscherm dat overneemt (st.venster). De meetcoach en Check connectie
+   verschenen anders halverwege het verbinden.
+ - Enter in het kentekenveld zoekt op.
+
+ ═══════════════════════════════════════════════════════════
  10-11-2026 (avond) — Hyperlane: rustige rijstijl in Auto, standmenu boven de lampjes
  ═══════════════════════════════════════════════════════════
 

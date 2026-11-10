@@ -3144,11 +3144,23 @@ async function startDiscovery(){
     }
   }catch(e){ btDiag('Brandstofpoort overgeslagen: '+(e.message||e), 'warn'); }
 
+  // Wachtmoment (10-11-2026): een nieuwe auto zonder kenteken houdt hier
+  // stil tot Opzoeken of Later in de strook — vóór Klaarzetten, zodat de RDW-
+  // brandstof de scan nog stuurt. Rijdend wacht hij niet (wachtKenteken()).
+  let _kentWacht=null;
   _strook(function(S){
-    if(window.PLIdentiteit && !PLIdentiteit.bekend()) S.stap('auto','let', vinInfo?.vin ? 'nieuwe auto — kenteken volgt' : 'geen VIN — kenteken volgt');
+    if(window.PLIdentiteit && !PLIdentiteit.bekend()){
+      if(typeof S.wachtKenteken==='function') _kentWacht=S.wachtKenteken();
+      else S.stap('auto','let', vinInfo?.vin ? 'nieuwe auto — kenteken volgt' : 'geen VIN — kenteken volgt');
+    }
     else S.stap('auto','ok', S.autoTekst());
-    S.stap('klaar','bezig', supportedPIDs.size+' sensoren nakijken');
   });
+  if(_kentWacht){
+    btDiag('Verbinden wacht op het kenteken in de strook','info');
+    try{ const _k=await _kentWacht; btDiag('Kentekenstap: '+(_k?'kenteken bevestigd':'zonder kenteken verder'),'info'); }
+    catch(e){ btDiag('Kentekenstap mislukt — zonder kenteken verder: '+((e&&e.message)||e),'warn'); }
+  }
+  _strook(function(S){ S.stap('klaar','bezig', supportedPIDs.size+' sensoren nakijken'); });
   // Eerste gezondheidsscan: lees elke PID 1x en beoordeel of die gezond/bij
   // de auto hoort. Ongezonde/dode PIDs worden in de lijst uitgegrijsd.
   //
