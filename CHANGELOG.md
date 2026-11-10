@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-11-2026 (avond) — Hyperlane: rustige rijstijl in Auto, standmenu boven de lampjes
+ ═══════════════════════════════════════════════════════════
+
+ - In Auto sprong AUTO · ECO/CRUISE/SPORT bij elk tikje gas. Nu met
+   hysterese (0,06 rond de grenzen) en wachttijd: omhoog na 1,5 s, omlaag
+   na 4 s (modusRustig).
+ - Het menu Auto/Eco/Sport/Cruise viel op volledig scherm achter de
+   lampjes-capsule. Zolang het open is gaan de lampjes uit beeld.
+
+ ═══════════════════════════════════════════════════════════
  10-11-2026 — Verbindstrook weg na verbinden, nieuwe lampjes motor/accu
  ═══════════════════════════════════════════════════════════
 

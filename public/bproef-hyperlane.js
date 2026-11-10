@@ -85,7 +85,12 @@ function toets(naam, waar, uitleg) {
       r.stand0 = strook();
       vak().querySelector('.vhl-modus').click();
       r.menuOpen = !vak().querySelector('.vhl-standmenu').hidden;
+      // Open menu: de lampjes-capsule gaat uit beeld, anders ligt hij er in
+      // volledig scherm overheen (10-11-2026).
+      const lampZicht = () => { const l = document.querySelector('.gg.view-visueel .vis-lampen'); return !!l && getComputedStyle(l).visibility !== 'hidden'; };
+      r.lampWegBijMenu = !lampZicht();
       vak().querySelector('.vhl-standmenu [data-stand="sport"]').click();
+      r.lampTerug = lampZicht();
       r.standSport = await totS('olie,inlaat,last'); r.standOpslag = localStorage.getItem('pl_hl_stand');
       for (let i = 0; i < 60 && vak().querySelector('.vhl-modus').textContent !== 'SPORT'; i++) await wacht(100);
       r.labelSport = vak().querySelector('.vhl-modus').textContent + ' (' + vak().getAttribute('data-scene') + ')';
@@ -112,6 +117,7 @@ function toets(naam, waar, uitleg) {
     toets('de demo-auto vult toeren en koelwater', r.toeren && r.toeren !== '—' && r.koel && r.koel !== '—', JSON.stringify(r));
     toets('de kleur staat op het vak', /^rgb\(/.test(r.kleur || ''), JSON.stringify(r));
     toets('de langste modustekst past naast het versnellingslabel', r.modusPast, r.modusMaat);
+    toets('een open standmenu haalt de lampjes even weg, een keuze zet ze terug', r.lampWegBijMenu && r.lampTerug, JSON.stringify({ weg: r.lampWegBijMenu, terug: r.lampTerug }));
     toets('het knopje wisselt het midden naar Versnelling en onthoudt dat; een tik op het getal wisselt terug',
       r.midden0 === 'Slim' && r.midden1 === 'Versnelling' && r.middenOpslag === 'versnelling' && r.midden2 === 'Slim', [r.midden0, r.midden1, r.middenOpslag, r.midden2].join(' → '));
     toets('schakellampjes: tien ronde lampjes, binnen het midden, zonder de ringen te raken', r.ledsPassen && r.ledsRond, r.ledsMaat);

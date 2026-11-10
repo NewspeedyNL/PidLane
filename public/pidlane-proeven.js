@@ -38,6 +38,25 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Hyperlane: de rijstijl in Auto met een buffer, het standmenu boven de lampjes (10-11-2026) ──
+  {
+    issue: '—',
+    naam: 'In Auto wisselt de rijstijl niet meer bij elk tikje gas (hysterese en wachttijd); een open standmenu haalt de lampjes even weg',
+    waarom: 'Het label sprong in Auto alle kanten op, en het menu Auto/Eco/Sport/Cruise viel op volledig scherm achter de lampjes van motor en accu.',
+    proef: async function () {
+      var H = window.PLHyperlane;
+      if (!H || typeof H.modusRustig !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane.modusRustig ontbreekt — herladen?' };
+      var r = H.modusRustig(null, 0.2, 0.1);
+      for (var k = 0; k < 40; k++) r = H.modusRustig(r, k % 2 ? 0.2 : 0.62, 1);
+      if (r.toon !== 'ECO') return { staat: 'FOUT', detail: 'heen en weer elke seconde: het label wisselde naar ' + r.toon };
+      for (var t = 0; t < H.MODUS_OP_S + 0.2; t += 0.1) r = H.modusRustig(r, 0.62, 0.1);
+      if (r.toon !== 'SPORT') return { staat: 'FOUT', detail: 'na ' + H.MODUS_OP_S + ' s stevig rijden nog ' + r.toon };
+      var mm = document.querySelector('.gg.view-visueel .vhl-standmenu');
+      if (!mm) return { staat: 'LET OP', detail: 'de buffer klopt; open Hyperlane om het menu boven de lampjes te zien' };
+      return { staat: 'OK', detail: 'omhoog na ' + H.MODUS_OP_S + ' s, omlaag na ' + H.MODUS_AF_S + ' s, hysterese ' + H.MODUS_HYST };
+    }
+  },
+
   // ── Verbindstrook weg na verbinden, nieuwe lampjes motor/accu (10-11-2026) ──
   {
     issue: '—',

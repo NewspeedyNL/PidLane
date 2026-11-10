@@ -55,6 +55,31 @@ waar('een lege plek maakt het scherm niet rood', H.stemming(null, 6800, null) ==
 waar('toeren telt zwaarder dan gas', H.stemming(6800, 6800, 0) > H.stemming(0, 6800, 100));
 waar('modus loopt ECO → CRUISE → SPORT → MAX', [0, 0.4, 0.7, 0.9].map(H.modus).join(',') === 'ECO,CRUISE,SPORT,MAX');
 
+// De buffer in Auto (10-11-2026): hysterese en wachttijd.
+{
+  const R = H.modusRustig, loop = (r, m, s, dt) => { dt = dt || 0.1; for (let t = 0; t < s - 1e-9; t += dt) r = R(r, m, dt); return r; };
+  let r = R(null, 0.2, 0.1);
+  waar('start: meteen de stijl van nu (ECO)', r.toon === 'ECO', JSON.stringify(r));
+  r = loop(r, 0.33, 10);
+  waar('net boven de grens (0,33): blijft ECO — hysterese', r.toon === 'ECO', JSON.stringify(r));
+  r = loop(r, 0.45, H.MODUS_OP_S - 0.3);
+  waar('duidelijk CRUISE maar korter dan de wachttijd: nog ECO', r.toon === 'ECO', JSON.stringify(r));
+  r = loop(r, 0.45, 0.5);
+  waar('…en na de wachttijd omhoog: CRUISE', r.toon === 'CRUISE', JSON.stringify(r));
+  let f = r;
+  for (let k = 0; k < 40; k++) f = loop(f, k % 2 ? 0.2 : 0.62, 1);
+  waar('elke seconde heen en weer tussen ECO en SPORT: het label blijft staan', f.toon === 'CRUISE', JSON.stringify(f));
+  r = loop(r, 0.2, H.MODUS_AF_S - 0.3);
+  waar('omlaag duurt langer: na bijna ' + H.MODUS_AF_S + ' s nog CRUISE', r.toon === 'CRUISE', JSON.stringify(r));
+  r = loop(r, 0.2, 0.5);
+  waar('…en daarna ECO', r.toon === 'ECO', JSON.stringify(r));
+  r = loop(r, 0.95, H.MODUS_OP_S + 0.1);
+  waar('vol op de rode streep: in één keer naar MAX, niet trede voor trede', r.toon === 'MAX', JSON.stringify(r));
+  const g = loop(R(null, 0.6, 0.1), null, 10);
+  waar('TEGENPROEF: een lege meting laat de stijl staan', g.toon === 'SPORT', JSON.stringify(g));
+  waar('TEGENPROEF: omhoog sneller dan omlaag', H.MODUS_OP_S < H.MODUS_AF_S && H.MODUS_HYST > 0);
+}
+
 console.log('\n3. Schakellampjes');
 waar('onder 80% van het schakelpunt: niets', H.leds(1900, 2400).aan === 0, JSON.stringify(H.leds(1900, 2400)));
 waar('halverwege 80%–100%: de helft', H.leds(2400 * 0.9, 2400).aan === 5, JSON.stringify(H.leds(2400 * 0.9, 2400)));

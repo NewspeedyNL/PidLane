@@ -15,6 +15,26 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 10-11-2026 (avond) — Hyperlane: de rijstijl in Auto sprong alle kanten op
+
+`modus()` had harde grenzen op .3/.55/.8 van de stemming (65% toeren tegen de
+rode streep, 35% gas). De stemming loopt wel vloeiend (τ 2,2 s), maar wie
+rond 2500 tpm wat gas gaf, zat precies op een grens. Het label wisselde dan
+bij elk tikje gas. Een sterkere demping van de stemming zou ook de kleur en
+de tunnel trager maken. Daarom zit de buffer in het label: `modusRustig()`,
+met hysterese en wachttijd, omhoog sneller dan omlaag.
+
+Het standmenu zat binnen de laag van de meter (z-index 5). De
+lampjes-capsule staat op volledig scherm `position:fixed` in een eigen laag
+erboven, dus een hogere z-index op het menu kwam er niet uitgelegd overheen.
+Daarom gaan de lampjes uit beeld zolang het menu open is (`.vhl-menu-open`).
+
+**Gezien, niet gerepareerd.** `bproef-hyperlane.js`, "van stoplicht tot
+stoplicht": in één van vier lokale runs bereikte de scène binnen 25 s geen
+`stil`, terwijl de proef elke 0,2 s snelheid 0 gaf. Waarschijnlijk zet iets
+anders dan `PLHyperlane.zet` tussendoor een snelheid, waardoor `stilS` op 0
+terugvalt. Dat is een eigen onderwerp.
+
 ## 10-11-2026 — Waarom CI zo vaak rood staat en zo lang duurt
 
 Nagemeten over de laatste 200 runs van *Tests* (23-10 t/m 10-11): 155 groen,
