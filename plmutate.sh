@@ -2417,7 +2417,7 @@ MUTATIES=(
 "public/pidlane-strook.js@@    if (opties.hervat && !opties.opstart) return nee('hervat — niet opnieuw gelezen');@@@@test-strook.js@@een hervatting midden in de rit leest de foutcodes opnieuw: bus vol tijdens het rijden"
 "public/pidlane-strook.js@@    doek(!!(_open && !_aftel && afdekken(_st)));@@    doek(false);@@test-strook.js@@tijdens het verbinden springt de app achter de strook weer heen en weer"
 "public/pidlane-strook.js@@    if (st.stappen.some(function (s) { return s.status === 'let'; })) return false;@@@@test-strook.js@@het doek blijft liggen terwijl het verbindscherm een keuze vraagt"
-"public/pidlane-strook.js@@function () { _open = false; _ingeklapt = false; teken(); }, KLAAR_MS);@@function () { _ingeklapt = true; teken(); }, KLAAR_MS);@@test-strook.js@@na het verbinden blijft de balk Verbonden bovenin hangen"
+"public/pidlane-strook.js@@{ plan(); return; }\n    _open = false; _ingeklapt = false; teken();@@{ plan(); return; }\n    _ingeklapt = true; teken();@@test-strook.js@@na het verbinden blijft de balk Verbonden bovenin hangen"
 "public/pidlane-strook.js@@      if (afdekken(_st)) {\n        h += '<div class=\"pl-strook-knoppen\" id=\"plStrookLoopt\">'@@      if (false) {\n        h += '<div class=\"pl-strook-knoppen\" id=\"plStrookLoopt\">'@@test-strook.js@@tijdens het verbinden is er weer niets aan te raken: geen knop Stoppen achter het doek"
 "public/pidlane-bt.js@@  if(_plPoging <= _plGestopt) return;\n@@@@bproef-strook.js@@na Stoppen springt de strook terug open met de fout van een nalopende poging"
 "public/pidlane-strook.js@@    if (vandaag) {@@    if (false) {@@test-strook.js@@de foutcodes worden bij elke verbinding gelezen in plaats van één keer per dag"
