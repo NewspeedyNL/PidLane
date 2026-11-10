@@ -118,6 +118,32 @@ function stemming(toeren, rood, gas){
   return klem(.65*t+.35*g, 0, 1);
 }
 function modus(m){ return m<.3 ? 'ECO' : m<.55 ? 'CRUISE' : m<.8 ? 'SPORT' : 'MAX'; }
+/* De rijstijl in Auto, met een buffer (10-11-2026, wens eigenaar: "gaat veel
+   te snel alle kanten op"). modus() heeft harde grenzen op .3/.55/.8 van de
+   stemming, en die zakt en stijgt mee met elk gasgeven: bij 2500 tpm met wat
+   gas zat hij precies op een grens en sprong het label elke seconde. Nu:
+     • hysterese — omhoog pas MODUS_HYST bóven een grens, omlaag pas eronder;
+     • wachttijd — de nieuwe stijl moet MODUS_OP_S (omhoog) of MODUS_AF_S
+       (omlaag) aanhouden. Omhoog is sneller: een tussensprint hoort het scherm
+       te zien. Omlaag is trager: even van het gas bij een rotonde is geen ECO.
+   Zakt de kandidaat terug, dan begint de klok opnieuw. Puur:
+   r = {i, kand, t} of null → {i, kand, t, toon}. */
+const MODUS_NAAM = ['ECO','CRUISE','SPORT','MAX'], MODUS_GRENS = [.3,.55,.8];
+const MODUS_HYST = .06, MODUS_OP_S = 1.5, MODUS_AF_S = 4;
+function modusTrede(m, i){
+  while(i<3 && m>=MODUS_GRENS[i]+MODUS_HYST) i++;
+  while(i>0 && m<MODUS_GRENS[i-1]-MODUS_HYST) i--;
+  return i;
+}
+function modusRustig(r, m, dt){
+  const uit=function(i, kand, t){ return { i:i, kand:kand, t:t, toon:MODUS_NAAM[i] }; };
+  if(!(isFinite(Number(m)) && m!==null)) return r ? uit(r.i, r.i, 0) : uit(0, 0, 0);
+  if(!r) { const i=MODUS_NAAM.indexOf(modus(m)); return uit(i, i, 0); }
+  const doel=modusTrede(m, r.i);
+  if(doel===r.i) return uit(r.i, r.i, 0);
+  const t=(doel===r.kand ? r.t : 0)+(Number(dt)||0);
+  return t>=(doel>r.i ? MODUS_OP_S : MODUS_AF_S) ? uit(doel, doel, 0) : uit(r.i, doel, t);
+}
 /* Schakellampjes: hoeveel van `n` er branden, en of het schakelpunt bereikt
    is (dan knipperen ze). Ze beginnen op LED_VAN van dat punt.
    Tot 31-10-2026 liepen ze naar de rode streep, vanaf 70%: bij gewoon rijden
@@ -725,7 +751,7 @@ function start(wortel){
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
        accu:null, power:null, gHist:[], gT:0, ga:0, thema:merkNu(), tankT:'',
-       verv:{}, hand:0, scoreDicht:false, ck:{ g:[], piek:null, graf:[], grafT:0, traagT:0, groot:'', remBit:true, zuinig:null, fr:0 }, runKlaar:false, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'' };
+       verv:{}, hand:0, scoreDicht:false, ck:{ g:[], piek:null, graf:[], grafT:0, traagT:0, groot:'', remBit:true, zuinig:null, fr:0 }, runKlaar:false, vorm:leesVorm(), vw:{ tunnel:1, aurora:0, hartslag:0, pulsen:0, sterren:0 }, vormT:'', scWas:'', midden:leesMidden(), middenT:'', modusR:null };
   wortel.classList.toggle('vhl-gl', !!_s.gl);
   wortel.querySelectorAll('.vhl-ring').forEach(function(c){ _s.ringen[c.getAttribute('data-ring')]=c; });
   const kn=wortel.querySelector('.vhl-vorm');
@@ -755,13 +781,17 @@ function start(wortel){
   // De stand: tik op het label opent het menu (alleen in Hyperlane zelf)
   const mo=wortel.querySelector('.vhl-modus'), mm=wortel.querySelector('.vhl-standmenu');
   if(mo && mm){
-    const open=function(e){ e.stopPropagation(); mm.hidden=!mm.hidden; mo.setAttribute('aria-expanded', String(!mm.hidden)); };
+    // Het menu valt in volledig scherm onder de lampjes-capsule (fixed, eigen
+    // laag): zolang het open is gaan de lampjes uit beeld (10-11-2026).
+    const vis=wortel.closest ? wortel.closest('.vis') : null;
+    const zicht=function(aan){ mm.hidden=!aan; mo.setAttribute('aria-expanded', String(aan)); if(vis) vis.classList.toggle('vhl-menu-open', aan); };
+    const open=function(e){ e.stopPropagation(); zicht(mm.hidden); };
     mo.addEventListener('click', open);
     mo.addEventListener('keydown', function(e){ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(e); } });
     mm.addEventListener('click', function(e){
       e.stopPropagation();   // niet ook een plek kiezen
       const b=e.target && e.target.closest ? e.target.closest('[data-stand]') : null;
-      mm.hidden=true; mo.setAttribute('aria-expanded', 'false');
+      zicht(false);
       if(b && b.getAttribute('data-stand')!==stand()) kiesStand(b.getAttribute('data-stand'));
     });
   }
@@ -1095,7 +1125,9 @@ function frame(nu){
   scoreBij(w, sc, dt, nu8);
   tankBij(w, e);
   powerBij(w, dt, e);
-  const m=standLabel(sc, stand(), sc==='alarm' && e.koel!=null ? 'KOELWATER '+tekstVan(e.koel, 0)+'°' : (SCENE_TEKST[sc] || modus(s.stem))), me=w.querySelector('.vhl-modus');
+  // Altijd bijwerken, ook onder een scène: dan klopt hij meteen als die afloopt.
+  s.modusR=modusRustig(s.modusR, s.stem, dt);
+  const m=standLabel(sc, stand(), sc==='alarm' && e.koel!=null ? 'KOELWATER '+tekstVan(e.koel, 0)+'°' : (SCENE_TEKST[sc] || s.modusR.toon)), me=w.querySelector('.vhl-modus');
   if(me && me.textContent!==m) me.textContent=m;
   if((s.gearT-=dt)<=0){
     s.gearT=.15;
@@ -1363,7 +1395,7 @@ if(typeof window.addEventListener==='function'){
 
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
-  kleur:kleur, stemming:stemming, modus:modus, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
+  kleur:kleur, stemming:stemming, modus:modus, modusRustig:modusRustig, MODUS_OP_S:MODUS_OP_S, MODUS_AF_S:MODUS_AF_S, MODUS_HYST:MODUS_HYST, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS, VOLGAS:VOLGAS,
   heldWaarde:heldWaarde, heldRustig:heldRustig, HELD_MIN_S:HELD_MIN_S, HELD_WAARDE_S:HELD_WAARDE_S, gearRustig:gearRustig, GEAR_LEEG_S:GEAR_LEEG_S, GEAR_TERUG_S:GEAR_TERUG_S,
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,

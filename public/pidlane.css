@@ -2295,6 +2295,8 @@ body:not(.pl-vis-vol) .vhl-midden { display:none; }
 .vhl-standmenu { position:absolute; left:50%; top:18%; transform:translateX(-50%); z-index:5; display:flex; gap:4px; padding:4px; border-radius:999px;
   background:rgba(0,0,0,.65); border:1px solid color-mix(in srgb, var(--vhl-c) 55%, transparent); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px); }
 .vhl-standmenu[hidden] { display:none; }
+/* Open menu: de lampjes even weg — ze lagen er in volledig scherm overheen (10-11-2026). */
+.vis.vhl-menu-open .vis-lampen { visibility:hidden; }
 .vhl-standmenu button { min-height:40px; padding:0 14px; border:0; border-radius:999px; background:transparent; color:rgba(255,255,255,.8);
   font:600 13px/1 system-ui, sans-serif; letter-spacing:.06em; cursor:pointer; }
 .vhl-standmenu button.aan { background:var(--vhl-c); color:#05070d; }
