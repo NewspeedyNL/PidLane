@@ -38,6 +38,16 @@ het er 732. Van de 2037 draaien er 221 een browserproef, en die zijn per stuk
 het duurst. `browserproeven` zelf duurt 10 min. `plcheck` duurt minder dan
 1 min en de sleutelscan 6 s; daar zit de tijd dus niet.
 
+**Wat er sindsdien veranderd is (zelfde dag).** De tegenproef draait in acht
+delen in plaats van vier. `test-testgate.js` eist nu dat de matrix, `--deel K/N`
+en de jobnaam hetzelfde N noemen: matrix [1..4] met `/8` draaide stil de helft
+van de tabel. Een browsermutatie stopt nu bij de eerste FOUT
+(`PL_STOP_BIJ_FOUT`, gezet door `plmutate.sh`). Gemeten op het midden-knopje
+ging dat van 57 s naar 11 s. Chromium opstarten kost 3,2 s, dus één browser
+hergebruiken (optie 3) levert weinig op; de tijd zat in de rest van de proef.
+Eerst killde ik Chromium met SIGKILL, maar dan bleven de zygote-kinderen als
+wees draaien. Nu gaat het met SIGTERM en wacht de proef tot Chromium weg is.
+
 ## 09-11-2026 (nacht) — Aankooprapport: "geen terugroepacties bekend" won van de RDW-vlag
 
 **Gevonden** bij het bouwen van het papierenrapport (#705), op een schermafdruk:

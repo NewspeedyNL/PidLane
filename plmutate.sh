@@ -486,6 +486,7 @@ MUTATIES=(
 ".github/workflows/tests.yml@@    name: browserproeven (de echte app in een echte browser)@@    name: browserproeven@@test-testgate.js@@een jobnaam is ingekort: de ruleset wacht op een naam die niet meer gerapporteerd wordt"
 ".github/workflows/tests.yml@@    name: Geen sleutels in de repo@@    name: Sleutelscan@@test-testgate.js@@de sleutelscan heet anders: elke PR blokkeert stil op de oude naam"
 ".github/workflows/tests.yml@@    needs: tegenproef-deel\n    if: always()@@    needs: tegenproef-deel@@test-testgate.js@@de verplichte tegenproef draait niet bij een rood deel: skipped telt als geslaagd"
+".github/workflows/tests.yml@@        deel: [1, 2, 3, 4, 5, 6, 7, 8]@@        deel: [1, 2, 3, 4]@@test-testgate.js@@de matrix telt vier delen bij --deel K/8: de helft van de tegenproef draait nooit"
 # ── de tak zelf bijwerken (18-09-2026, spoor 2 van #238) ──
 # De duurste is de derde: het besluit zegt dan wel bijwerken, maar de workflow
 # doet er niets mee. De poort staat dan groen getoetst dode code te zijn, en de
@@ -3021,7 +3022,7 @@ PY
     git -C "$w" checkout --quiet -- "$bestand"
     printf 'overgeslagen\nanker %s× gevonden in %s (moet 1× zijn)\n' "$raak" "$bestand" > "$uit.tmp"; mv "$uit.tmp" "$uit"; return
   fi
-  ( cd "$w/public" && node "$test" >/dev/null 2>&1 )
+  ( cd "$w/public" && PL_STOP_BIJ_FOUT=1 node "$test" >/dev/null 2>&1 )
   uitkomst=$?
   git -C "$w" checkout --quiet -- "$bestand"
   if [ $uitkomst -ne 0 ]; then printf 'gevangen\n%s werd rood\n' "$test" > "$uit.tmp"

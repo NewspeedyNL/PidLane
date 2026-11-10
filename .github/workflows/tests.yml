@@ -80,7 +80,7 @@ jobs:
         run: bash plcheck.sh .
 
   tegenproef-deel:
-    name: tegenproef deel ${{ matrix.deel }}/4
+    name: tegenproef deel ${{ matrix.deel }}/8
     runs-on: ubuntu-latest
     # Apart van plcheck en niet ervoor: plcheck is de poort, dit is de vraag of
     # die poort iets voorstelt. Draait ook als plcheck faalt, want juist dan wil
@@ -90,10 +90,14 @@ jobs:
     # minuten en was hij de langste job van elke run. --deel verdeelt de
     # browsermutaties (de trage) en de node-mutaties elk om en om; samen dekken
     # de vier delen de tabel precies één keer. fail-fast uit: zie alle delen.
+    #
+    # Acht delen sinds 10-11-2026: de tabel groeide van 732 (29-09) naar 2037
+    # mutaties en het traagste van vier delen kostte 15 min — de wandtijd van
+    # elke run. Acht halveert dat; het kost wel twee keer zoveel runnertijd.
     strategy:
       fail-fast: false
       matrix:
-        deel: [1, 2, 3, 4]
+        deel: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
@@ -108,7 +112,7 @@ jobs:
       # checkout is die schoon. Nooit --sinds hier: dat is voor lokaal.
       # Vier tegelijk, zoveel kernen heeft de runner.
       - name: Draai plmutate
-        run: bash plmutate.sh . --parallel 4 --deel ${{ matrix.deel }}/4
+        run: bash plmutate.sh . --parallel 4 --deel ${{ matrix.deel }}/8
 
   tegenproef:
     name: tegenproef (bouwt fouten na, verwacht rood)
@@ -120,7 +124,7 @@ jobs:
     needs: tegenproef-deel
     if: always()
     steps:
-      - name: Alle vier de delen groen?
+      - name: Alle acht de delen groen?
         run: |
           echo "uitslag van de delen: ${{ needs.tegenproef-deel.result }}"
           [ "${{ needs.tegenproef-deel.result }}" = "success" ]
