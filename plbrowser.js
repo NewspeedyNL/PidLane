@@ -49,6 +49,32 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
+/* STOPPEN BIJ DE EERSTE FOUT (10-11-2026). Voor de tegenproef: daar is een
+   mutatie gevangen zodra één toets rood wordt, en de rest van de proef is
+   alleen nog wachttijd. Gemeten: opstarten kost 3,2 s, de proef zelf 6–17 s,
+   en 221 van de 2037 mutaties draaien een browserproef. plmutate.sh zet
+   PL_STOP_BIJ_FOUT=1; een gewone run (plbrowser.sh, CI) ziet hier niets van.
+   Alleen een toetsregel ("  FOUT naam") telt, niet een samenvatting "FOUT:". */
+const _chromes = new Set(), _profielen = new Set();
+let _stopt = false;
+if (process.env.PL_STOP_BIJ_FOUT === '1') {
+  const schrijf = process.stdout.write.bind(process.stdout);
+  process.stdout.write = function (chunk, ...rest) {
+    const r = schrijf(chunk, ...rest);
+    if (!_stopt && /^\s+FOUT\s/m.test(String(chunk))) {
+      _stopt = true;
+      // SIGTERM en wachten, niet SIGKILL: na een KILL op het hoofdproces bleven
+      // de zygote-kinderen van Chromium als wees doorlopen (nagemeten).
+      const weg = [..._chromes].map(c => new Promise(ok => { c.once('exit', ok); try { c.kill(); } catch (e) { console.error('plbrowser: Chromium niet gestopt —', e.message); ok(); } }));
+      Promise.race([Promise.all(weg), new Promise(ok => setTimeout(ok, 3000))]).then(() => {
+        _profielen.forEach(p => { try { fs.rmSync(p, { recursive: true, force: true }); } catch (e) { console.error('plbrowser: profielmap blijft staan —', e.message); } });
+        process.exit(1);
+      });
+    }
+    return r;
+  };
+}
+
 // Waar Chromium kan staan. De eerste die bestaat wint. Staat er geen,
 // dan meldt startApp() dat met zoveel woorden — hij doet niet alsof.
 // Het Playwright-pad draagt een versienummer (chromium-1194, -1243, …) dat
@@ -161,10 +187,12 @@ async function startApp(opties) {
   const appUrl = 'http://127.0.0.1:' + srv.address().port + pagina;
 
   const profiel = fs.mkdtempSync(path.join(require('os').tmpdir(), 'plbrowser-'));
+  _profielen.add(profiel);
   const ch = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu',
     '--disable-dev-shm-usage', '--remote-debugging-port=0',
     '--user-data-dir=' + profiel, '--window-size=412,915', 'about:blank'],
     { stdio: ['ignore', 'ignore', 'pipe'] });
+  _chromes.add(ch); ch.once('exit', () => _chromes.delete(ch));
 
   let wsUrl = null, stderr = '';
   ch.stderr.on('data', d => {

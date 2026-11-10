@@ -65,8 +65,14 @@ function toets(naam, waar, uitleg) {
       r.ledsRond = getComputedStyle(vak().querySelector('.vhl-leds i')).borderRadius === '50%';
       // Het midden wisselen: knopje en tik op het getal, onthouden in pl_hl_midden
       localStorage.removeItem('pl_hl_midden');
-      const km = vak().querySelector('.vhl-midden'), kh = vak().querySelector('.vhl-held');
-      await wacht(300); r.midden0 = km.textContent;
+      // Telkens opnieuw opzoeken (10-11-2026): een herbouw tussendoor vervangt de
+      // knopjes, en een vastgehouden oud element zei dan "Slim" terwijl de keuze
+      // al op Versnelling stond — 6 van de 23 rode CI-runs sinds 23-10.
+      const km = { get textContent() { return vak().querySelector('.vhl-midden').textContent; }, click() { vak().querySelector('.vhl-midden').click(); } };
+      const kh = { click() { vak().querySelector('.vhl-held').click(); } };
+      await wacht(300);
+      for (let i = 0; i < 30 && !km.textContent; i++) await wacht(100);
+      r.midden0 = km.textContent;
       // Meteen na de tik, zonder te wachten: het label hoort bij de klik en niet
       // bij de eerstvolgende frame. Op een belaste CI-machine kwam die frame
       // meer dan 6 s niet (#657); daarna wachtte deze proef op de klok.
@@ -178,14 +184,17 @@ function toets(naam, waar, uitleg) {
         for (let i = 0; i < 25 && !aan(); i++) await wacht(200);
         r.run = aan(); r.kop = (el().querySelector('.vhl-score-kop') || {}).textContent || '';
         r.graf = !!el().querySelector('.vhl-score-graf polyline'); r.bewaard = PLHyperlane.leesRuns().length;
-        el().click(); await wacht(1500); r.dichtNaTik = !aan();
+        // Wachten op dicht, dán de klok (10-11-2026): op een drukke runner was 1,5 s
+        // soms te kort om te sluiten, en dan was de proef rood zonder dat er iets stuk was.
+        const dicht = async () => { for (let i = 0; i < 25 && aan(); i++) await wacht(200); await wacht(1500); return !aan(); };
+        el().click(); r.dichtNaTik = await dicht();
         v().querySelector('.vhl-ritknop').click();
         // Wachten op de kop van de hele rit, niet alleen op een open bord: op
         // een drukke runner stond het bord al open met de vorige kop (RUN).
         const kopNu = () => (el().querySelector('.vhl-score-kop') || {}).textContent || '';
         for (let i = 0; i < 25 && !(aan() && /^RIT/.test(kopNu())); i++) await wacht(200);
         r.hand = aan(); r.kopHand = (el().querySelector('.vhl-score-kop') || {}).textContent || '';
-        v().querySelector('.vhl-ritknop').click(); await wacht(1500); r.dichtNaKnop = !aan();
+        v().querySelector('.vhl-ritknop').click(); r.dichtNaKnop = await dicht();
         return r;
       } finally { clearInterval(stil); PLHyperlane.zet = echt; localStorage.removeItem(PLHyperlane.RUNS_SLEUTEL); }
     })()`);

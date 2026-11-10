@@ -15,6 +15,39 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+## 10-11-2026 — Waarom CI zo vaak rood staat en zo lang duurt
+
+Nagemeten over de laatste 200 runs van *Tests* (23-10 t/m 10-11): 155 groen,
+24 rood, 20 afgebroken. Een run duurt 12,6 min (mediaan), p90 15 min.
+
+**Rood.** 20 van de 23 rode runs hadden een rode `browserproeven`-job, en die
+was meestal wisselvallig, niet stuk. Vaak was het een push naar `main` zonder
+codewijziging die erbij paste. `bproef-hyperlane.js` was 10× rood, waarvan
+6× het midden-knopje: de proef hield het element vast, een herbouw tussendoor
+verving het, en het oude zei nog "Slim". De fix van 05-11 (label meteen bij de
+tik) loste dat niet op; op 06-11 was hij weer rood. Sinds vandaag zoekt de
+proef het element bij elke lezing opnieuw op. Het 🏁-bord wachtte 1,5 s op de
+klok voor "dicht"; nu wacht hij op dicht en daarna 1,5 s. Lokaal was die proef
+in twee van de vier runs rood vóór de fix. Verder: drie keer een anker dat
+niet meer paste, twee keer een ontsnapte mutatie, één keer de bedrading en één
+keer Chromium die geen debugpoort gaf.
+
+**Lang.** De wandtijd is de traagste van de vier tegenproefdelen (10–15 min).
+Op 27-10 was dat nog 5–8,5 min. De tabel telt nu 2037 mutaties; op 29-09 waren
+het er 732. Van de 2037 draaien er 221 een browserproef, en die zijn per stuk
+het duurst. `browserproeven` zelf duurt 10 min. `plcheck` duurt minder dan
+1 min en de sleutelscan 6 s; daar zit de tijd dus niet.
+
+**Wat er sindsdien veranderd is (zelfde dag).** De tegenproef draait in acht
+delen in plaats van vier. `test-testgate.js` eist nu dat de matrix, `--deel K/N`
+en de jobnaam hetzelfde N noemen: matrix [1..4] met `/8` draaide stil de helft
+van de tabel. Een browsermutatie stopt nu bij de eerste FOUT
+(`PL_STOP_BIJ_FOUT`, gezet door `plmutate.sh`). Gemeten op het midden-knopje
+ging dat van 57 s naar 11 s. Chromium opstarten kost 3,2 s, dus één browser
+hergebruiken (optie 3) levert weinig op; de tijd zat in de rest van de proef.
+Eerst killde ik Chromium met SIGKILL, maar dan bleven de zygote-kinderen als
+wees draaien. Nu gaat het met SIGTERM en wacht de proef tot Chromium weg is.
+
 ## 09-11-2026 (nacht) — Aankooprapport: "geen terugroepacties bekend" won van de RDW-vlag
 
 **Gevonden** bij het bouwen van het papierenrapport (#705), op een schermafdruk:

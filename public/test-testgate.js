@@ -53,7 +53,7 @@ const VERWACHT = [
 // kan de tegenproef over vier runners verdeeld worden zonder dat de ruleset
 // mee hoeft. Sleutel = job-id, waarde = naam; `door` = de verplichte job-id.
 const HULP = {
-  'tegenproef-deel': { naam: 'tegenproef deel ${{ matrix.deel }}/4', door: 'tegenproef' }
+  'tegenproef-deel': { naam: 'tegenproef deel ${{ matrix.deel }}/8', door: 'tegenproef' }
 };
 const hulpNamen = Object.keys(HULP).map(k => HULP[k].naam);
 
@@ -113,6 +113,23 @@ console.log('\n2. En de gate draait nog op het event waar de ruleset op rekent')
 toets('tests.yml draait op pull_request',
       /^\s*pull_request:\s*$/m.test(wf),
       'anders rapporteert niets en blokkeert de ruleset elke PR');
+
+console.log('\n3. De delen van de tegenproef dekken samen de hele tabel (10-11-2026)');
+
+// Matrix [1..4] met --deel K/8 draait de helft van de tabel, en elk deel staat
+// groen: de stilste manier om de tegenproef te halveren. Alle drie de plekken
+// moeten hetzelfde N noemen, en de matrix moet precies 1..N zijn.
+{
+  const blok = (wf.split(/^ {2}(?=[\w-]+:\s*$)/m).find(b => b.startsWith('tegenproef-deel:')) || '');
+  const mx = (blok.match(/^\s*deel:\s*\[([^\]]*)\]/m) || [])[1] || '';
+  const delen = mx.split(',').map(x => Number(x.trim())).filter(x => x > 0);
+  const nRun = Number((blok.match(/--deel \$\{\{ matrix\.deel \}\}\/(\d+)/) || [])[1]);
+  const nNaam = Number((blok.match(/^ {4}name:.*\/(\d+)\s*$/m) || [])[1]);
+  const precies = delen.length === nRun && delen.every((d, i) => d === i + 1);
+  toets('matrix 1..N, --deel K/N en de jobnaam noemen hetzelfde N',
+        nRun > 0 && precies && nNaam === nRun,
+        'matrix [' + delen.join(',') + '], --deel …/' + nRun + ', naam …/' + nNaam);
+}
 
 console.log('');
 if (fouten) { console.log('test-testgate: ' + fouten + ' fout(en)'); process.exit(1); }
