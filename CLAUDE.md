@@ -86,6 +86,12 @@ bash plcheck.sh .
 `index.html` zelf zit, en vóórdat je een PR opent. Exit 0 blijft de norm; het
 is alleen niet meer de prijs van elke commit.
 
+**Raak je `pidlane.css` of een schermmodule aan, draai dan vóór de push ook
+`bash plbrowser.sh .` en `bash plmutate.sh . --sinds origin/main`, en lees de
+hele uitvoer** — niet `| tail`. Op 10-11-2026 stond "1 ontsnapt" boven de
+laatste zes regels en ging de PR rood naar CI: een smallere chip maakte een
+browserproef tandeloos, en dat zie je alleen met de browser erbij.
+
 **Een meetopdracht is data en geen code.** Die keur je met `node
 plopdracht.js <bestand>` — 65 ms, buiten alle drie de poorten om. Zie de kop
 van dat bestand.
