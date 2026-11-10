@@ -2394,6 +2394,25 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vt-thema, body.pl-vis-vol .vis:has(.vpf-hy
   body.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-strook { font-size:2.8cqh; }
   body.pl-vis-vol .vpf-hyper.vhl-ck-groot .vhl-podium { opacity:.15; transition:opacity .4s; }
 }
+/* Tablet simuleren (10-11-2026, Admin-menu): dezelfde cockpit op elk liggend
+   scherm, dus ook een telefoon. .vhl-tablet staat er alleen als cockpitNu()
+   ja zegt; pl-hl-tabsim zegt dat de simulatie aan staat. */
+@media (orientation:landscape) {
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-ck { display:block; position:absolute; inset:0; z-index:3; pointer-events:none; }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-podium { inset:calc(var(--pl-sat, 0px) + 19cqh) 0 26cqh 0; }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-pod { width:min(30cqw, 55cqh); }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-tank { left:31cqw; right:31cqw; bottom:2.4cqh; }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-held-w { font-size:13cqh; }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-strook { font-size:2.8cqh; }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-ck-groot .vhl-podium { opacity:.15; transition:opacity .4s; }
+  /* Een telefoon is ~412 px hoog: 1,5cqh is daar 6 px. Een ondergrens voor
+     de kleine labels, en de grafiek iets lager, weg van de melding bovenin. */
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-ck-graf { top:calc(var(--pl-sat, 0px) + 13cqh); }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet :is(.vhl-ck-leg, .vhl-pd span) { font-size:max(1.7cqh, 9px); }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet :is(.vhl-3d-w, .vhl-ck-gw small) { font-size:max(1.8cqh, 10px); }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-tablet .vhl-tb { font-size:max(2.1cqh, 10px); }
+  body.pl-hl-tabsim.pl-vis-vol .vpf-hyper.vhl-zuinig .vhl-ck-graf::after { font-size:max(1.5cqh, 9px); }
+}
 .vhl-ck-mod, .vhl-ped, .vhl-ck-links { pointer-events:auto; }
 .vhl-ck-mod { cursor:pointer; transition:opacity .6s, transform .6s; -webkit-tap-highlight-color:transparent; }
 .vhl-ck-mod canvas { width:100%; height:100%; display:block; }

@@ -120,6 +120,21 @@ const MEET = `(async function(){
     const t = await app.ev(MEET);
     toets('op een telefoon geen cockpit', t.vak && !t.cockpitNu && !t.tablet && !t.zichtbaar, JSON.stringify(t));
     toets('op een telefoon geen rempedaal en geen helling gevraagd', !t.rolRem && !t.rolHelling, JSON.stringify(t));
+
+    console.log('\n3. Telefoon liggend met "Simuleer tablet-modus" (Admin-menu, 10-11-2026)');
+    toets('de schakelaar staat in het Admin-menu', /Simuleer tablet-modus: uit/.test(await app.ev(`(document.getElementById('kbTabSim') || {}).textContent || ''`)));
+    await app.ev(`document.getElementById('kbTabSim').click(); 'ok'`);
+    await new Promise(r => setTimeout(r, 1500));
+    const s = await app.ev(MEET);
+    toets('met de simulatie: de cockpit op de telefoon', s.vak && s.cockpitNu && s.tablet && s.zichtbaar, JSON.stringify(s));
+    toets('en de plekken van de cockpit erbij', s.rolRem && s.rolHelling, JSON.stringify(s));
+    toets('de modules blijven binnen het telefoonscherm', s.binnen, (s.buiten || []).join(' | '));
+    toets('geen module over de ringen', s.vrij && s.vrij.length === 0, (s.vrij || []).join(','));
+    toets('de knop zegt aan, en het is bewaard', await app.ev(`/aan/.test(document.getElementById('kbTabSim').textContent) && localStorage.getItem('pl_hl_tablet_sim') === '1'`));
+    await app.ev(`PLHyperlane.zetTabletSim(false); 'ok'`);
+    await new Promise(r => setTimeout(r, 1500));
+    const u = await app.ev(MEET);
+    toets('TEGENPROEF: weer uit — geen cockpit', !u.cockpitNu && !u.tablet && !u.zichtbaar, JSON.stringify(u));
     if (app.fouten.length) toets('geen fouten in de console', false, app.fouten.slice(0, 3).join(' | '));
   } finally { await app.stop(); }
   console.log(fouten ? '\nFOUT: ' + fouten : '\nAlles goed');

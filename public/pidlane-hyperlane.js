@@ -504,8 +504,11 @@ function polsBij(st, hr, dt, rand){
   return s;
 }
 function polsUniform(st){ const u=new Float32Array(POLS_N).fill(-99); (st ? st.x : []).forEach(function(x, i){ u[i]=x; }); return u; }
-const VORMEN = ['aurora','hartslag','pulsen','sterren','stil','tunnel'];
-const VORM_TEKST = { aurora:'Aurora', hartslag:'Hartslag', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
+/* Hartslag staat sinds 10-11-2026 niet meer in de keuze (wens eigenaar). De
+   tekening (polsBij, VH in de shader) blijft: een bewaarde 'hartslag' wordt
+   via leesVorm() gewoon Aurora. */
+const VORMEN = ['aurora','pulsen','sterren','stil','tunnel'];
+const VORM_TEKST = { aurora:'Aurora', pulsen:'Pulsen', sterren:'Sterren', stil:'Stil', tunnel:'Tunnel' };
 const VORM_SLEUTEL = 'pl_hl_vorm';
 function volgendeVorm(v){ const i=VORMEN.indexOf(v); return VORMEN[(i+1)%VORMEN.length]; }
 /* Wat er nu getekend wordt. Onbekende snelheid telt als rijden: liever te
@@ -1176,7 +1179,18 @@ function frame(nu){
    @media van pidlane.css. */
 const COCKPIT_B = 800, COCKPIT_H = 540;
 function cockpitMaat(b, h){ return Number(b)>=COCKPIT_B && Number(h)>=COCKPIT_H && Number(b)>Number(h); }
-function cockpitNu(){ return typeof window.innerWidth==='number' && cockpitMaat(window.innerWidth, window.innerHeight); }
+/* TABLET SIMULEREN (10-11-2026, wens eigenaar). De cockpit ook op een
+   telefoon, als schakelaar in het Admin-menu: dan telt elk liggend scherm.
+   Staand blijft het de telefoonindeling — de cockpit is liggend ontworpen.
+   Het lichaam krijgt pl-hl-tabsim; pidlane.css zet daarmee de cockpit-regels
+   aan buiten de tablet-@media. Puur: cockpitKeuze. */
+const TABSIM_SLEUTEL = 'pl_hl_tablet_sim';
+function cockpitKeuze(b, h, sim){ return sim ? Number(b)>Number(h) : cockpitMaat(b, h); }
+function tabletSim(){
+  try{ return localStorage.getItem(TABSIM_SLEUTEL)==='1'; }
+  catch(e){ console.warn('PLHyperlane: tablet-simulatie niet te lezen — uit', e); return false; }
+}
+function cockpitNu(){ return typeof window.innerWidth==='number' && cockpitKeuze(window.innerWidth, window.innerHeight, tabletSim()); }
 
 /* Koud, goed of heet per temperatuur: [koud onder, heet boven]. Puur. */
 const TEMP_GRENS = { koel:[60,105], olie:[70,130], inlaat:[null,60], kat:[300,900], atf:[40,110] };
@@ -1378,19 +1392,53 @@ function cockpitBij(w, dt, d, e, sc, col, vs){
 }
 // Draait het scherm of past het venster (splitscreen), dan kan de cockpit
 // aan of uit: de plekken en de bus horen erbij, dus opnieuw opbouwen.
+let ckWas=cockpitNu();
+function ckHerbouw(){
+  const n=cockpitNu(); if(n===ckWas) return;
+  ckWas=n;
+  // Alleen Hyperlane heeft cockpit-plekken: een andere weergave niet
+  // opnieuw opbouwen (dat sloot midden in een themakeuze de strook, CI 02-11-2026).
+  try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function' && (typeof PLVisueel.profiel!=='function' || PLVisueel.profiel()==='hyperlane')) PLVisueel.herbouwKeuze(); }
+  catch(e){ console.warn('PLHyperlane: herbouw na draaien mislukt — volgt bij de volgende tik', e); }
+}
 if(typeof window.addEventListener==='function'){
-  let ckWas=cockpitNu(), ckT=0;
-  window.addEventListener('resize', function(){
-    clearTimeout(ckT);
-    ckT=setTimeout(function(){
-      const n=cockpitNu(); if(n===ckWas) return;
-      ckWas=n;
-      // Alleen Hyperlane heeft cockpit-plekken: een andere weergave niet
-      // opnieuw opbouwen (dat sloot midden in een themakeuze de strook, CI 02-11-2026).
-      try{ if(window.PLVisueel && typeof PLVisueel.herbouwKeuze==='function' && (typeof PLVisueel.profiel!=='function' || PLVisueel.profiel()==='hyperlane')) PLVisueel.herbouwKeuze(); }
-      catch(e){ console.warn('PLHyperlane: herbouw na draaien mislukt — volgt bij de volgende tik', e); }
-    }, 400);
+  let ckT=0;
+  window.addEventListener('resize', function(){ clearTimeout(ckT); ckT=setTimeout(ckHerbouw, 400); });
+}
+/* De schakelaar zelf: bewaren, de lichaamsklasse en meteen opnieuw opbouwen. */
+function zetTabletSim(aan){
+  try{ if(aan) localStorage.setItem(TABSIM_SLEUTEL, '1'); else localStorage.removeItem(TABSIM_SLEUTEL); }
+  catch(e){ console.warn('PLHyperlane: tablet-simulatie niet bewaard — geldt tot de app sluit', e); }
+  simKlasse(!!aan);
+  ckHerbouw();
+  simKnopTekst();
+  return !!aan;
+}
+function simKlasse(aan){ if(typeof document!=='undefined' && document.body) document.body.classList.toggle('pl-hl-tabsim', aan); }
+function simKnopTekst(){
+  const k=typeof document!=='undefined' && document.getElementById('kbTabSim');
+  if(k) k.textContent='📱 Simuleer tablet-modus: '+(tabletSim() ? 'aan' : 'uit');
+}
+/* De knop in het Admin-menu, zoals bronBtn in pidlane-bron.js: hier
+   aangemaakt, zodat index.html (en de Android-build) niet meeverandert. */
+function simMenu(){
+  const g=document.getElementById('admGroup');
+  if(!g || document.getElementById('kbTabSim')) return;
+  const k=document.createElement('button');
+  k.className='kebab-item'; k.id='kbTabSim'; k.type='button';
+  k.addEventListener('click', function(){
+    try{ if(typeof closeKebab==='function') closeKebab(); }
+    catch(e){ console.warn('PLHyperlane: kebabmenu niet gesloten', e); }
+    zetTabletSim(!tabletSim());
+    try{ if(typeof showToast==='function') showToast('Tablet-modus '+(tabletSim() ? 'aan — Hyperlane liggend en volledig scherm' : 'uit'), 2600); }
+    catch(e){ console.warn('PLHyperlane: melding niet getoond', e); }
   });
+  g.appendChild(k);
+  simKnopTekst();
+}
+if(typeof document!=='undefined' && typeof document.addEventListener==='function'){
+  const simStart=function(){ simKlasse(tabletSim()); simMenu(); };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', simStart); else simStart();
 }
 
 window.PLHyperlane = {
@@ -1410,7 +1458,7 @@ window.PLHyperlane = {
   polsBij:polsBij, polsUniform:polsUniform, POLS_RUST:POLS_RUST, POLS_MAX:POLS_MAX, POLS_PAPIER:POLS_PAPIER, POLS_N:POLS_N,
   KOUD_C:KOUD_C, HEET_C:HEET_C, REM_KMHS:REM_KMHS, STIL_S:STIL_S, CRUISE_S:CRUISE_S, CRUISE_KMH:CRUISE_KMH,
   _klok:klok,
-  COCKPIT_B:COCKPIT_B, COCKPIT_H:COCKPIT_H, cockpitMaat:cockpitMaat, cockpitNu:cockpitNu, TEMP_GRENS:TEMP_GRENS, tempStand:tempStand,
+  COCKPIT_B:COCKPIT_B, COCKPIT_H:COCKPIT_H, cockpitMaat:cockpitMaat, cockpitNu:cockpitNu, cockpitKeuze:cockpitKeuze, tabletSim:tabletSim, zetTabletSim:zetTabletSim, TABSIM_SLEUTEL:TABSIM_SLEUTEL, TEMP_GRENS:TEMP_GRENS, tempStand:tempStand,
   remDeel:remDeel, remGeschat:remGeschat, REM_VOL_KMHS:REM_VOL_KMHS, boostBar:boostBar, binnenbogen:binnenbogen, BOOST_VOL:BOOST_VOL,
   waarschuwing:waarschuwing, KOUD_GAS:KOUD_GAS, KOUD_RPM:KOUD_RPM, grootMag:grootMag, grootNa:grootNa, GROOT_KMH:GROOT_KMH,
   zuinig:zuinig, beeldOverslaan:beeldOverslaan, rustBeeld:rustBeeld, BEELD_MS:BEELD_MS, RUST_MS:RUST_MS, RUST_S:RUST_S, ZUINIG_DT:ZUINIG_DT, ZUINIG_UIT_DT:ZUINIG_UIT_DT, ZUINIG_HOUD_S:ZUINIG_HOUD_S, ZUINIG_ACCU:ZUINIG_ACCU,

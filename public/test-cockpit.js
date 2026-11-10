@@ -44,6 +44,11 @@ waar('telefoon liggend (915×412, 932×430) is geen cockpit', !H.cockpitMaat(915
 waar('tablet liggend (1280×800, 1024×600) is een cockpit', H.cockpitMaat(1280, 800) && H.cockpitMaat(1024, 600));
 waar('tablet staand is geen cockpit', !H.cockpitMaat(800, 1280));
 waar('onbekende maat is geen cockpit', !H.cockpitMaat(undefined, undefined));
+// Tablet simuleren (Admin-menu, 10-11-2026): elk liggend scherm.
+waar('simulatie aan: telefoon liggend (915×412) is een cockpit', H.cockpitKeuze(915, 412, true));
+waar('TEGENPROEF: simulatie aan, telefoon staand blijft telefoon', !H.cockpitKeuze(412, 915, true));
+waar('TEGENPROEF: simulatie uit, telefoon liggend blijft telefoon', !H.cockpitKeuze(915, 412, false));
+waar('simulatie uit: de tablet blijft een cockpit', H.cockpitKeuze(1280, 800, false));
 const rol = c => c.PLVisProfiel.voor('hyperlane', null).plekken.map(x => x.rol);
 waar('op een tablet vraagt Hyperlane rempedaal, G, helling, kat en ATF', ['rem', 'gx', 'gy', 'helling', 'kanteling', 'kat', 'atf', 'boost'].every(r => rol(T).indexOf(r) >= 0), rol(T).join(','));
 waar('op een tablet staan de plekken van alle standen aan (olie en belasting in Auto)', ['olie', 'last'].every(r => rol(T).indexOf(r) >= 0));

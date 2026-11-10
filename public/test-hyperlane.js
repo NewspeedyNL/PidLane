@@ -250,10 +250,12 @@ waar('standaard Slim, onbekende opslag Slim', H.leesMidden() === 'slim');
 
 console.log('\n4h. Achtergrond: Auto, rustige vormen, het knopje');
 // Sinds 28-10-2026 geen Auto meer: "tunnel blijft actief bij selectie andere visual"
-waar('de gekozen vorm is de vorm, ook in stilstand (geen tunnel uit zichzelf)', ['aurora', 'hartslag', 'pulsen', 'sterren', 'stil', 'tunnel'].every(v => H.actieveVorm(v) === v));
+waar('de gekozen vorm is de vorm, ook in stilstand (geen tunnel uit zichzelf)', ['aurora', 'pulsen', 'sterren', 'stil', 'tunnel'].every(v => H.actieveVorm(v) === v));
 waar('onbekende keuze: Aurora', H.actieveVorm('kapot') === 'aurora' && H.actieveVorm(null) === 'aurora');
 let vv = 'aurora', rond = [vv]; for (let i = 0; i < H.VORMEN.length; i++) { vv = H.volgendeVorm(vv); rond.push(vv); }
-waar('het knopje gaat rond: aurora → hartslag → pulsen → sterren → stil → tunnel → aurora', rond.join(',') === 'aurora,hartslag,pulsen,sterren,stil,tunnel,aurora', rond.join(','));
+waar('het knopje gaat rond: aurora → pulsen → sterren → stil → tunnel → aurora', rond.join(',') === 'aurora,pulsen,sterren,stil,tunnel,aurora', rond.join(','));
+waar('Hartslag staat niet meer in de keuze (10-11-2026)', H.VORMEN.indexOf('hartslag') < 0 && !('hartslag' in H.VORM_TEKST));
+waar('een bewaarde Hartslag wordt Aurora', H.actieveVorm('hartslag') === 'aurora');
 waar('elke vorm heeft een tekst voor het knopje', H.VORMEN.every(v => typeof H.VORM_TEKST[v] === 'string'));
 const rs = H.ringSchaal(-20, 60);
 waar('ringschaal van een eigen sensor: vijf vakken van lo tot hi', rs.n === 5 && rs.lab(0) === -20 && rs.lab(5) === 60 && rs.dec === 0 && H.ringSchaal(0, 1.2).dec === 1);
