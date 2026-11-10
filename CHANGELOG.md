@@ -10,6 +10,18 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 10-11-2026 (avond) — Hyperlane: tablet-modus simuleren, Hartslag uit de keuze
+ ═══════════════════════════════════════════════════════════
+
+ - Admin-menu: "📱 Simuleer tablet-modus: aan/uit" (pl_hl_tablet_sim). Aan:
+   de cockpit van Hyperlane op elk liggend scherm, ook een telefoon
+   (cockpitKeuze). Staand blijft de telefoonindeling.
+ - Op een telefoon een ondergrens voor de kleine cockpitlabels en de
+   grafiek iets lager, weg van de melding bovenin.
+ - Hartslag staat niet meer in de achtergrondkeuze; een bewaarde Hartslag
+   wordt Aurora. De tekening zelf (polsBij) blijft staan.
+
+ ═══════════════════════════════════════════════════════════
  10-11-2026 (avond) — Verbinden: kenteken als wachtmoment, doek tot het klaar is
  ═══════════════════════════════════════════════════════════
 

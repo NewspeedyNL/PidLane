@@ -38,6 +38,21 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Hyperlane: tablet-modus simuleren vanuit het Admin-menu, Hartslag uit de keuze (10-11-2026) ──
+  {
+    issue: '—',
+    naam: 'De cockpit van Hyperlane kan ook op een liggende telefoon, met "Simuleer tablet-modus" in het Admin-menu; Hartslag staat niet meer in de achtergrondkeuze',
+    waarom: 'De tabletversie van Hyperlane was alleen op een tablet te zien; de eigenaar wil hem ook op de telefoon kunnen aanzetten. Hartslag was een achtergrond die weg mocht.',
+    proef: async function () {
+      var H = window.PLHyperlane;
+      if (!H || typeof H.cockpitKeuze !== 'function') return { staat: 'FOUT', detail: 'PLHyperlane.cockpitKeuze ontbreekt — herladen?' };
+      if (!H.cockpitKeuze(915, 412, true) || H.cockpitKeuze(915, 412, false) || H.cockpitKeuze(412, 915, true)) return { staat: 'FOUT', detail: 'de simulatie haalt telefoon, tablet en staand door elkaar' };
+      if (H.VORMEN.indexOf('hartslag') >= 0) return { staat: 'FOUT', detail: 'Hartslag staat nog in de keuze' };
+      if (!document.getElementById('kbTabSim')) return { staat: 'LET OP', detail: 'de keuze klopt; de knop staat in het Admin-menu, maar is hier niet gevonden' };
+      return { staat: 'OK', detail: 'simulatie ' + (H.tabletSim() ? 'aan' : 'uit') + ', cockpit nu ' + (H.cockpitNu() ? 'ja' : 'nee') };
+    }
+  },
+
   // ── Kenteken als wachtmoment bij Auto, doek blijft tot het verbinden klaar is (10-11-2026) ──
   {
     issue: '—',
