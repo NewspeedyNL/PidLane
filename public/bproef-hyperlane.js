@@ -243,7 +243,10 @@ function toets(naam, waar, uitleg) {
         const b = v ? v.getBoundingClientRect() : null;
         const r = { schil: !!v, actief: PLHyperlane.actief(), kleur: v ? v.style.getPropertyValue('--vhl-c') : '', gevoed: gevoed,
                     vult: !!b && b.width >= innerWidth - 1 && b.height >= innerHeight - 1,
-                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop) };
+                    palet: getComputedStyle(document.querySelector('.gg.view-visueel .vt-thema')).display, vrij: !raak(lamp, vorm) && !raak(lamp, knop),
+                    // Staand horen de chips ónder het achtergrondknopje en het kruisje (10-11-2026): smalle
+                    // chips raakten ze naast elkaar ook niet, en dan zei "vrij" niets over de regel in de css.
+                    onder: innerWidth >= innerHeight || (!!lamp && (!vorm || lamp.top >= vorm.bottom) && (!knop || lamp.top >= knop.bottom)) };
         // Geen lege balk (28-10-2026): de demo-auto heeft geen katalysator, die plek krijgt de reserve.
         // Tegenproef op het aanzetten: de reserve (hier de motorbelasting, die de demo-auto al aan had)
         // even uit, dan opnieuw bouwen: Slim visueel moet hem zelf weer aanzetten (reserveKetens).
@@ -256,11 +259,11 @@ function toets(naam, waar, uitleg) {
         appBack(); await wacht(200);
         return r;
       })()`);
-      toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt het rijgedrag, vult het scherm, geen palet, chips raken de knoppen niet',
+      toets('schil ' + pr + ' ' + bw + '×' + bh + ': achtergrond loopt, kleur volgt het rijgedrag, vult het scherm, geen palet, chips raken de knoppen niet (staand eronder)',
         // Gevoed = PLHyperlane.voed() werd aangeroepen met de waarden van de demo-auto. Niet de
         // kleur of de stemming meten: een merkpalet kleurt ook zonder voeding anders, en de
         // opstartzwaai zakt in een trage browser zo langzaam uit dat hij op stemming lijkt.
-        q.schil && q.actief && /^rgb/.test(q.kleur) && q.gevoed > 0 && q.vult && q.palet === 'none' && q.vrij, JSON.stringify(q));
+        q.schil && q.actief && /^rgb/.test(q.kleur) && q.gevoed > 0 && q.vult && q.palet === 'none' && q.vrij && q.onder, JSON.stringify(q));
       if (pr === 'temp') toets('temperatuur: geen lege balk, een ontbrekende sensor krijgt iets verwants', q.leeg.length === 0, JSON.stringify(q.leeg));
     }
     console.log('\n3. Weg uit de weergave');
