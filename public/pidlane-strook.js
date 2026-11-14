@@ -29,12 +29,15 @@
    de strook dat.
 
    AFTELLEN. Bij het openen van de app met een bekende adapter: "Verbinden
-   met je auto" met een balk die in AFTEL_MS volloopt, Annuleren en een
-   vinkje "altijd automatisch" (`pl_verbind_altijd`). Met dat vinkje begint
-   het verbinden meteen.
+   met je auto" met een balk die in AFTEL_MS volloopt, met Nu verbinden en
+   Annuleren. Altijd, zonder uitzondering (14-11-2026): het vinkje "altijd
+   automatisch" verbond meteen, en wie de app wilde sluiten kreeg eerst
+   "Adapter zoeken". De balk loopt pas als de intro weg is, het inlogscherm
+   dicht is en de app in beeld staat (magAftellen); gaat de app tussendoor
+   naar de achtergrond, dan begint hij bij terugkeer opnieuw.
 
    PUUR (_kern): nieuw, zet, inklappen, magWeg, afdekken, foutcodeRegel, aftelDeel,
-   magKentekenVragen, bekendeAdapter. Getoetst in test-strook.js.
+   magKentekenVragen, bekendeAdapter, magAftellen. Getoetst in test-strook.js.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -51,7 +54,6 @@
   var KLAAR_MS = 4000;
   var LET_MS = 8000;   // een "let" mag iets langer gelezen worden
   var STIL_KMH = 2;
-  var OPSLAG = { altijd: 'pl_verbind_altijd' };
 
   // ── puur ─────────────────────────────────────────────────────────
   function nieuw() {
@@ -128,13 +130,16 @@
   function bekendeAdapter(lees, native) {
     return !!native && !!lees('spp_address');
   }
+  /* Mag de aftelbalk nu lopen (14-11-2026)? Niet onder de intro, niet op
+     het inlogscherm en niet met de app op de achtergrond: dan liep hij af
+     zonder dat iemand hem zag, en verbond de app "vanzelf" terwijl je nog
+     moest inloggen of hem juist wilde sluiten. */
+  function magAftellen(o) {
+    return !!o && !o.intro && !o.login && !o.verborgen;
+  }
 
   // ── omgeving ─────────────────────────────────────────────────────
   function lees(k) { try { return localStorage.getItem(k); } catch (e) { console.warn('PLStrook: opslag niet te lezen', e); return null; } }
-  function schrijf(k, v) {
-    try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); }
-    catch (e) { console.warn('PLStrook: opslag niet te schrijven', e); }
-  }
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function diag(t, soort) { try { if (typeof btDiag === 'function') btDiag('Strook: ' + t, soort || 'info'); } catch (e) { console.warn('PLStrook: diag', e); } }
@@ -145,7 +150,18 @@
     try { return (typeof pidVals !== 'undefined' && pidVals) ? pidVals['010D'] : null; }
     catch (e) { console.warn('PLStrook: snelheid niet te lezen', e); return null; }
   }
-  function altijd() { return lees(OPSLAG.altijd) === '1'; }
+  function aftelOmgeving() {
+    var o = { intro: false, login: false, verborgen: false };
+    try { o.intro = !!(window.PLIntro && typeof PLIntro.bezig === 'function' && PLIntro.bezig()); }
+    catch (e) { console.warn('PLStrook: intro niet te lezen', e); }
+    try {
+      var lo = el('loginOv');
+      o.login = !!lo && !lo.classList.contains('hidden') && !lo.classList.contains('lg-leave');
+    } catch (e) { console.warn('PLStrook: inlogscherm niet te lezen', e); }
+    try { o.verborgen = document.visibilityState === 'hidden'; }
+    catch (e) { console.warn('PLStrook: zichtbaarheid niet te lezen', e); }
+    return o;
+  }
   // vehicleInfo staat met let in pidlane-btflow.js: dus niet op window.
   function veh() {
     try { return (typeof vehicleInfo !== 'undefined' && vehicleInfo) ? vehicleInfo : {}; }
@@ -192,7 +208,7 @@
     w.hidden = false;
     w.classList.toggle('in', _ingeklapt);
     var h = '';
-    if (_aftel) {
+    if (_aftel && _aftel.start !== null) {
       var d = aftelDeel(_aftel.start, Date.now(), _aftel.ms);
       var rest = Math.max(0, Math.ceil((_aftel.ms - (Date.now() - _aftel.start)) / 1000));
       h += '<div class="pl-strook-kop"><b>Verbinden met je auto</b><span>over ' + rest + ' s</span></div>' +
@@ -200,7 +216,6 @@
         '<div class="pl-strook-knoppen">' +
           '<button type="button" class="pl-strook-k p" id="plStrookNu" onclick="PLStrook._nu()">Nu verbinden</button>' +
           '<button type="button" class="pl-strook-k" id="plStrookAnnuleer" onclick="PLStrook._annuleer()">Annuleren</button>' +
-          '<label class="pl-strook-vink"><input type="checkbox" id="plStrookAltijd" onchange="PLStrook._altijd(this.checked)"' + (altijd() ? ' checked' : '') + '> altijd automatisch</label>' +
         '</div>';
       w.innerHTML = h;
       return;
@@ -488,30 +503,35 @@
     if (!_aftel) return;
     clearInterval(_aftel.tik); _aftel = null;
   }
-  /* fn = het verbinden. Met "altijd automatisch" meteen; anders na AFTEL_MS,
-     tenzij Annuleren. Geeft true als er (meteen of straks) verbonden wordt. */
+  /* fn = het verbinden: na AFTEL_MS, tenzij Annuleren. Altijd met de balk.
+     Zolang magAftellen() nee zegt wacht hij zonder iets te tonen (start =
+     null); valt het tussendoor weer weg, dan begint hij straks opnieuw.
+     Geeft true als er straks verbonden wordt. */
   function aftellen(fn, opties) {
     opties = opties || {};
     if (typeof fn !== 'function') return false;
     stopAftel();
-    if (altijd()) { fn(); return true; }
-    var ms = opties.ms || AFTEL_MS;
-    _open = true; _st = null; _ingeklapt = false;
-    _aftel = { start: Date.now(), ms: ms, fn: fn, tik: null };
-    _aftel.tik = setInterval(function () {
-      if (!_aftel) return;
-      if (Date.now() - _aftel.start >= _aftel.ms) { var f = _aftel.fn; stopAftel(); f(); return; }
-      teken();
-    }, 200);
-    teken();
+    _open = false; _st = null; _ingeklapt = false;
+    _aftel = { start: null, ms: opties.ms || AFTEL_MS, fn: fn, tik: null };
+    _aftel.tik = setInterval(aftelTik, 200);
+    aftelTik();
     return true;
   }
-  function _nu() { if (!_aftel) return; var f = _aftel.fn; stopAftel(); f(); }
+  function aftelTik() {
+    if (!_aftel) return;
+    if (!magAftellen(aftelOmgeving())) {
+      if (_aftel.start !== null) { _aftel.start = null; _open = false; teken(); }
+      return;
+    }
+    if (_aftel.start === null) { _aftel.start = Date.now(); _open = true; _st = null; _ingeklapt = false; }
+    if (Date.now() - _aftel.start >= _aftel.ms) { var f = _aftel.fn; stopAftel(); f(); return; }
+    teken();
+  }
+  function _nu() { if (!_aftel || _aftel.start === null) return; var f = _aftel.fn; stopAftel(); f(); }
   function _annuleer() {
     stopAftel(); _open = false; teken();
     try { if (typeof logUsage === 'function') logUsage('strook', 'annuleer'); } catch (e) { console.warn('PLStrook: logUsage', e); }
   }
-  function _altijd(aan) { schrijf(OPSLAG.altijd, aan ? '1' : null); }
 
   // ── de ingang: één knop "Verbind met je auto" ────────────────────
   /* Bekende adapter in de app: meteen verbinden, het verbindscherm blijft
@@ -565,11 +585,11 @@
   window.PLStrook = {
     start: start, stap: stap, fout: fout, naarVenster: naarVenster, sluit: sluit, actief: actief,
     vraagKenteken: vraagKenteken, wachtKenteken: wachtKenteken, naVerbinding: naVerbinding, aftellen: aftellen, verbind: verbind, verbindMag: verbindMag,
-    altijd: altijd, autoTekst: autoTekst,
-    staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!_aftel }; },
-    _nu: _nu, _annuleer: _annuleer, _stop: _stop, _altijd: _altijd, _opnieuw: _opnieuw, _details: _details,
+    autoTekst: autoTekst,
+    staat: function () { return { st: _st, open: _open, ingeklapt: _ingeklapt, aftel: !!(_aftel && _aftel.start !== null), wacht: !!(_aftel && _aftel.start === null) }; },
+    _nu: _nu, _annuleer: _annuleer, _stop: _stop, _opnieuw: _opnieuw, _details: _details,
     _codes: _codes, _wissel: _wissel, _kenteken: _kenteken, _kentLater: _kentLater, _inrichten: _inrichten, _nietNu: _nietNu,
     _kern: { STAPPEN: STAPPEN, AFTEL_MS: AFTEL_MS, KLAAR_MS: KLAAR_MS, LET_MS: LET_MS, nieuw: nieuw, zet: zet, inklappen: inklappen, magWeg: magWeg, afdekken: afdekken,
-      foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter }
+      foutcodeRegel: foutcodeRegel, aftelDeel: aftelDeel, magKentekenVragen: magKentekenVragen, bekendeAdapter: bekendeAdapter, magAftellen: magAftellen }
   };
 })();
