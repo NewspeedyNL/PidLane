@@ -616,6 +616,11 @@
       f.status = r.status; f.data = d;
       throw f;
     }
+    // Nodig een vriend uit (14-11-2026): de eerste auto van een uitgenodigde
+    // vriend levert tegoed op. De worker beslist; hier alleen de melding.
+    if (actie === 'voertuig_opslaan' && d.uitnodiging && d.uitnodiging.beloond && window.PLVriend) {
+      try { PLVriend.beloond(d.uitnodiging); } catch (e) { console.warn('PLGarage: uitnodigingsbonus niet gemeld', e); }
+    }
     return d;
   }
 

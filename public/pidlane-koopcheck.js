@@ -180,7 +180,8 @@ async function liveLogRecoveryCheck(){
     try{ sessionStorage.setItem('pl_livelog_seen','1'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
     const kb=Math.max(1,Math.round(bytes/1024));
     try{ log(`🛠 Live-log van vorige sessie hervat (${kb} kB bewaard) — tik 📤 Deel live-log om te exporteren`,'ok'); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
-    try{ showToast?.(`🛠 Vorige live-log bewaard (${kb} kB) — deelbaar via 📤`,5000); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
+    // Geen toast meer (14-11-2026): hij kwam bij elke opstart midden over de
+    // intro heen, voor iets wat alleen de beheerder aangaat. De logregel blijft.
   }catch(e){ console.warn('Live-log herstelcheck bij opstarten mislukt — niet-blokkerend, geen crash-melding getoond', e); }
 }
 

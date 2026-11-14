@@ -149,8 +149,8 @@
     return r.data;
   }
 
-  async function klantRegistreer(email, pass, naam) {
-    return await _post('/klant/registreer', { email, pass, naam });
+  async function klantRegistreer(email, pass, naam, uitnodiging) {
+    return await _post('/klant/registreer', uitnodiging ? { email, pass, naam, uitnodiging } : { email, pass, naam });
   }
 
   async function klantMij() {
@@ -221,6 +221,8 @@
           _veld('regNaam', 'text', 'Naam of bedrijf (optioneel)', 'name') +
           _veld('regPass', 'password', 'Wachtwoord (min. 10 tekens)', 'new-password') +
           _veld('regPass2', 'password', 'Wachtwoord herhalen', 'new-password') +
+          // Nodig een vriend uit (14-11-2026): voorgevuld uit de link (?u=…).
+          _veld('regUitnodiging', 'text', 'Uitnodigingscode (optioneel)', 'off') +
           '<div style="font-size:11px;color:var(--tx3,#7c8aa5);line-height:1.5;margin-bottom:4px">' +
             'Tip: een korte zin van een paar woorden is veiliger dan een kort ' +
             'wachtwoord met tekens, en makkelijker te onthouden.' +
@@ -235,6 +237,8 @@
 
     o.querySelector('#regTerug').onclick = () => _sluit('klantRegOv');
     o.querySelector('#regGo').onclick = _doeRegistratie;
+    try { const u = window.PLVriend ? PLVriend.bewaardeCode() : ''; if (u) o.querySelector('#regUitnodiging').value = u; }
+    catch (e) { console.warn('PLKlant: uitnodigingscode niet voorgevuld', e); }
     o.querySelector('#regPass2').onkeydown = (e) => { if (e.key === 'Enter') _doeRegistratie(); };
     o.classList.remove('hidden');
     setTimeout(() => { try { o.querySelector('#regEmail').focus(); } catch(e){ /* stil: element kan al weg zijn of ondersteunt dit niet */ } }, 80);
@@ -262,7 +266,8 @@
     _zetMelding(err, 'ok', 'Account aanmaken\u2026');
     o.querySelector('#regGo').disabled = true;
     try {
-      const r = await klantRegistreer(email, p1, naam);
+      const uitn = ((o.querySelector('#regUitnodiging') || {}).value || '').trim();
+      const r = await klantRegistreer(email, p1, naam, uitn);
       if (r.status === 429) {
         o.querySelector('#regGo').disabled = false;
         const min = Math.ceil((Number(r.data.retryAfter) || 3600) / 60);
@@ -281,6 +286,8 @@
       }
       // Meteen inloggen met de sessie die de server teruggaf.
       _zetMelding(err, 'ok', 'Gelukt \u2014 je wordt ingelogd\u2026');
+      try { if (window.PLVriend) PLVriend.naRegistratie(r.data.uitnodiging, uitn); }
+      catch (e) { console.warn('PLKlant: uitnodiging na registratie niet gemeld', e); }
       _sluit('klantRegOv');
       _neemSessie(r.data, email);
     } catch (e) {
@@ -828,6 +835,9 @@
       // dat er niets te zien was. Ook cosmetisch, geen beveiliging.
       const acc = document.getElementById('kbAccount');
       if (acc) acc.style.display = isKlant() ? '' : 'none';
+      // Nodig een vriend uit (14-11-2026): de code hoort bij een klantaccount.
+      const vr = document.getElementById('kbVriend');
+      if (vr) vr.style.display = isKlant() ? '' : 'none';
       // Klap een geopend adminmenu dicht bij het wisselen van gebruiker.
       if (!admin) {
         const g = document.getElementById('admGroup');

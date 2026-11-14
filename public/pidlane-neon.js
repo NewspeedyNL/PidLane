@@ -244,9 +244,17 @@ document.addEventListener('keydown',e=>{
 
 // Terugkeer naar de app zonder volledige herlaad (tab-wissel, ander venster):
 // is de verbinding ondertussen weggevallen, dan automatisch herverbinden.
+// Alleen een verbinding die er wás toen de app wegging (14-11-2026). Tot dan
+// las dit alleen pl_autoconn, en die blijft staan na elke verbinding: wie het
+// aftellen had geannuleerd en de app wilde sluiten, kreeg bij de eerste
+// terugkeer meteen "Adapter zoeken" — ook op het inlogscherm. En herverbinden
+// gaat via de aftelbalk (PLStrook.aftellen): vijf seconden met Annuleren.
+let _plVerbondenBijWeg=false;
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState!=='visible') return;
+  if(document.visibilityState!=='visible'){ _plVerbondenBijWeg=(typeof connected!=='undefined' && !!connected); return; }
+  const was=_plVerbondenBijWeg; _plVerbondenBijWeg=false;
   try{
+    if(!was) return;
     if(localStorage.getItem('pl_autoconn')!=='1') return;
     if(demoMode||window._reconnBusy) return;
     if(!getSPP()) return;
@@ -268,7 +276,13 @@ document.addEventListener('visibilitychange',()=>{
             connected=false; setConn(false);
           }
         }
-        if(!connected) await connectSerial({ hervat: 'terugkeer naar de app' });
+        if(connected) return;
+        const ga=()=>{ if(!connected) return connectSerial({ hervat: 'terugkeer naar de app' }); };
+        if(window.PLStrook && typeof PLStrook.aftellen==='function'){
+          try{ PLStrook.aftellen(ga); return; }
+          catch(e){ console.warn('Aftellen niet gestart — meteen herverbinden:', e); }
+        }
+        await ga();
       }
       finally{ window._reconnBusy=false; }
     },800);

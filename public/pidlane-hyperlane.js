@@ -1443,7 +1443,7 @@ if(typeof document!=='undefined' && typeof document.addEventListener==='function
 
 window.PLHyperlane = {
   STOPS:STOPS, OPSTART_S:OPSTART_S,
-  kleur:kleur, stemming:stemming, modus:modus, modusRustig:modusRustig, MODUS_OP_S:MODUS_OP_S, MODUS_AF_S:MODUS_AF_S, MODUS_HYST:MODUS_HYST, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
+  kleur:kleur, stemming:stemming, modus:modus, modusRustig:modusRustig, MODUS_OP_S:MODUS_OP_S, MODUS_AF_S:MODUS_AF_S, MODUS_HYST:MODUS_HYST, leds:leds, schakelDoel:schakelDoel, pijlOp:pijlOp, schakelLees:schakelLees, belastingHoog:belastingHoog, LED_VAN:LED_VAN, RACE_FRAC:RACE_FRAC, nul100:nul100, volg:volg,
   held:held, ACC_KMHS:ACC_KMHS, VOLGAS:VOLGAS,
   heldWaarde:heldWaarde, heldRustig:heldRustig, HELD_MIN_S:HELD_MIN_S, HELD_WAARDE_S:HELD_WAARDE_S, gearRustig:gearRustig, GEAR_LEEG_S:GEAR_LEEG_S, GEAR_TERUG_S:GEAR_TERUG_S,
   MIDDEN:MIDDEN, MIDDEN_TEKST:MIDDEN_TEKST, MIDDEN_SLEUTEL:MIDDEN_SLEUTEL, middenHeld:middenHeld, leesMidden:leesMidden,

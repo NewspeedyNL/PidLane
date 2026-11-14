@@ -10,6 +10,29 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-11-2026 — Aftelbalk, kortere intro, updatemelding, schakeladvies, vriend uitnodigen
+ ═══════════════════════════════════════════════════════════
+
+ - Verbinden gaat altijd via de 5 s-aftelbalk met Nu verbinden en
+   Annuleren; het vinkje "altijd automatisch" is weg. De balk loopt pas als
+   de intro weg is, het inlogscherm dicht is en de app in beeld staat, en
+   begint opnieuw na een uitstapje naar de achtergrond (PLStrook.magAftellen).
+ - Terugkeer naar de app herverbindt alleen een verbinding die er wás toen
+   de app wegging, en ook dan via de aftelbalk (pidlane-neon.js). Daarvoor
+   startte elke terugkeer "Adapter zoeken", ook na Annuleren of bij inloggen.
+ - Intro korter en rustiger: 3,1 s in plaats van 4,9 s, zonder de drie
+   kaarten en de dwarslijnen. Geen toast meer over het hervatte live-log.
+ - Updatemelding (PLVersie): na een deploy een kaart "Nieuwe versie" met
+   Nu bijwerken (plHardReload) en Later; niet tijdens een verbinding of de
+   intro. De worker geeft het deploy-id op /app-versie (version metadata).
+ - Visueel: het schakelbalkje van Hyperlane — tien lampjes en een ▲ boven
+   de versnelling. Aan/uit met een tik op de versnelling of in Mijn
+   voorkeuren (pl_vis_schakel).
+ - Nodig een vriend uit (PLVriend, Meer → 🎁): eigen code PL-XXXXXX en een
+   link ?u=CODE. Credits (vriend 10, uitnodiger 20, hoogstens 10×) pas bij
+   de eerste auto van de vriend die nog niet bij PidLane bekend was.
+
+ ═══════════════════════════════════════════════════════════
  10-11-2026 (avond) — Hyperlane: tablet-modus simuleren, Hartslag uit de keuze
  ═══════════════════════════════════════════════════════════
 

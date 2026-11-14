@@ -155,11 +155,17 @@ const zichtbaar = (sel) => `(function(){ const e=document.querySelector(${JSON.s
     const maat = await app.ev(`(function(){ const r=document.getElementById('plStrook').getBoundingClientRect(); return { l:r.left, r:r.right, b:window.innerWidth, t:r.top }; })()`);
     toets('binnen de schermbreedte, bovenin', maat.l >= 0 && maat.r <= maat.b && maat.t < 60, JSON.stringify(maat));
     toets('geen horizontale scroll', await app.ev(`document.documentElement.scrollWidth <= window.innerWidth`));
+    // Sinds 14-11-2026 wacht de balk tot het inlogscherm dicht is (magAftellen).
+    const login = await app.ev(`(function(){ var lo=document.getElementById('loginOv'); var was=lo && !lo.classList.contains('hidden'); if(lo) lo.classList.remove('hidden'); return was; })()`);
     await app.ev(`PLStrook.aftellen(function(){ window._plAftelGing = 1; }); 'ok'`);
-    toets('aftellen toont de balk en Annuleren', await app.ev(`!!document.getElementById('plStrookAnnuleer') && !!document.querySelector('.pl-strook-balk')`));
+    toets('met het inlogscherm in beeld: geen balk, wachten', await app.ev(`PLStrook.staat().wacht && !document.querySelector('.pl-strook-balk')`));
+    await app.ev(`document.getElementById('loginOv').classList.add('hidden'); 'ok'`);
+    await rust(600);
+    toets('inlogscherm dicht: de balk en Annuleren', await app.ev(`!!document.getElementById('plStrookAnnuleer') && !!document.querySelector('.pl-strook-balk')`));
     await app.ev(`document.getElementById('plStrookAnnuleer').click(); 'ok'`);
     await rust(5600);
     toets('Annuleren: er wordt niet verbonden', !(await app.ev(`!!window._plAftelGing`)));
+    if (login) await app.ev(`document.getElementById('loginOv').classList.remove('hidden'); 'ok'`);
 
     toets('de hele rit zonder JS-fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {

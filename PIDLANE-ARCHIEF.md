@@ -15,6 +15,38 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 ---
 
 
+
+## 14-11-2026 — Verbinden zonder vragen ging te ver; uitnodigen en zijn misbruik
+
+**Wat er misging (uit het gebruik, vier schermafdrukken).** Drie paden
+verbonden zonder dat iemand het zag aankomen: het vinkje "altijd
+automatisch" sloeg de aftelbalk over; de balk liep onder de intro en tijdens
+het inlogscherm al af; en `visibilitychange` in `pidlane-neon.js` startte bij
+élke terugkeer naar de app `connectSerial()`, omdat `pl_autoconn` na elke
+verbinding blijft staan — ook als de klant het aftellen net had geannuleerd
+en de app wilde sluiten. De oplossing is één poort: alles gaat door
+`PLStrook.aftellen()`, en die loopt alleen als `magAftellen()` ja zegt. De
+terugkeer herverbindt alleen een verbinding die er wás toen de app wegging.
+Het dode-socketpad in `pidlane-bt.js` (zes lege antwoorden midden in een rit)
+herverbindt bewust nog wel meteen: daar rijdt iemand en wacht niemand op een
+balk.
+
+**Nodig een vriend uit: waarom het tegoed niet bij het registreren komt.**
+Het e-mailadres wordt niet geverifieerd, dus "na registratie" betaalt uit
+voor elk verzonnen adres. Gekozen is de eerste auto van de vriend die nog
+niet bij PidLane bekend was: geen pseudoniem bij een andere klant, geen
+verbindprofiel van vóór de aanmelding en wél een van erna. Dat is niet
+waterdicht — pseudoniem en verbindprofiel zijn client-invoer en met moeite
+na te bootsen — maar de prijs van misbruik is dan het plafond (`UITNODIG.max`,
+10 per uitnodiger, via `UITNODIG_MAX` bij te stellen) plus de rate limit op
+registreren. Blijkt dat te ruim, dan is de volgende stap een geverifieerd
+e-mailadres, niet een strengere autocontrole.
+
+**Een valkuil die bijna meeging.** `handleKlantPlatform` gebruikt `uit.code`
+van een actie als HTTP-status. De eerste versie van de stand gaf de
+uitnodigingscode terug als `code`, en de worker antwoordde 500 ("status must
+be in the range of 200 to 599"). Het veld heet daarom `mijnCode`.
+
 ## 10-11-2026 (avond) — Verbinden: schermen kwamen halverwege door het doek
 
 Screenshot eigenaar: strook op "Klaarzetten… 55 sensoren nakijken", Auto op
