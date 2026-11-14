@@ -54,9 +54,13 @@
   var _geladen = null, _live = null, _later = null, _stil = false, _tik = null, _bezig = false;
 
   function vraag() {
-    if (_bezig || typeof fetch !== 'function') return Promise.resolve(null);
+    if (_bezig || typeof window.plFetch !== 'function') return Promise.resolve(null);
     _bezig = true;
-    return fetch(ADRES + '?t=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+    // Via plFetch (één weg naar de server, test-plfetch.js), zonder sessie:
+    // het antwoord is voor iedereen gelijk, ook op het inlogscherm.
+    return Promise.resolve().then(function () {
+      return window.plFetch(ADRES + '?t=' + Date.now(), { cache: 'no-store', geenToken: true });
+    }).then(function (r) {
       if (!r || !r.ok) throw new Error('HTTP ' + (r && r.status));
       return r.json();
     }).then(function (j) {

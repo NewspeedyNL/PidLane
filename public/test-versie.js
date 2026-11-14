@@ -52,7 +52,7 @@ function laad(o) {
   s.setInterval = (f) => { s.intervallen.push(f); return s.intervallen.length; };
   s.clearInterval = () => {};
   s.antwoord = o.id === undefined ? 'A' : o.id;
-  s.fetch = (url, opt) => {
+  s.plFetch = (url, opt) => {
     s.laatsteUrl = url; s.laatsteOpt = opt;
     if (s.antwoord === 'net') return Promise.reject(new Error('geen net'));
     if (s.antwoord === null) return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({ id: null }) });
@@ -82,7 +82,7 @@ const kaart = (s) => !!(s.elementen.plVersie && !s.elementen.plVersie.hidden);
   {
     const s = laad();
     await s.PLVersie.controleer();
-    toets('vraagt /app-versie zonder cache', /^\/app-versie\?/.test(s.laatsteUrl) && s.laatsteOpt && s.laatsteOpt.cache === 'no-store', s.laatsteUrl);
+    toets('vraagt /app-versie via plFetch, zonder cache en zonder sessie', /^\/app-versie\?/.test(s.laatsteUrl) && s.laatsteOpt && s.laatsteOpt.cache === 'no-store' && s.laatsteOpt.geenToken === true, s.laatsteUrl);
     toets('eerste antwoord = wat de pagina draait, geen kaart', s.PLVersie.staat().geladen === 'A' && !kaart(s));
     await s.PLVersie.controleer();
     toets('zelfde versie: geen kaart', !kaart(s));

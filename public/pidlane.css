@@ -4465,7 +4465,7 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
 .pl-versie{position:fixed;left:0;right:0;margin:0 auto;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:9600;
   width:min(420px,calc(100vw - 32px));box-sizing:border-box;padding:12px 14px;border-radius:14px;
   background:var(--sur,#121826);border:1px solid var(--bl,#3d8bfd);box-shadow:0 10px 30px rgba(0,0,0,.5);
-  color:var(--tx,#eef2fa);font-family:var(--f);animation:pidFadeUp .3s ease both}
+  color:var(--tx,#eef2fa);font-family:var(--f);animation:pidFadeUp .3s ease both 1}
 .pl-versie[hidden]{display:none}
 .pl-versie-kop b{display:block;font-size:15px}
 .pl-versie-kop span{display:block;font-size:12.5px;color:var(--tx2,#a9b4c8);margin-top:2px}
