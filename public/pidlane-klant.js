@@ -838,6 +838,8 @@
       // Nodig een vriend uit (14-11-2026): de code hoort bij een klantaccount.
       const vr = document.getElementById('kbVriend');
       if (vr) vr.style.display = isKlant() ? '' : 'none';
+      // De eigen code alvast ophalen voor de deelvoet onder rapporten.
+      if (isKlant() && window.PLVriend && PLVriend.haalCode) PLVriend.haalCode();
       // Klap een geopend adminmenu dicht bij het wisselen van gebruiker.
       if (!admin) {
         const g = document.getElementById('admGroup');

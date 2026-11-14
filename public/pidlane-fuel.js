@@ -833,7 +833,9 @@ async function aiReplyRevise(){
   }
 }
 async function shareAIReport(){
-  const r=window._lastAIReport; const txt=r&&r.text?PLRapport.zonderBlok(r.text):''; if(!txt){ showToast?.('Nog geen rapport'); return; }
+  const r=window._lastAIReport; const kaal=r&&r.text?PLRapport.zonderBlok(r.text):''; if(!kaal){ showToast?.('Nog geen rapport'); return; }
+  // Met de deelvoet: "Gemaakt met PidLane" en de eigen uitnodigingslink (PLVriend).
+  const txt=(typeof plMetVoet==='function')?plMetVoet(kaal):kaal;
   // Eerst de native route (Capacitor Filesystem+Share) — dezelfde die bij
   // PDF-delen bewezen werkt. Web-API's alleen als fallback (browser).
   try{

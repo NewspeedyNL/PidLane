@@ -972,6 +972,7 @@ function pidRecShare(){
   var rows=_recStats(); var d=window._recData;
   var txt='PidLane opname '+(d?d.ts.toLocaleString('nl-NL'):'')+' ('+(d?d.dur:0)+'s)\n';
   rows.forEach(function(r){ txt+=r.name+': '+r.n+' metingen, min '+(r.mn==null?'—':fv(r.mn))+', max '+(r.mx==null?'—':fv(r.mx))+', gem '+(r.av==null?'—':fv(r.av))+' '+r.unit+'\n'; });
+  if(typeof plMetVoet==='function') txt=plMetVoet(txt);   // deelvoet met de eigen uitnodigingslink
   try{
     if(navigator.share){ navigator.share({title:'PidLane opname', text:txt}).catch(function(){ /* stil: gebruiker kan het deelmenu gewoon sluiten */ }); }
     else if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast?.('Samenvatting naar klembord'); }
