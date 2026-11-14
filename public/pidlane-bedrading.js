@@ -305,7 +305,7 @@ var KRITIEK = [
   // modules roepen hem aan, de meeste zonder guard -- verdwijnt hij, dan valt
   // de app om op elke serveraanroep. Hij staat hier omdat dat dan meteen
   // zichtbaar is in plaats van pas bij de eerste inlogpoging.
-  'plFetch','plFetchUrl',
+  'plFetch','plFetchUrl','plMetVoet',
   // De opstart (27-10-2026): PLOpstart vraagt het kenteken via rdwLookup, en
   // de brandstofpoort kijkt met _isOpstart of hij mag vragen.
   'rdwLookup','_isOpstart',
