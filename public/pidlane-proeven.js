@@ -38,6 +38,26 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Opstart, verbinden, updatemelding, schakeladvies en uitnodigen (14-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Verbinden altijd via de 5 s-aftelbalk, pas na intro en inlogscherm; een updatekaart na een deploy; schakellampjes op Visueel; Nodig een vriend uit',
+    waarom: 'Uit het gebruik: de app verbond meteen ("altijd automatisch", terugkeer naar de app) en zelfs op het inlogscherm; nieuwe versies kwamen niet binnen zonder de knop achter Geavanceerd; schakeladvies ontbrak op Visueel; en er was geen manier om vrienden uit te nodigen.',
+    proef: async function () {
+      if (!window.PLStrook || !PLStrook._kern || typeof PLStrook._kern.magAftellen !== 'function') return { staat: 'FOUT', detail: 'PLStrook.magAftellen ontbreekt — herladen?' };
+      var K = PLStrook._kern;
+      if (K.magAftellen({ intro: true }) || K.magAftellen({ login: true }) || K.magAftellen({ verborgen: true }) || !K.magAftellen({})) return { staat: 'FOUT', detail: 'de aftelbalk loopt onder de intro, het inlogscherm of op de achtergrond' };
+      if (typeof PLStrook.altijd === 'function') return { staat: 'FOUT', detail: 'het vinkje "altijd automatisch" bestaat nog' };
+      if (!window.PLVersie || !PLVersie._kern.magTonen({ nieuw: true, live: 'b' }) || PLVersie._kern.magTonen({ nieuw: true, live: 'b', verbonden: true })) return { staat: 'FOUT', detail: 'PLVersie ontbreekt of toont de updatekaart midden in een rit' };
+      if (!window.PLVisueel || typeof PLVisueel.wisselSchakel !== 'function' || !document.getElementById('kbSchakelAdvies')) return { staat: 'FOUT', detail: 'schakeladvies op Visueel of de schakelaar in Mijn voorkeuren ontbreekt' };
+      if (!window.PLVriend || PLVriend._kern.codeNorm('pl 7k3pqr') !== 'PL-7K3PQR' || !document.getElementById('kbVriend')) return { staat: 'FOUT', detail: 'PLVriend of het menu-item Nodig een vriend uit ontbreekt' };
+      var st = PLVersie.staat();
+      var detail = 'versie ' + (st.geladen ? 'bekend' : 'nog niet van de server') + '; schakeladvies ' + (PLVisueel.schakelAan() ? 'aan' : 'uit');
+      if (!st.geladen) return { staat: 'LET OP', detail: detail + ' — /app-versie gaf (nog) geen id; de updatekaart zwijgt dan' };
+      return { staat: 'OK', detail: detail };
+    }
+  },
+
   // ── Hyperlane: tablet-modus simuleren vanuit het Admin-menu, Hartslag uit de keuze (10-11-2026) ──
   {
     issue: '—',

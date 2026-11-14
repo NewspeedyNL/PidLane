@@ -870,6 +870,7 @@ function closeConnOv(){
         <div class="kebab-kop">Account</div>
         <button class="kebab-item" id="kbAccount" style="display:none" onclick="closeKebab();PLKlant.openMijnTokens()">👤 Mijn account en tegoed</button>
         <button class="kebab-item" id="kbGarage" style="display:none" onclick="closeKebab();PLGarage.open()">🚗 Mijn voertuigen</button>
+        <button class="kebab-item" id="kbVriend" style="display:none" onclick="closeKebab();PLVriend.open()">🎁 Nodig een vriend uit</button>
         <div class="kebab-kop">Expert op afstand</div>
         <button class="kebab-item" id="plExpertDeel" onclick="closeKebab();PLNav.expert('deel')">📡 Laat iemand meekijken</button>
         <button class="kebab-item" id="plExpertOntvang" onclick="closeKebab();PLNav.expert('ontvang')">🔭 Ik ben de expert</button>
@@ -2147,6 +2148,7 @@ function closeConnOv(){
 <script src="pidlane-opstart.js"></script><!-- PLOpstart: opstart of herlaad (pl_laatst_actief), de check één keer per auto per dag, het kenteken uit de VIN, de wekker (native PLWekker) — ná pidlane-nav.js; pidlane-bt.js en PLNav lezen hem alleen tijdens het draaien -->
 <script src="pidlane-strook.js"></script><!-- PLStrook: verbinden zonder vensters — de stappenstrook bovenin, aftellen bij het openen, kenteken in stilstand, foutcodes stil; ná pidlane-opstart.js; pidlane-bt.js, auth en theme lezen hem tijdens het draaien -->
 <script src="pidlane-versie.js"></script><!-- PLVersie: "Nieuwe versie — Nu bijwerken" als er sinds het laden een deploy kwam (/app-versie); vereist plHardReload (index.html), leest PLIntro en connected -->
+<script src="pidlane-vriend.js"></script><!-- PLVriend: nodig een vriend uit — eigen code, delen, ?u=CODE uit de link bewaren voor de registratie; vereist plFetch, PLKlant -->
 <script src="pidlane-zonder.js"></script><!-- PLZonder: zonder adapter — kenteken-check (RDW), foutcode opzoeken, simulatie; vereist plFetch, PLRecall, dtcInfo, PLGarage -->
 <script src="pidlane-weer.js"></script><!-- PLWeer (#556): de verwachting voor een plaats uit een lijst, via /weer — locatievrij; vereist plFetch -->
 <script src="pidlane-zonderuit.js"></script><!-- PLZonderUit (#705): een eigen uitkomst zonder adapter — papierenrapport voor kopers, onderhoud volgens richtwaarden, lange rit, verbruik uit tankbeurten; ná pidlane-zonder.js (PLZonder._blad, haal) en pidlane-aankooprapport.js -->

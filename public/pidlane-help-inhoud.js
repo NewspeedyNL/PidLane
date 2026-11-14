@@ -528,6 +528,8 @@ var PL_HULP = {
       tekst: 'Koppel één keer de handsfree van je auto of een BLE-adapter. Daarna opent PidLane vanzelf als je de auto start.' },
     { id: 'rijmodus', anker: '#kbRijmodus', bron: 'index.html', onderwerp: 'rijmodus',
       tekst: 'Voor gesplitst scherm naast de kaart: een smalle strook met waarden en daaronder het advies van de Rit- of Caravan-monitor in beeld. Standaard uit.' },
+    { id: 'vriend', anker: '#kbVriend', bron: 'index.html', onderwerp: 'wat',
+      tekst: 'Deel je eigen code of link. Maakt een vriend daarmee een gratis account en verbindt die daarna voor het eerst een auto, dan krijgen jullie allebei extra AI-credits.' },
     { id: 'schakeladvies', anker: '#kbSchakelAdvies', bron: 'index.html', onderwerp: 'live',
       tekst: 'Tien lampjes en een ▲ op de meter van Visueel: ze lopen op naar het zuinige schakelpunt en knipperen als het tijd is om op te schakelen. Tik op de versnelling in de meter om ze aan of uit te zetten. Standaard aan.' },
     { id: 'afsluiten', anker: '#kbAfsluiten', bron: 'index.html', onderwerp: 'afsluiten',

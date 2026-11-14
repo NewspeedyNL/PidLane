@@ -3516,8 +3516,15 @@ async function handleKlantRegistreer(request, env, ctx) {
     });
     if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(melding); else await melding;
 
+    // Een uitnodigingscode (14-11-2026). Mislukt het koppelen, dan staat het
+    // account er gewoon: de code is een extraatje, geen voorwaarde.
+    let uitnodiging = null;
+    if (body.uitnodiging) {
+      try { uitnodiging = await uitnodigKoppel(env, email, body.uitnodiging); }
+      catch (e) { console.error("[uitnodiging] koppelen bij registreren mislukt :: " + String(e && e.message || e)); uitnodiging = { gekoppeld: false, reden: "tijdelijk niet te koppelen" }; }
+    }
     const t = await makeToken(env, email, "klant", naam || email);
-    return json({ ok: true, ...t, klant: klantPubliek(rec) }, 201);
+    return json({ ok: true, ...t, klant: klantPubliek(rec), uitnodiging }, 201);
   } catch (e) {
     return klantFout(e, "Registratie mislukt.");
   }
@@ -5804,6 +5811,10 @@ var KP_SCHEMA = [
   // de tekst waar de klant ja op zei.
   "CREATE TABLE IF NOT EXISTS kp_expertcode (code TEXT PRIMARY KEY, expert_u TEXT NOT NULL, expert_label TEXT, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL)",
   "CREATE TABLE IF NOT EXISTS kp_expert (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, expert_u TEXT NOT NULL, expert_label TEXT, sinds TEXT NOT NULL, tekst_versie TEXT NOT NULL)",
+  // Nodig een vriend uit (14-11-2026): de eigen code, en wie zich ermee aanmeldde.
+  "CREATE TABLE IF NOT EXISTS kp_uitnodigcode (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL UNIQUE, klant_u TEXT NOT NULL, aangemaakt TEXT NOT NULL)",
+  "CREATE TABLE IF NOT EXISTS kp_uitnodiging (vriend_id TEXT PRIMARY KEY, code TEXT NOT NULL, aangemeld TEXT NOT NULL, beloond TEXT, vin_pseudo TEXT, uitnodiger_credits INTEGER NOT NULL DEFAULT 0)",
+  "CREATE INDEX IF NOT EXISTS idx_kp_uitnodiging_code ON kp_uitnodiging (code)",
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_expert_kl ON kp_expert (klant_id, expert_u)"
 ];
 // Kolommen die er later bij kwamen. CREATE TABLE IF NOT EXISTS voegt op een
@@ -6327,6 +6338,16 @@ async function kpAlleWissen(db, klantId, o = {}) {
     const r = await db.prepare("DELETE FROM " + t + " WHERE klant_id = ?").bind(klantId).run();
     uit[t] = (r && r.meta && r.meta.changes) || 0;
   }
+  // De uitnodiging (14-11-2026) hoort bij het account, niet bij een auto:
+  // een schone start laat hem staan, alles wissen en verwijderen niet. Ook de
+  // rijen van vrienden die met deze code kwamen gaan mee: daarin staat de code,
+  // en via die code het e-mailadres van deze klant.
+  if (!o.behoudAkkoord) {
+    const code = await db.prepare("SELECT code FROM kp_uitnodigcode WHERE klant_id = ?").bind(klantId).first();
+    if (code) uit.kp_uitnodiging_vrienden = ((await db.prepare("DELETE FROM kp_uitnodiging WHERE code = ?").bind(code.code).run()).meta || {}).changes || 0;
+    uit.kp_uitnodiging = ((await db.prepare("DELETE FROM kp_uitnodiging WHERE vriend_id = ?").bind(klantId).run()).meta || {}).changes || 0;
+    uit.kp_uitnodigcode = ((await db.prepare("DELETE FROM kp_uitnodigcode WHERE klant_id = ?").bind(klantId).run()).meta || {}).changes || 0;
+  }
   return uit;
 }
 __name(kpAlleWissen, "kpAlleWissen");
@@ -6400,6 +6421,18 @@ __name(kpVoorkeurSchoon, "kpVoorkeurSchoon");
 
 // ── De acties ──────────────────────────────────────────────────────
 var KP_ACTIES = {
+  // Nodig een vriend uit (14-11-2026): eigen code en de stand. Geen akkoord
+  // van Mijn voertuigen nodig — er staat niets van een auto in. Probeert ook
+  // de eigen beloning als vriend: die kan blijven hangen als het
+  // verbindprofiel pas na het opslaan van de auto binnenkwam.
+  async uitnodiging(c) {
+    if (!c.u) return { ok: false, error: "Uitnodigen kan alleen met een klantaccount.", code: 403 };
+    let beloning = null;
+    try { beloning = await uitnodigBeloon(c); }
+    catch (e) { console.error("[uitnodiging] beloning niet beoordeeld :: " + String(e && e.message || e)); }
+    return Object.assign(await uitnodigStand(c), { beloning });
+  },
+
   async voorkeuren(c) {
     const r = await c.db.prepare("SELECT data, bijgewerkt FROM kp_voorkeur WHERE klant_id = ?").bind(c.klantId).first();
     return { ok: true, voorkeur: r ? (kpLees(r.data) || {}) : {}, bijgewerkt: r ? r.bijgewerkt : null };
@@ -6479,7 +6512,7 @@ var KP_ACTIES = {
       let na = await kpVoertuigVan(c.db, c.klantId, v.id);
       await kpVinDelen(c, na, zet, !!zet.vin_pseudo && zet.vin_pseudo !== v.vin_pseudo);
       na = await kpVoertuigVan(c.db, c.klantId, v.id);
-      return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
+      return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen, uitnodiging: zet.vin_pseudo ? await uitnodigNaAuto(c) : null };
     }
 
     const tel = await c.db.prepare("SELECT SUM(status = 'actief') AS actief, COUNT(*) AS totaal FROM kp_voertuig WHERE klant_id = ?").bind(c.klantId).first() || {};
@@ -6494,7 +6527,7 @@ var KP_ACTIES = {
       .bind(id, c.klantId, nu, nu, ...kol.map((k) => zet[k])).run();
     await kpVinDelen(c, await kpVoertuigVan(c.db, c.klantId, id), zet, !!zet.vin_pseudo);
     const na = await kpVoertuigVan(c.db, c.klantId, id);
-    return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen };
+    return { ok: true, voertuig: await kpVoertuigPubliek(na, c.sleutel, c.klantId), kentekenOpgeslagen, uitnodiging: zet.vin_pseudo ? await uitnodigNaAuto(c) : null };
   },
 
   async voertuig_archiveer(c, b) {
@@ -7080,7 +7113,7 @@ async function handleKlantPlatform(request, env) {
   try {
     const db = env.LOGDB;
     await kpSchema(db);
-    const c = { db, klantId, sleutel: await kpSleutel(env) };
+    const c = { db, klantId, sleutel: await kpSleutel(env), env, u: p.beheer ? null : p.u };
     let ak = await db.prepare("SELECT versie FROM kp_akkoord WHERE klant_id = ?").bind(klantId).first();
 
     // Bij het openen (stand) de accountstatus: geblokkeerd of verwijderd =
@@ -7109,7 +7142,7 @@ async function handleKlantPlatform(request, env) {
       return json({ ok: false, error: "Dit account is op eigen verzoek verwijderd en kan niet meer gebruikt worden.", code: "verwijderd" }, 403);
     // Voorkeuren (tekstgrootte, weergave, …) zijn geen voertuiggegevens en
     // vragen dus niet om het akkoord van Mijn voertuigen.
-    if (actie !== "stand" && actie !== "akkoord" && actie !== "alles_wissen" && actie !== "voorkeuren" && actie !== "voorkeuren_opslaan") {
+    if (actie !== "stand" && actie !== "akkoord" && actie !== "alles_wissen" && actie !== "voorkeuren" && actie !== "voorkeuren_opslaan" && actie !== "uitnodiging") {
       if (!ak || ak.versie !== KP_AKKOORD_VERSIE)
         return json({ ok: false, error: "Eerst akkoord op het bewaren van je voertuiggegevens.", akkoordNodig: true }, 403);
     }
@@ -7496,6 +7529,170 @@ async function logRondeOpruimen(env) {
   }
 }
 __name(logRondeOpruimen, "logRondeOpruimen");
+
+// ── Nodig een vriend uit (14-11-2026) ───────────────────────────────
+// Uit het gebruik: "nodig een vriend uit, inruil voor AI-credits na
+// succesvolle registratie van de vriend". Elke klant krijgt een eigen code
+// (PL-XXXXXX, kp_uitnodigcode). Wie zich met die code registreert, krijgt een
+// rij in kp_uitnodiging. De beloning volgt NIET bij het registreren, maar bij
+// de eerste auto van de vriend die nog niet eerder bij PidLane bekend was:
+//   • de vriend: UITNODIG.vriend credits, bovenop het welkomsttegoed;
+//   • de uitnodiger: UITNODIG.uitnodiger credits, hoogstens UITNODIG.max keer.
+// WAAROM NIET BIJ HET REGISTREREN. Het e-mailadres wordt niet geverifieerd:
+// tien nepaccounts zijn dan tien keer gratis tegoed. Een auto die nog nooit
+// verbond is veel lastiger na te maken. Wat telt als "nieuw":
+//   • het pseudoniem staat niet bij een ándere klant in kp_voertuig;
+//   • er is geen verbindprofiel van vóór de aanmelding, en wél een van erna
+//     (de app stuurt er één bij elke verbinding: er is echt verbonden);
+//   • deze auto leverde nog geen beloning op.
+// Alles is client-invoer en dus na te bootsen; het plafond per uitnodiger en
+// de rate limit op registreren houden de schade dan klein. Zie
+// PIDLANE-ARCHIEF.md (14-11-2026).
+var UITNODIG = { vriend: 10, uitnodiger: 20, max: 10 };
+var UITNODIG_TEKENS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+function uitnodigInstel(env) {
+  const getal = (v, d) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.round(Number(v)) : d);
+  return {
+    vriend: getal(env && env.UITNODIG_VRIEND, UITNODIG.vriend),
+    uitnodiger: getal(env && env.UITNODIG_UITNODIGER, UITNODIG.uitnodiger),
+    max: getal(env && env.UITNODIG_MAX, UITNODIG.max)
+  };
+}
+__name(uitnodigInstel, "uitnodigInstel");
+// "pl-7k3pqr", "PL 7K3 PQR" en "7K3PQR" zijn allemaal PL-7K3PQR. Puur.
+function uitnodigCodeNorm(v) {
+  let c = String(v || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (c.length === 8 && c.slice(0, 2) === "PL") c = c.slice(2);
+  return /^[A-HJKMNP-Z2-9]{6}$/.test(c) ? "PL-" + c : null;
+}
+__name(uitnodigCodeNorm, "uitnodigCodeNorm");
+function uitnodigCodeNieuw() {
+  const b = crypto.getRandomValues(new Uint8Array(6));
+  return "PL-" + Array.from(b, (x) => UITNODIG_TEKENS[x % UITNODIG_TEKENS.length]).join("");
+}
+__name(uitnodigCodeNieuw, "uitnodigCodeNieuw");
+// Het oordeel over één auto van de vriend. Puur, zie test-uitnodiging.js.
+function uitnodigOordeel(o) {
+  if (!o || !/^[0-9a-f]{16}$/.test(String(o.vin || ""))) return { betaal: false, reden: "geen geldige auto" };
+  if (o.alBeloond) return { betaal: false, reden: "deze auto leverde al een beloning op" };
+  if (o.bijAnder || o.profielVoor) return { betaal: false, reden: "deze auto was al bekend bij PidLane" };
+  if (!o.profielNa) return { betaal: false, reden: "nog geen verbinding met deze auto gezien" };
+  return { betaal: true, uitnodiger: Number(o.aantalBeloond || 0) < Number(o.max || 0), reden: "" };
+}
+__name(uitnodigOordeel, "uitnodigOordeel");
+async function uitnodigEigenCode(db, klantId, email) {
+  const rij = await db.prepare("SELECT code FROM kp_uitnodigcode WHERE klant_id = ?").bind(klantId).first();
+  if (rij) return rij.code;
+  for (let i = 0; i < 5; i++) {
+    const code = uitnodigCodeNieuw();
+    const r = await db.prepare("INSERT OR IGNORE INTO kp_uitnodigcode (code, klant_id, klant_u, aangemaakt) VALUES (?, ?, ?, ?)")
+      .bind(code, klantId, String(email || "").trim().toLowerCase(), kpNu()).run();
+    if (r && r.meta && r.meta.changes) return code;
+    const al = await db.prepare("SELECT code FROM kp_uitnodigcode WHERE klant_id = ?").bind(klantId).first();
+    if (al) return al.code;   // tegelijk aangemaakt door een tweede verzoek
+  }
+  throw new Error("geen vrije uitnodigingscode gevonden");
+}
+__name(uitnodigEigenCode, "uitnodigEigenCode");
+// Bij het registreren: de code koppelen. Een onbekende code of je eigen code
+// is geen fout voor de registratie; het antwoord zegt alleen of hij telt.
+async function uitnodigKoppel(env, email, ruw) {
+  const code = uitnodigCodeNorm(ruw);
+  if (!code) return { gekoppeld: false, reden: ruw ? "onbekende code" : "" };
+  const db = env.LOGDB;
+  await kpSchema(db);
+  const van = await db.prepare("SELECT klant_u FROM kp_uitnodigcode WHERE code = ?").bind(code).first();
+  if (!van) return { gekoppeld: false, reden: "onbekende code" };
+  if (van.klant_u === String(email || "").trim().toLowerCase()) return { gekoppeld: false, reden: "eigen code" };
+  const r = await db.prepare("INSERT OR IGNORE INTO kp_uitnodiging (vriend_id, code, aangemeld) VALUES (?, ?, ?)")
+    .bind(await kpKlantId(email), code, kpNu()).run();
+  return { gekoppeld: !!(r && r.meta && r.meta.changes), code };
+}
+__name(uitnodigKoppel, "uitnodigKoppel");
+async function uitnodigTegoedBij(env, email, bedrag, details) {
+  if (!(bedrag > 0)) return null;
+  const u = await metSaldoSlot(env, email, async () => {
+    const rec = await klantZoek(env, email);
+    if (!rec) return null;
+    const f = rec.fields || {};
+    if (klantToegangProbleem(f)) return null;
+    const nieuw = Number(f.Saldo || 0) + bedrag;
+    await klantPatch(env, rec.id, { Saldo: nieuw });
+    return nieuw;
+  });
+  if (u.bezet) throw new Error("saldo-slot bezet");
+  if (u.result == null) return null;
+  await tegoedLog(env, null, { klant: email, soort: "uitnodiging", credits: bedrag, saldoNa: u.result, details });
+  return u.result;
+}
+__name(uitnodigTegoedBij, "uitnodigTegoedBij");
+// Probeert de beloning voor deze klant als vriend. Veilig om vaak aan te
+// roepen: zonder openstaande uitnodiging is het één SELECT. Eerst de rij
+// claimen (beloond IS NULL → gezet), dan pas uitbetalen: twee gelijktijdige
+// aanroepen betalen zo nooit twee keer.
+async function uitnodigBeloon(c) {
+  if (!c || !c.env || !c.u) return null;
+  const db = c.db;
+  const rij = await db.prepare("SELECT * FROM kp_uitnodiging WHERE vriend_id = ? AND beloond IS NULL").bind(c.klantId).first();
+  if (!rij) return null;
+  const inst = uitnodigInstel(c.env);
+  const autos = await db.prepare("SELECT DISTINCT vin_pseudo FROM kp_voertuig WHERE klant_id = ? AND vin_pseudo IS NOT NULL").bind(c.klantId).all();
+  try { await db.prepare(VERBIND_SCHEMA).run(); } catch (e) { console.error("[uitnodiging] verbindprofielen niet aan te maken :: " + String(e && e.message || e)); }
+  let laatste = { betaal: false, reden: "nog geen auto met chassisnummer in Mijn voertuigen" };
+  for (const a of (autos && autos.results) || []) {
+    const vin = a.vin_pseudo;
+    const q = (sql, ...w) => db.prepare(sql).bind(...w).first();
+    const oordeel = uitnodigOordeel({
+      vin,
+      alBeloond: !!await q("SELECT 1 AS j FROM kp_uitnodiging WHERE vin_pseudo = ? AND beloond IS NOT NULL", vin),
+      bijAnder: !!await q("SELECT 1 AS j FROM kp_voertuig WHERE vin_pseudo = ? AND klant_id != ?", vin, c.klantId),
+      profielVoor: !!await q("SELECT 1 AS j FROM verbindprofielen WHERE vin_pseudo = ? AND ontvangen < ?", vin, rij.aangemeld),
+      profielNa: !!await q("SELECT 1 AS j FROM verbindprofielen WHERE vin_pseudo = ? AND ontvangen >= ?", vin, rij.aangemeld),
+      aantalBeloond: ((await q("SELECT COUNT(*) AS n FROM kp_uitnodiging WHERE code = ? AND uitnodiger_credits > 0", rij.code)) || {}).n,
+      max: inst.max
+    });
+    laatste = oordeel;
+    if (!oordeel.betaal) continue;
+    const van = await q("SELECT klant_u FROM kp_uitnodigcode WHERE code = ?", rij.code);
+    const voorUitnodiger = oordeel.uitnodiger && van ? inst.uitnodiger : 0;
+    const claim = await db.prepare("UPDATE kp_uitnodiging SET beloond = ?, vin_pseudo = ?, uitnodiger_credits = ? WHERE vriend_id = ? AND beloond IS NULL")
+      .bind(kpNu(), vin, voorUitnodiger, c.klantId).run();
+    if (!claim || !claim.meta || claim.meta.changes !== 1) return null;   // een ander verzoek was eerst
+    const uit = { beloond: true, credits: inst.vriend, saldo: null };
+    try { uit.saldo = await uitnodigTegoedBij(c.env, c.u, inst.vriend, "welkom via uitnodiging " + rij.code); }
+    catch (e) { console.error("[uitnodiging] tegoed vriend niet bijgeschreven :: " + String(e && e.message || e)); }
+    if (voorUitnodiger) {
+      try { await uitnodigTegoedBij(c.env, van.klant_u, voorUitnodiger, "vriend geregistreerd met " + rij.code); }
+      catch (e) { console.error("[uitnodiging] tegoed uitnodiger niet bijgeschreven :: " + String(e && e.message || e)); }
+    }
+    return uit;
+  }
+  return { beloond: false, reden: laatste.reden };
+}
+__name(uitnodigBeloon, "uitnodigBeloon");
+// Wat de klant op het scherm "Nodig een vriend uit" ziet.
+async function uitnodigStand(c) {
+  const code = await uitnodigEigenCode(c.db, c.klantId, c.u);
+  const inst = uitnodigInstel(c.env);
+  const tel = await c.db.prepare("SELECT SUM(beloond IS NOT NULL) AS beloond, SUM(beloond IS NULL) AS wacht, SUM(uitnodiger_credits) AS credits FROM kp_uitnodiging WHERE code = ?").bind(code).first() || {};
+  const zelf = await c.db.prepare("SELECT beloond FROM kp_uitnodiging WHERE vriend_id = ?").bind(c.klantId).first();
+  return {
+    // "mijnCode" en niet "code": handleKlantPlatform leest uit.code als HTTP-status.
+    ok: true, mijnCode: code, link: "https://app.pidlane.nl/?u=" + encodeURIComponent(code),
+    beloond: Number(tel.beloond || 0), wacht: Number(tel.wacht || 0), verdiend: Number(tel.credits || 0),
+    max: inst.max, voorJou: inst.uitnodiger, voorVriend: inst.vriend,
+    zelfUitgenodigd: zelf ? (zelf.beloond ? "beloond" : "wacht") : null
+  };
+}
+__name(uitnodigStand, "uitnodigStand");
+
+// Na het opslaan van een auto met chassisnummer: een fout in de beloning
+// mag het opslaan zelf nooit laten mislukken.
+async function uitnodigNaAuto(c) {
+  try { return await uitnodigBeloon(c); }
+  catch (e) { console.error("[uitnodiging] beloning na opslaan niet beoordeeld :: " + String(e && e.message || e)); return null; }
+}
+__name(uitnodigNaAuto, "uitnodigNaAuto");
 
 // ── /app-versie (14-11-2026) ────────────────────────────────────────
 // Het id van de deploy die nu live staat, uit Cloudflare version metadata

@@ -312,6 +312,10 @@ CREATE INDEX IF NOT EXISTS idx_kp_tank_vt ON kp_tank (voertuig_id, op DESC);
 CREATE TABLE IF NOT EXISTS kp_expertcode (code TEXT PRIMARY KEY, expert_u TEXT NOT NULL, expert_label TEXT, aangemaakt TEXT NOT NULL, verloopt TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS kp_expert (id TEXT PRIMARY KEY, klant_id TEXT NOT NULL, expert_u TEXT NOT NULL, expert_label TEXT, sinds TEXT NOT NULL, tekst_versie TEXT NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_kp_expert_kl ON kp_expert (klant_id, expert_u);
+-- Nodig een vriend uit (14-11-2026): de eigen code, en wie zich ermee aanmeldde.
+CREATE TABLE IF NOT EXISTS kp_uitnodigcode (code TEXT PRIMARY KEY, klant_id TEXT NOT NULL UNIQUE, klant_u TEXT NOT NULL, aangemaakt TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS kp_uitnodiging (vriend_id TEXT PRIMARY KEY, code TEXT NOT NULL, aangemeld TEXT NOT NULL, beloond TEXT, vin_pseudo TEXT, uitnodiger_credits INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_kp_uitnodiging_code ON kp_uitnodiging (code);
 -- Later bijgekomen kolommen (KP_MIGRATIES in worker.js). De Worker voert ze
 -- zelf uit; "duplicate column" betekent dat ze er al staan.
 ALTER TABLE kp_voertuig ADD COLUMN onderhoud_laatst TEXT;
