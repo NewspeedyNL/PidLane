@@ -2437,7 +2437,7 @@ MUTATIES=(
 "public/pidlane-neon.js@@    if(!was) return;\n@@@@test-terugkeer.js@@bij elke terugkeer naar de app meteen Adapter zoeken, ook na Annuleren of op het inlogscherm"
 "public/pidlane-neon.js@@          try{ PLStrook.aftellen(ga); return; }@@          try{ ga(); return; }@@test-terugkeer.js@@herverbinden na terugkeer slaat de aftelbalk over"
 "public/pidlane-versie.js@@    return !o.verbonden && !o.intro && o.zichtbaar !== false;@@    return !o.intro && o.zichtbaar !== false;@@test-versie.js@@de updatekaart midden in een rit: bijwerken herlaadt en verbreekt de verbinding"
-"public/pidlane-versie.js@@      if (!_geladen) { _geladen = id; return false; }@@      if (!_geladen) { _geladen = id; }@@test-versie.js@@de kaart vergelijkt de versie met zichzelf of met niets en komt op een gok"
+"public/pidlane-versie.js@@      _live = id;\n      return beoordeel();@@      _geladen = id; _live = id;\n      return beoordeel();@@test-versie.js@@de geladen versie schuift mee met elke controle: na een deploy komt er nooit een kaart"
 "public/pidlane-versie.js@@    if (o.later && o.later === o.live) return false;@@@@test-versie.js@@Later helpt niet: de kaart komt bij elke terugkeer naar de app terug"
 "public/pidlane-vriend.js@@    schrijf('');\n    if (u && u.gekoppeld)@@    if (u && u.gekoppeld)@@test-vriend.js@@de uitnodigingscode blijft na de registratie staan en vult het volgende account ook in"
 "public/pidlane-klant.js@@      const r = await klantRegistreer(email, p1, naam, uitn);@@      const r = await klantRegistreer(email, p1, naam);@@test-vriend.js@@de ingevulde uitnodigingscode gaat nooit mee naar de server"
