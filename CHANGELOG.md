@@ -10,6 +10,19 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═══════════════════════════════════════════════════════════
+ 14-11-2026 (avond) — Deelvoet onder rapporten, review-vraag
+ ═══════════════════════════════════════════════════════════
+
+ - Elk gedeeld rapport (tekst, PDF, AI-rapport, opname-samenvatting) draagt
+   "Gemaakt met PidLane" met de eigen uitnodigingslink (PLVriend.voet,
+   plMetVoet). Niet onder testrun en logboek (ruw). De code wordt na het
+   inloggen één keer opgehaald en per account bewaard (pl_mijn_code).
+ - PLReview: in de Android-app na een groene foutcodelezing een kaart
+   "Bevalt PidLane?" met Beoordelen (Play-pagina), Later en Nee bedankt.
+   Pas na 3 dagen en 3 verbindingen, hoogstens 3 keer, 60 dagen ertussen,
+   nooit tijdens het rijden.
+
+ ═══════════════════════════════════════════════════════════
  14-11-2026 — Aftelbalk, kortere intro, updatemelding, schakeladvies, vriend uitnodigen
  ═══════════════════════════════════════════════════════════
 
