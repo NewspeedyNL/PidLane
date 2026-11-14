@@ -1696,6 +1696,15 @@ rect.vis-tik { fill:transparent; cursor:pointer; pointer-events:all; }
 .vis-plek.geen { opacity:.45; }
 /* De versnelling in het midden (27-09-2026). */
 .vis-gear { fill:var(--tx); font-weight:800; }
+.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }   /* schakeladvies (14-11-2026), zoals .vhl-leds */
+.vis-leds circle.g { fill:#2dff9a; filter:drop-shadow(0 0 3px #2dff9a); }
+.vis-leds circle.a { fill:#ffb020; filter:drop-shadow(0 0 3px #ffb020); }
+.vis-leds circle.r { fill:#ff3050; filter:drop-shadow(0 0 3px #ff3050); }
+.vis-leds circle.max { fill:#4aa8ff; filter:drop-shadow(0 0 4px #4aa8ff); animation:vis-led-knip .16s steps(2) infinite; }
+@keyframes vis-led-knip { 50% { fill:rgba(255,255,255,.08); filter:none; } }
+.vis-pijl { display:none; fill:#ff3050; font-weight:800; }
+.vis-pijl.aan { display:inline; animation:vhl-pijl .5s ease-in-out infinite alternate; }
+@media (prefers-reduced-motion:reduce) { .vis-leds circle.max, .vis-pijl.aan { animation:none; } }
 /* Het bandenlampje (28-09-2026): opent PLBanden. Sinds 30-09 rechtsonder
    in de hoek van de meter, waar de cirkel de ruimte vrijlaat. */
 .vis-lamp-banden { position:absolute; right:0; bottom:0; z-index:1; pointer-events:auto; display:inline-flex; align-items:center; justify-content:center; width:40px; height:60px; padding:0;

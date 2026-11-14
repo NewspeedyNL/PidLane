@@ -150,10 +150,22 @@ const vakken = cijfers.map(c => tekstVak('cijfer ' + c.t, c.x, c.y, G.FS_CIJFER,
     tekstVak('km/h', G.C, G.Y_KMH, G.FS_EENHEID, 'km/h'),
     { naam: 'naaf', x0: G.C - G.R_NAAF, x1: G.C + G.R_NAAF, y0: G.C - G.R_NAAF, y1: G.C + G.R_NAAF }
   ])
+  // Schakeladvies (14-11-2026): de lampjes en de ▲, uit de TEKENING gelezen.
+  .concat(schakelVakken(plaat))
   // De plekken (08-10-2026): per boog icoon en waarde, en het getal in het
   // midden met zijn eenheid — uit de TEKENING gelezen, niet uit G overgenomen,
   // zodat een plek die ergens anders getekend wordt dan G zegt hier meetelt.
   .concat(plekVakken(plaat));
+function schakelVakken(pl) {
+  const c = [...pl.matchAll(/<g id="vis-leds"[^>]*>([\s\S]*?)<\/g>/g)];
+  if (c.length !== 1) throw new Error('de schakellampjes staan niet (één keer) in de wijzerplaat');
+  const ls = [...c[0][1].matchAll(/<circle cx="([-\d.]+)" cy="([-\d.]+)" r="([-\d.]+)"/g)].map(m => ({ x: +m[1], y: +m[2], r: +m[3] }));
+  if (ls.length !== G.N_LEDS) throw new Error('niet ' + G.N_LEDS + ' schakellampjes maar ' + ls.length);
+  const p = /<text id="vis-pijl" class="vis-pijl" x="([-\d.]+)" y="([-\d.]+)" style="font-size:([-\d.]+)px"/.exec(pl);
+  if (!p) throw new Error('de ▲ van het schakeladvies staat niet in de wijzerplaat');
+  return [{ naam: 'schakellampjes', x0: ls[0].x - ls[0].r, x1: ls[ls.length - 1].x + ls[0].r, y0: ls[0].y - ls[0].r, y1: ls[0].y + ls[0].r },
+    tekstVak('schakelpijl', +p[1], +p[2], +p[3], '▲')];
+}
 function plekVakken(pl) {
   const uit = [];
   [...pl.matchAll(/<g id="visp-(links|rechts)" class="vis-plek vis-boog[^"]*"[^>]*>([\s\S]*?)<\/g>/g)].forEach(m => {
@@ -1038,6 +1050,34 @@ console.log('\n── De levende statusbalk: puls bij een nieuwe waarde (28-10-2
   waar('gewone accu: "Accu 12,4 V" met een ring', /<small>Accu<\/small><b>12,4 V<\/b>/.test(ac) && boog(ac) !== null, ac);
   const lang = H({ kop: '<b>lang</b>', waarde: '"x"', icoon: 'motor', balk: null });
   waar('TEGENPROEF: tekst wordt ge-escaped', !/<b>lang<\/b>/.test(lang) && /&lt;b/.test(lang), lang);
+}
+
+// ── Schakeladvies op de meter (14-11-2026) ──
+console.log('\n── schakeladvies: het balkje van Hyperlane op Visueel ──');
+{
+  waar('de vermogensnaald heeft geen schakellampjes', !/vis-leds|vis-pijl/.test(V.wijzerplaat(0, 100, 'vermogen')));
+  const c = maak();
+  const opslag = {};
+  c.localStorage = { getItem: (k) => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); }, removeItem: (k) => { delete opslag[k]; } };
+  vm.runInContext(lees('pidlane-hyperlane.js'), c, { filename: 'pidlane-hyperlane.js' });   // de echte rekensom, geen kopie
+  const W = c.PLVisueel;
+  waar('standaard aan', W.schakelAan() === true);
+  const onder = W.schakelStand(true, 1500, 2400, false);
+  waar('onder 80% van het schakelpunt: geen lampje', onder && onder.aan === 0 && !onder.max && !onder.pijl, JSON.stringify(onder));
+  const half = W.schakelStand(true, 2160, 2400, false);
+  waar('halfweg tussen 80% en het punt: vijf lampjes', half && half.aan === 5 && !half.pijl, JSON.stringify(half));
+  const op = W.schakelStand(true, 2450, 2400, false);
+  waar('op het schakelpunt: knipperen en ▲', op && op.max && op.pijl, JSON.stringify(op));
+  const top = W.schakelStand(true, 2450, 2400, true);
+  waar('hoogste versnelling: wel knipperen, geen ▲', top && top.max && !top.pijl, JSON.stringify(top));
+  waar('geen toerental: niets aan', W.schakelStand(true, null, 2400, false).aan === 0);
+  waar('uitgezet: geen lampjes', W.schakelStand(false, 2450, 2400, false) === null);
+  c.showToast = () => {}; c.document = { getElementById: () => null };
+  waar('wisselen zet hem uit en bewaart dat', W.wisselSchakel() === false && opslag[W.SCHAKEL_SLEUTEL] === '0' && W.schakelAan() === false);
+  waar('en weer aan: de sleutel is weg', W.wisselSchakel() === true && !(W.SCHAKEL_SLEUTEL in opslag));
+  const hb = lees('index.html');
+  waar('de schakelaar staat in Mijn voorkeuren en roept wisselSchakel aan', /id="kbSchakelAdvies" role="switch"[^>]*onclick="PLVisueel\.wisselSchakel\(\)"/.test(hb));
+  waar('tikken op de versnelling wisselt ook', /id="vis-gear-tik"[^>]*onclick="PLVisueel\.wisselSchakel\(\)"/.test(V.wijzerplaat(6000)));
 }
 
 console.log('\n' + (fout ? 'FOUT: ' : 'goed: ') + ok + ' ok, ' + fout + ' fout\n');

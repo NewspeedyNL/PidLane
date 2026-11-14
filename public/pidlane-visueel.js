@@ -314,7 +314,11 @@ const G = {
   Y_MID: 250, FS_MID: 22, Y_MID_EENHEID: 270,
   VB: 320,
   // De versnelling, in het midden op de plek van het embleem (27-09-2026).
-  FS_GEAR: 34
+  FS_GEAR: 34,
+  // Schakeladvies (14-11-2026): tien lampjes tussen de "4" en de versnelling,
+  // en een ▲ rechts van de versnelling — het schakelbalkje van Hyperlane.
+  // test-visueel.js rekent na dat ze cijfers, embleem en versnelling niet raken.
+  Y_LEDS: 82, R_LED: 3, DX_LED: 7.2, N_LEDS: 10, X_PIJL: 196, FS_PIJL: 16
 };
 
 function P(r,a){ const t=(a-90)*Math.PI/180; return [G.C+r*Math.cos(t), G.C+r*Math.sin(t)]; }
@@ -664,6 +668,76 @@ function gearBij(){
   zetTekst('vis-gear', t);
   if(lg) lg.style.display = logoZien(t, window.PLGear) ? '' : 'none';
 }
+/* ── Schakeladvies op de meter (14-11-2026) ────────────────────────
+   Uit het gebruik: "toch Schakeladvies mooi verwerken in weergave, wel aan of
+   uit te zetten", met het schakelbalkje van Hyperlane als voorbeeld. Dus
+   dezelfde rekensom (PLHyperlane.schakelDoel, leds, pijlOp — één bron): de
+   lampjes lopen naar het ecopunt van CA11, bij zware belasting naar 90% van
+   de rode streep; op het punt knipperen ze en staat er ▲ naast de
+   versnelling. Niet bij de vermogensnaald: daar is geen toerental.
+   Aan of uit: Mijn voorkeuren → Schakeladvies op de meter, of tik op de
+   versnelling. Standaard aan; pl_vis_schakel = '0' is uit. */
+const SCHAKEL_SLEUTEL = 'pl_vis_schakel';
+function schakelTekening(){
+  let s='<g id="vis-leds" class="vis-leds" aria-hidden="true">';
+  const x0=G.C-G.DX_LED*(G.N_LEDS-1)/2;
+  for(let i=0;i<G.N_LEDS;i++) s+='<circle cx="'+f2(x0+i*G.DX_LED)+'" cy="'+G.Y_LEDS+'" r="'+G.R_LED+'"/>';
+  s+='</g>';
+  s+=tekstEl('vis-pijl', 'vis-pijl', G.X_PIJL, G.Y_LOGO, G.FS_PIJL, '▲');
+  // Het tikvlak over de versnelling: schakeladvies aan of uit.
+  s+='<rect id="vis-gear-tik" class="vis-tik" x="'+(G.C-34)+'" y="'+(G.Y_LEDS-10)+'" width="68" height="'+(G.Y_LOGO+G.FS_GEAR*0.6-G.Y_LEDS+10)+'" onclick="PLVisueel.wisselSchakel()"><title>Schakeladvies aan of uit</title></rect>';
+  return s;
+}
+function schakelAan(){
+  try{ return localStorage.getItem(SCHAKEL_SLEUTEL)!=='0'; }
+  catch(e){ console.warn('PLVisueel: schakeladvies-keuze niet te lezen — staat aan', e); return true; }
+}
+function schakelMenu(){
+  try{ const k=el('kbSchakelAdvies'); if(k) k.setAttribute('aria-checked', schakelAan() ? 'true' : 'false'); }
+  catch(e){ console.warn('PLVisueel: menuschakelaar schakeladvies niet bijgewerkt', e); }
+}
+function wisselSchakel(aan){
+  const nu=(typeof aan==='boolean') ? aan : !schakelAan();
+  try{ if(nu) localStorage.removeItem(SCHAKEL_SLEUTEL); else localStorage.setItem(SCHAKEL_SLEUTEL, '0'); }
+  catch(e){ console.warn('PLVisueel: schakeladvies-keuze niet bewaard', e); }
+  schakelMenu();
+  schakelBij();
+  try{ if(typeof showToast==='function') showToast('Schakeladvies '+(nu ? 'aan' : 'uit'), 1200); }
+  catch(e){ console.warn('PLVisueel: melding schakeladvies', e); }
+  return nu;
+}
+/* Waar staan de lampjes nu? Puur: toeren, het schakelpunt (of null) en of
+   het de hoogste versnelling is. Geeft {aan, max, pijl} of null (uit). */
+function schakelStand(aanGezet, toeren, punt, top){
+  const H=window.PLHyperlane;
+  if(!aanGezet || !H || typeof H.leds!=='function') return null;
+  const l=H.leds(toeren, punt, G.N_LEDS);
+  return { aan:l.aan, max:l.max, pijl:H.pijlOp(toeren, punt, top) };
+}
+function schakelBij(){
+  const ind=_staat.ind, g=el('vis-leds'), pe=el('vis-pijl');
+  if(!g || !ind) return;
+  const H=window.PLHyperlane;
+  let punt=null, top=false, toeren=null;
+  if(H && typeof H.schakelLees==='function' && ind.naald){
+    try{
+      const sl=H.schakelLees(), rood=ind.schaal && ind.schaal.rood;
+      punt=H.schakelDoel(rood, sl.eco, H.belastingHoog());
+      top=sl.top;
+      toeren=(typeof pidVals!=='undefined' && pidVals) ? pidVals[ind.naald] : null;
+      if(toeren===undefined || isOud(ind.naald, Date.now())) toeren=null;
+    }catch(e){ console.warn('PLVisueel: schakelpunt niet te lezen', e); }
+  }
+  const st=schakelStand(schakelAan(), toeren, punt, top);
+  g.style.display=st ? '' : 'none';
+  if(pe) pe.classList.toggle('aan', !!(st && st.pijl));
+  if(!st) return;
+  const ls=g.children;
+  for(let i=0;i<ls.length;i++){
+    const c=st.max ? 'max' : (i<st.aan ? (i<4 ? 'g' : i<7 ? 'a' : 'r') : '');
+    if(ls[i].getAttribute('class')!==c) ls[i].setAttribute('class', c);
+  }
+}
 /* De plaat van de vermogensnaald: dezelfde boog en dezelfde straal als de
    toerenplaat, alleen met een nulpunt. Links de laadzone in groen, rechts
    streepjes per 10% vraag met cijfers op 0, 50 en 100. Twee vulbogen vanaf
@@ -700,6 +774,7 @@ function wijzerplaat(wH, max, soort){
   }
   s+='<g id="visg-logo">'+embleem()+'</g>';
   s+=tekstEl('vis-gear', 'vis-gear', C, G.Y_LOGO, G.FS_GEAR, '');
+  if(soort!=='vermogen') s+=schakelTekening();
   // De twee bogen onderin (08-10-2026).
   s+=plekBoog('links')+plekBoog('rechts');
   // Midden: de snelheid.
@@ -1600,7 +1675,7 @@ function bouw(g, reden){
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
+  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
   themaBij(g);   // de basismeter krijgt daar geen thema: de schil kleurt hem (PLVisThema.pas)
   try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
@@ -1889,6 +1964,7 @@ function bij(pid, val){
       else { pk.style.display=''; pk.style.transform='rotate('+pd.hoek.toFixed(2)+'deg)'; }
     }
     if(!s.leeg) vers('visg-naald');
+    schakelBij();
     // Het toerental beslist mee over de accu: laadt een draaiende dynamo?
     if(ind.lamp.volt) lampjesBij();
   }
@@ -1993,7 +2069,7 @@ function tik(){
   }
   if(I.profiel) energieProfielBij();
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij();
+  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -2043,7 +2119,7 @@ window.PLVisueel = {
   versnellingUit:versnellingUit, aandeelBij:aandeelBij, aandeelUit:aandeelUit, accuLeerBij:accuLeerBij, elektrischBereik:elektrischBereik, bereikUit:bereikUit,
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
   indeling:indeling, gebruiktePids:gebruiktePids, herbouwKeuze:herbouwKeuze, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
-  meldingen:meldingen, schakel:schakel,
+  meldingen:meldingen, schakel:schakel, wisselSchakel:wisselSchakel, schakelAan:schakelAan, schakelStand:schakelStand, schakelMenu:schakelMenu, SCHAKEL_SLEUTEL:SCHAKEL_SLEUTEL,
   TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
@@ -2054,4 +2130,7 @@ window.PLVisueel = {
   staat:function(){ return { aan:_staat.aan, start:_staat.start, traag:Array.from(_staat.traag),
                              turboVast:_staat.turboVast, gebruik:Array.from(_staat.gebruik), ind:_staat.ind, rijdtSinds:_staat.rijdtSinds }; }
 };
+// De menuschakelaar meteen goed zetten, ook als Visueel nog nooit open was.
+if(typeof document!=='undefined' && document.readyState==='loading') document.addEventListener('DOMContentLoaded', schakelMenu, { once:true });
+else schakelMenu();
 })();

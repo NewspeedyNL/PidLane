@@ -322,6 +322,25 @@ function beoordeel(m) {
     toets('open: toerental ongemoeid', rem.open.rpm < rem.rem, JSON.stringify(rem));
     toets('terug naar Slim: de rem is eraf', rem.dicht.aan === false && rem.dicht.klep < rem.rem, JSON.stringify(rem));
 
+    console.log('\n6b. Schakeladvies op de meter (14-11-2026)');
+    const sch = await app.ev(`(function(){
+      const g=document.getElementById('vis-leds'), r={ leds:g ? g.children.length : 0, zichtbaar:!!g && getComputedStyle(g).display!=='none' };
+      const lb=g && g.getBoundingClientRect(), mb=document.querySelector('#gGrid .vis-meter').getBoundingClientRect();
+      r.binnen=!!lb && lb.width>0 && lb.left>=mb.left && lb.right<=mb.right && lb.top>=mb.top;
+      const tik=document.getElementById('vis-gear-tik');
+      r.tikbaar=!!tik && getComputedStyle(tik).pointerEvents!=='none';
+      tik.dispatchEvent(new MouseEvent('click', { bubbles:true }));
+      r.uit=getComputedStyle(g).display==='none' && document.getElementById('kbSchakelAdvies').getAttribute('aria-checked')==='false';
+      r.kiesOpen=!!document.getElementById('plVisKies') && getComputedStyle(document.getElementById('plVisKies')).display!=='none';
+      PLVisueel.wisselSchakel(true);
+      r.aan=getComputedStyle(g).display!=='none' && document.getElementById('kbSchakelAdvies').getAttribute('aria-checked')==='true';
+      return r;
+    })()`);
+    toets('tien schakellampjes in beeld, binnen de meter', sch.leds === 10 && sch.zichtbaar && sch.binnen, JSON.stringify(sch));
+    toets('tik op de versnelling zet ze uit, en de menuschakelaar volgt', sch.tikbaar && sch.uit, JSON.stringify(sch));
+    toets('…zonder dat de plekkeuze opengaat', !sch.kiesOpen, JSON.stringify(sch));
+    toets('en weer aan', sch.aan, JSON.stringify(sch));
+
     console.log('\n7. Zonder toerental gaat de meter tóch open, met de vermogensnaald (#432)');
     const zonder = await app.ev(`(function(){
       // Alleen uitgezet: dat herstelt Slim visueel zelf (27-09). Verborgen
