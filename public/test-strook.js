@@ -4,7 +4,8 @@
 // Laadt de echte pidlane-strook.js in een vm met een kleine DOM. Toetst de
 // pure kern (wanneer klapt hij in, wat zegt het stoplicht, nooit een
 // kentekenveld tijdens het rijden) en het gedrag: een fout markeert de
-// lopende stap, aftellen met "altijd automatisch" verbindt meteen, en de
+// lopende stap, aftellen toont altijd eerst de balk (ook met het oude vinkje
+// "altijd automatisch") en wacht op intro en inlogscherm, en de
 // foutcodes worden één keer per dag gelezen. Sinds 08-11-2026 laadt hij
 // ook de echte pidlane-identiteit.js: of de strook het kenteken vraagt,
 // hangt aan PLIdentiteit en niet meer aan een losse vlag.
@@ -45,7 +46,8 @@ function laad(o) {
   };
   const s = {
     console: { warn() {}, log() {} },
-    setTimeout: (f) => { if (o.nuTimers) f(); return 1; }, clearTimeout() {}, setInterval: () => 1, clearInterval() {},
+    setTimeout: (f) => { if (o.nuTimers) f(); return 1; }, clearTimeout() {}, setInterval: (f) => { s.intervallen.push(f); return s.intervallen.length; }, clearInterval() {},
+    intervallen: [],
     Promise, Date, JSON, Math, String, Number, isFinite, Error,
     localStorage: { getItem: (k) => (k in opslag ? opslag[k] : null), setItem: (k, v) => { opslag[k] = String(v); }, removeItem: (k) => { delete opslag[k]; } },
     document: {
@@ -133,23 +135,28 @@ function laad(o) {
 
   console.log('\n4. Aftellen');
   {
+    const K = laad().PLStrook._kern;
+    toets('magAftellen: vrij baan', K.magAftellen({}));
+    toets('magAftellen: niet onder de intro', !K.magAftellen({ intro: true }));
+    toets('magAftellen: niet op het inlogscherm', !K.magAftellen({ login: true }));
+    toets('magAftellen: niet op de achtergrond', !K.magAftellen({ verborgen: true }));
+  }
+  {
+    // Het oude vinkje (pl_verbind_altijd) verbond meteen; nu niet meer.
     const s = laad({ opslag: { pl_verbind_altijd: '1' } });
     let ging = 0;
     s.PLStrook.aftellen(() => { ging++; });
-    toets('altijd automatisch: meteen verbinden', ging === 1 && !s.PLStrook.staat().aftel);
+    toets('ook met het oude vinkje: eerst de balk, nog niet verbonden', ging === 0 && s.PLStrook.staat().aftel);
   }
   {
     const s = laad();
     let ging = 0;
     s.PLStrook.aftellen(() => { ging++; });
-    toets('zonder vinkje: eerst aftellen, nog niet verbonden', ging === 0 && s.PLStrook.staat().aftel);
-    toets('met Annuleren, Nu verbinden en het vinkje', /plStrookAnnuleer/.test(s.elementen.plStrook.innerHTML) && /plStrookAltijd/.test(s.elementen.plStrook.innerHTML) && /plStrookNu/.test(s.elementen.plStrook.innerHTML));
+    toets('eerst aftellen, nog niet verbonden', ging === 0 && s.PLStrook.staat().aftel);
+    const h = s.elementen.plStrook.innerHTML;
+    toets('met Annuleren en Nu verbinden, zonder vinkje', /plStrookAnnuleer/.test(h) && /plStrookNu/.test(h) && !/plStrookAltijd|altijd automatisch/.test(h));
     s.PLStrook._annuleer();
     toets('Annuleren: niet verbinden, strook weg', ging === 0 && !s.PLStrook.staat().aftel && s.elementen.plStrook.hidden);
-    s.PLStrook._altijd(true);
-    toets('het vinkje wordt bewaard', s.opslag.pl_verbind_altijd === '1');
-    s.PLStrook._altijd(false);
-    toets('en weer weggehaald', !('pl_verbind_altijd' in s.opslag));
   }
   {
     const s = laad();
@@ -157,6 +164,50 @@ function laad(o) {
     s.PLStrook.aftellen(() => { ging++; });
     s.PLStrook._nu();
     toets('Nu verbinden: meteen', ging === 1);
+  }
+  {
+    const s = laad();
+    let ging = 0;
+    s.PLStrook.aftellen(() => { ging++; }, { ms: 1 });
+    const t0 = Date.now(); while (Date.now() - t0 < 5) { /* wachten tot de balk vol is */ }
+    s.intervallen[s.intervallen.length - 1]();
+    toets('balk vol: verbinden', ging === 1 && !s.PLStrook.staat().aftel);
+  }
+  {
+    // Onder de intro: niets in beeld, geen verbinding; daarna pas de balk.
+    const s = laad();
+    s.PLIntro = { bezig: () => true };
+    let ging = 0;
+    s.PLStrook.aftellen(() => { ging++; }, { ms: 1 });
+    const tik = s.intervallen[s.intervallen.length - 1];
+    const t0 = Date.now(); while (Date.now() - t0 < 5) { /* langer dan ms */ }
+    tik();
+    toets('onder de intro: geen balk en geen verbinding', ging === 0 && s.PLStrook.staat().wacht && !s.PLStrook.staat().aftel);
+    s.PLIntro.bezig = () => false;
+    tik();
+    toets('intro voorbij: nu pas de balk', ging === 0 && s.PLStrook.staat().aftel);
+  }
+  {
+    // Op het inlogscherm net zo; lg-leave (aan het vervagen) telt als weg.
+    const s = laad();
+    const lo = { cls: new Set(), classList: { contains: (c) => lo.cls.has(c) } };
+    s.elementen.loginOv = lo;
+    s.PLStrook.aftellen(() => {});
+    toets('inlogscherm in beeld: wachten', s.PLStrook.staat().wacht);
+    lo.cls.add('lg-leave');
+    s.intervallen[s.intervallen.length - 1]();
+    toets('inlogscherm vervaagt: aftellen', s.PLStrook.staat().aftel);
+  }
+  {
+    // De app naar de achtergrond tijdens het aftellen: opnieuw beginnen.
+    const s = laad();
+    let ging = 0;
+    s.PLStrook.aftellen(() => { ging++; }, { ms: 1 });
+    const tik = s.intervallen[s.intervallen.length - 1];
+    s.document.visibilityState = 'hidden';
+    const t0 = Date.now(); while (Date.now() - t0 < 5) { /* langer dan ms */ }
+    tik();
+    toets('naar de achtergrond: geen verbinding, balk weg', ging === 0 && s.PLStrook.staat().wacht && s.elementen.plStrook.hidden);
   }
 
   console.log('\n5. Na het verbinden: foutcodes één keer per dag, stil');

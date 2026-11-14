@@ -221,7 +221,7 @@ const PROEVEN_B5 = [
       var ov = document.getElementById('connOv');
       if (ov) { ov.classList.add('pl-stil'); var weg = getComputedStyle(ov).display === 'none'; ov.classList.remove('pl-stil'); if (!weg) return { staat: 'FOUT', detail: '#connOv.pl-stil is zichtbaar — de stylesheet mist de regel' }; }
       var st = PLStrook.staat();
-      var detail = 'altijd automatisch ' + (PLStrook.altijd() ? 'aan' : 'uit');
+      var detail = 'aftellen ' + (PLStrook.staat().aftel ? 'loopt' : PLStrook.staat().wacht ? 'wacht op intro of inlogscherm' : 'niet actief');
       if (st.st) detail += '; laatste verbinding: ' + st.st.stappen.map(function (x) { return x.naam + ' ' + x.status; }).join(', ');
       if (!connected) return { staat: 'LET OP', detail: 'niet verbonden — alleen de bedrading gecontroleerd; ' + detail };
       return { staat: 'OK', detail: detail };
