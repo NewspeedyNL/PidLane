@@ -50,7 +50,7 @@ async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const mod = bron.slice(0, i) +
-    'export { worker_default as default, makeToken, kpKlantId, D1_SCHEMA, uitnodigCodeNorm, uitnodigOordeel, kpAlleWissen };\n';
+    'export { worker_default as default, makeToken, kpKlantId, D1_SCHEMA, uitnodigCodeNorm, uitnodigOordeel, kpAlleWissen, uitnodigKoppel };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'uitn-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
@@ -159,6 +159,11 @@ async function laadWorker() {
   toets('boven het plafond (2): Eva krijgt 10, Anna niets meer', saldo('eva@voorbeeld.nl') === 10 && saldo('anna@voorbeeld.nl') === 40);
   const zelf = await registreer('Anna@Voorbeeld.nl', st.mijnCode);
   toets('je eigen code bij een tweede registratie: dubbel adres geweigerd', zelf._status === 409);
+  // Via de registratie komt dat adres nooit langs de koppeling (409 eerst), dus
+  // de koppeling zelf: een account kan zich niet aan zijn eigen code hangen.
+  const eigenK = await W.uitnodigKoppel(env, 'Anna@Voorbeeld.nl ', st.mijnCode);
+  toets('je eigen code koppelen: geweigerd, en er komt geen rij bij', !eigenK.gekoppeld && eigenK.reden === 'eigen code' &&
+    !db.prepare('SELECT 1 FROM kp_uitnodiging WHERE vriend_id = ?').get(await W.kpKlantId('anna@voorbeeld.nl')), JSON.stringify(eigenK));
 
   console.log('\n6. Wissen');
   const annaId = await W.kpKlantId('anna@voorbeeld.nl');
