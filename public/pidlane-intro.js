@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // pidlane-intro.js
-// DE OPSTART-INTRO — neon rijbaan, logo komt overeind, drie stukjes app
-// komen over de baan op je af (22-10-2026), doorzoom naar login
+// DE OPSTART-INTRO — neon rijbaan, logo komt overeind, doorzoom naar login
+// (de drie kaarten van 22-10-2026 zijn er op 14-11-2026 weer uit: korter en rustiger)
 // ──────────────────────────────────────────────────────────────────
 // WAT HET IS
 // Bij het openen van de app: donker scherm, een neon rijbaan tekent zich
@@ -36,7 +36,7 @@
 // ══════════════════════════════════════════════════════════════════
 window.PLIntro = (function () {
   var SLEUTEL = 'pl_intro_gezien';
-  var DUUR_MS = 4900;       // tot en met de doorzoom; zie de tijdlijn in pidlane.css
+  var DUUR_MS = 3100;       // tot en met de doorzoom; zie de tijdlijn in pidlane.css
   var WEG_MS = 240;         // uitfaden na een tik
   var MAX_WACHT_MS = 6000;  // trager dan dit tot DOMContentLoaded: geen intro meer
 

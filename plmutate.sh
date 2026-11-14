@@ -1568,7 +1568,7 @@ MUTATIES=(
 "public/pidlane.css@@animation:hlgVloer 1.1s linear 60;@@animation:hlgVloer 1.1s linear infinite;@@test-hyperlanedeur.js@@de tunnel achter het inlogscherm blijft eindeloos bewegen, ook als het scherm uren aan staat"
 "public/index.html@@<div class=\"hlg-horizon\"></div>@@<div></div>@@test-hyperlanedeur.js@@de horizon verdwijnt uit de tunnel en niemand ziet het"
 "public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
-"public/pidlane-intro.js@@  var DUUR_MS = 4900;@@  var DUUR_MS = 4000;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
+"public/pidlane-intro.js@@  var DUUR_MS = 3100;@@  var DUUR_MS = 2600;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 # ── #297: het log staat in D1, en het scherm zegt dat ──

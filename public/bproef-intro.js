@@ -85,10 +85,13 @@ const OP = ms => `(function(){
     toets('op 1,7 s staat "PidLane" in beeld', naam > 0.5, 'opaciteit ' + naam);
     toets('onthouden voor deze sessie', await app.ev(`sessionStorage.getItem(PLIntro.SLEUTEL) === '1'`));
 
-    await app.ev(OP(2900));  // 2,9 s: de eerste kaart (begint op 2,15 s) staat op de rijbaan
-    const kaart = await app.ev(`Math.max.apply(null, [...document.querySelectorAll('#plIntro .pli-kaart')].map(k => parseFloat(getComputedStyle(k).opacity)))`);
-    toets('op 2,9 s komt er een kaart met een stukje app over de baan', kaart > 0.5, 'hoogste opaciteit ' + kaart);
-    // Verbergen gaat op een timer van DUUR_MS (4,9 s), niet op de animatie: daar wel de klok
+    // Korter en rustiger (14-11-2026): geen kaarten meer over de rijbaan, en
+    // "PidLane" blijft staan tot de doorzoom op 2,45 s.
+    toets('geen kaarten meer in de intro', await app.ev(`document.querySelectorAll('#plIntro .pli-kaart, #plIntro .pli-h').length === 0`));
+    await app.ev(OP(2200));
+    const naam2 = await app.ev(`parseFloat(getComputedStyle(document.querySelector('#plIntro .pli-naam')).opacity)`);
+    toets('op 2,2 s staat "PidLane" nog in beeld', naam2 > 0.9, 'opaciteit ' + naam2);
+    // Verbergen gaat op een timer van DUUR_MS (3,1 s), niet op de animatie: daar wel de klok
     for (let i = 0; i < 50 && !(await app.ev(`document.getElementById('plIntro').hidden === true`)); i++) await wacht(200);
     toets('na afloop verborgen', await app.ev(`document.getElementById('plIntro').hidden === true`));
     const na = await app.ev(WAT_LIGT_ER);
