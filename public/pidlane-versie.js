@@ -105,10 +105,19 @@
     if (!s.nieuw || (s.later && s.later === s.live)) { stopTik(); verberg(); return false; }
     if (magTonen(s)) { stopTik(); kaart().hidden = false; return true; }
     verberg();
-    if (!_tik) _tik = setInterval(beoordeel, TIK_MS);
+    if (!_tik) _tik = elke(TIK_MS, beoordeel, 'versie-wacht');
     return false;
   }
-  function stopTik() { if (_tik) { clearInterval(_tik); _tik = null; } }
+  function stopTik() { if (_tik) { weg(_tik); _tik = null; } }
+  /* Timers via PLRust (#691): uit beeld en zonder verbinding slapen ze, en
+     bproef-rust.js telt geen losse setInterval buiten zijn lijst. */
+  function elke(ms, fn, naam) {
+    if (window.PLRust && typeof PLRust.elke === 'function') return { rust: PLRust.elke(ms, fn, naam) };
+    return { iv: setInterval(fn, ms) };
+  }
+  function weg(t) {
+    if (t.rust && window.PLRust) PLRust.weg(t.rust); else if (t.iv) clearInterval(t.iv);
+  }
 
   function controleer() {
     return vraag().then(function (id) {
@@ -135,7 +144,7 @@
     controleer();
     try {
       document.addEventListener('visibilitychange', function () { if (zichtbaar()) controleer(); });
-      setInterval(function () { if (zichtbaar()) controleer(); }, ELKE_MS);
+      elke(ELKE_MS, function () { if (zichtbaar()) controleer(); }, 'versie');
     } catch (e) { console.warn('PLVersie: luisteraars niet gezet — alleen de controle bij het laden', e); }
   }
 

@@ -141,6 +141,14 @@ const kaart = (s) => !!(s.elementen.plVersie && !s.elementen.plVersie.hidden);
     s.PLVersie.start();
     toets('start luistert naar terugkeer in de app', typeof s.luister.visibilitychange === 'function');
   }
+  {
+    // Met PLRust (#691): geen losse setInterval, de timer slaapt uit beeld.
+    const s = laad();
+    const taken = [];
+    s.PLRust = { elke: (ms, fn, naam) => { taken.push(naam); return taken.length; }, weg: () => true };
+    s.PLVersie.start();
+    toets('het kwartier loopt via PLRust.elke, niet via setInterval', taken.length === 1 && s.intervallen.length === 0, JSON.stringify(taken));
+  }
 
   console.log('\n3. De worker en wrangler.toml');
   {
