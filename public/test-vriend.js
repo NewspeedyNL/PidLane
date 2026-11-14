@@ -27,7 +27,8 @@ function laad(search) {
     location: { search: search || '', href: 'https://app.pidlane.nl/' + (search || '') },
     history: { replaceState(a, b, u) { s.nieuweUrl = u; } },
     URL, document: { getElementById: () => null },
-    toasts: [], showToast(t) { s.toasts.push(t); }
+    toasts: [], showToast(t) { s.toasts.push(t); },
+    timers: [], setTimeout(f) { s.timers.push(f); return s.timers.length; }, Promise, JSON
   };
   s.window = s; s.opslag = opslag;
   vm.createContext(s);
@@ -68,7 +69,40 @@ toets('en niet "anoniem" (CLAUDE.md, privacy)', !/anoniem/i.test(tekst));
 toets('voortgang', K.voortgang(d) === '1 vriend beloond · 20 credits verdiend · 2 wachten nog op de eerste verbinding · nog 9 te gaan', K.voortgang(d));
 toets('maximum bereikt', /maximum is bereikt/.test(K.voortgang(Object.assign({}, d, { beloond: 10 }))));
 
-console.log('\n4. De bedrading');
+console.log('\n4. De deelvoet onder rapporten');
+{
+  const s = laad();
+  toets('zonder account: de kale link, nog geen code', s.PLVriend.voet() === 'Gemaakt met PidLane — lees je eigen auto gratis uit: https://app.pidlane.nl', s.PLVriend.voet());
+  s.currentUser = { user: 'anna@voorbeeld.nl' };
+  s.PLKlant = { isKlant: () => true };
+  let vraag = 0;
+  s.plFetch = () => { vraag++; return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true, mijnCode: 'PL-7K3PQR' }) }); };
+  s.PLVriend.voet();
+  // haalCode loopt asynchroon; wacht een tik.
+  setImmediate(() => {
+    toets('de voet haalt de code één keer op de achtergrond', vraag === 1, String(vraag));
+    toets('daarna met de eigen link', /https:\/\/app\.pidlane\.nl\/\?u=PL-7K3PQR$/.test(s.PLVriend.voet()), s.PLVriend.voet());
+    toets('kort voor de PDF-voet', s.PLVriend.voetKort() === 'app.pidlane.nl/?u=PL-7K3PQR', s.PLVriend.voetKort());
+    s.PLVriend.voet();
+    toets('geen tweede ophaalronde', vraag === 1);
+    s.currentUser = { user: 'bert@voorbeeld.nl' };
+    toets('een ander account krijgt de code van de vorige niet', !/PL-7K3PQR/.test(s.PLVriend.voetKort()), s.PLVriend.voetKort());
+    toets('na het laden wordt de code één keer opgehaald, met een losse timer', s.timers.length === 1);
+    s.currentUser = { user: 'anna@voorbeeld.nl' };
+    const ex = lees('pidlane-export.js');
+    toets('export: tekst met de voet, niet bij een ruwe log', /const uit = plMetVoet\(_metOpmerking\(tekst, _opm\(\)\), o\);/.test(ex) && /if \(o\.ruw \|\| !window\.PLVriend/.test(ex));
+    toets('export: de PDF-voet', /doc\.text\(_voetPdf\(o\) \+ new Date/.test(ex));
+    toets('AI-rapport delen met de voet', /plMetVoet\(kaal\)/.test(lees('pidlane-fuel.js')));
+    // De echte plMetVoet uit pidlane-export.js, met deze PLVriend.
+    const i = ex.indexOf('function plMetVoet('), j = ex.indexOf('function _voetPdf(');
+    const f = new Function('window', 'PLVriend', 'console', ex.slice(i, j) + '; return plMetVoet;')(s, s.PLVriend, console);
+    toets('plMetVoet: voet onderaan', /\n\n— Gemaakt met PidLane.*PL-7K3PQR\n$/.test(f('Rapport\n\n')), JSON.stringify(f('Rapport')));
+    toets('plMetVoet: ruw blijft ongemoeid', f('log', { ruw: true }) === 'log');
+    rest();
+  });
+}
+function rest() {
+console.log('\n5. De bedrading');
 const html = lees('index.html');
 toets('menu-item roept PLVriend.open aan', /id="kbVriend"[^>]*onclick="closeKebab\(\);PLVriend\.open\(\)"/.test(html));
 toets('het script staat in index.html', html.indexOf('<script src="pidlane-vriend.js"></script>') > 0);
@@ -79,3 +113,4 @@ toets('de garage meldt de bonus na voertuig_opslaan', /actie === 'voertuig_opsla
 
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : n + ' toetsen, allemaal goed'));
 process.exit(fout ? 1 : 0);
+}

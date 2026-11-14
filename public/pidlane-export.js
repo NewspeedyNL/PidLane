@@ -111,6 +111,21 @@ function _voertuigRegels() {
 }
 
 // ── de PDF ─────────────────────────────────────────────────────────
+/* De deelvoet (PLVriend.voet, 14-11-2026): "Gemaakt met PidLane" met de
+   eigen uitnodigingslink, onder elk klantrapport. Niet onder een ruwe log:
+   die gaat naar de ontwikkelaar, niet naar een koper of een monteur. */
+function plMetVoet(tekst, opties) {
+  const o = opties || {};
+  if (o.ruw || !window.PLVriend || typeof PLVriend.voet !== 'function') return tekst;
+  try { return String(tekst).replace(/\s+$/, '') + '\n\n— ' + PLVriend.voet() + '\n'; }
+  catch (e) { console.warn('deelvoet niet toegevoegd:', e); return tekst; }
+}
+function _voetPdf(o) {
+  if (o.ruw || !window.PLVriend || typeof PLVriend.voetKort !== 'function') return 'Gegenereerd door PidLane - ';
+  try { return 'Gemaakt met PidLane - ' + PLVriend.voetKort() + ' - '; }
+  catch (e) { console.warn('deelvoet PDF niet toegevoegd:', e); return 'Gegenereerd door PidLane - '; }
+}
+
 async function plMaakPdf(bestandsnaam, tekst, opties) {
   const o = opties || {};
   const k = plKeurExport(tekst, o);
@@ -341,7 +356,9 @@ async function plMaakPdf(bestandsnaam, tekst, opties) {
     doc.setDrawColor(LICHT[0], LICHT[1], LICHT[2]); doc.line(M, H - 12, W - M, H - 12);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(8);
     doc.setTextColor(GRIJS[0], GRIJS[1], GRIJS[2]);
-    doc.text('Gegenereerd door PidLane - ' + new Date().toLocaleString('nl-NL'), M, H - 7);
+    // Een klantrapport draagt de eigen uitnodigingslink (PLVriend, 14-11-2026);
+    // een ruwe log (testrun, logboek) niet: die gaat naar de ontwikkelaar.
+    doc.text(_voetPdf(o) + new Date().toLocaleString('nl-NL'), M, H - 7);
     doc.text('Pagina ' + p + ' van ' + n, W - M, H - 7, { align: 'right' });
   }
 
@@ -487,7 +504,7 @@ function plOpslaan(basisnaam, tekst, opties) {
   document.getElementById('plExpAf').onclick = sluit;
 
   document.getElementById('plExpTxt').onclick = function () {
-    const uit = _metOpmerking(tekst, _opm());
+    const uit = plMetVoet(_metOpmerking(tekst, _opm()), o);
     const naam = _naam();
     sluit();
     // _bewaar meldt zelf waar het bestand terecht is gekomen.
@@ -509,7 +526,7 @@ function plOpslaan(basisnaam, tekst, opties) {
       // wel zeggen waarom — anders lijkt het of de knop niets doet.
       sluit();
       try { showToast('PDF lukte niet (' + (e.message || e) + ') — als tekst opgeslagen'); } catch(e2){ /* stil: melding mag nooit de stroom breken */ }
-      const uit = _metOpmerking(tekst, opm);
+      const uit = plMetVoet(_metOpmerking(tekst, opm), o);
       await _bewaar(new Blob([uit], { type: 'text/plain;charset=utf-8' }), naam + '.txt', uit);
     }
   };
@@ -528,6 +545,7 @@ async function plOpslaanPdf(basisnaam, tekst, opties) {
 window.plOpslaan = plOpslaan;
 window.plOpslaanPdf = plOpslaanPdf;
 window.plMaakPdf = plMaakPdf;
+window.plMetVoet = plMetVoet;
 window.plKeurExport = plKeurExport;
 window.plPdfTekst = plPdfTekst;
 // Los ontsloten zodat test-export.js de schoonmaak op de echte functie kan

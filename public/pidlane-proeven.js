@@ -38,6 +38,23 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Deelvoet onder rapporten en de review-vraag (14-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Elk gedeeld rapport draagt "Gemaakt met PidLane" met de eigen uitnodigingslink; de app vraagt na een groene foutcodelezing om een Play-beoordeling (streng gedoseerd)',
+    waarom: 'Bekendheid: rapporten gaan naar kopers, verkopers en monteurs, en een app zonder beoordelingen wordt in Google Play niet gevonden.',
+    proef: async function () {
+      if (typeof window.plMetVoet !== 'function' || !window.PLVriend || typeof PLVriend.voet !== 'function') return { staat: 'FOUT', detail: 'plMetVoet of PLVriend.voet ontbreekt — herladen?' };
+      var t = plMetVoet('proef');
+      if (!/Gemaakt met PidLane/.test(t) || !/app\.pidlane\.nl/.test(t)) return { staat: 'FOUT', detail: 'de deelvoet staat niet onder een rapport: ' + t.slice(-80) };
+      if (plMetVoet('log', { ruw: true }) !== 'log') return { staat: 'FOUT', detail: 'een ruwe log krijgt ook een deelvoet' };
+      if (!window.PLReview || !PLReview._kern || PLReview._kern.magVragen({ eerste: Date.now(), verbindingen: 9 }, Date.now())) return { staat: 'FOUT', detail: 'PLReview ontbreekt of vraagt al op de eerste dag' };
+      var st = PLReview.staat();
+      var detail = 'deelvoet ' + (PLVriend.mijnCode() ? 'met eigen code' : 'met de kale link (code nog niet opgehaald)') + '; review: ' + (st.klaar ? 'klaar' : st.keer + '× gevraagd, ' + (st.verbindingen || 0) + ' verbindingen');
+      return { staat: PLVriend.mijnCode() ? 'OK' : 'LET OP', detail: detail };
+    }
+  },
+
   // ── Opstart, verbinden, updatemelding, schakeladvies en uitnodigen (14-11-2026) ──
   {
     issue: '—',

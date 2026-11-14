@@ -16,13 +16,21 @@
    (uitnodigBeloon in worker.js); hier staat alleen wat de klant ziet. De
    bedragen komen van de server, niet uit deze code.
 
-   PUUR (_kern): codeNorm, codeUitUrl, deelTekst, voortgang. Getoetst in
-   test-vriend.js.
+   DE DEELVOET (14-11-2026). Elk rapport dat de app deelt of als PDF
+   bewaart, draagt onderaan "Gemaakt met PidLane" met de eigen link: wie een
+   aankooprapport doorstuurt naar een koper of verkoper, nodigt die zo meteen
+   uit. voet() is synchroon (delen moet in dezelfde tik gebeuren); de code
+   staat daarom klaar in pl_mijn_code, per account, en wordt na het inloggen
+   op de achtergrond opgehaald (haalCode).
+
+   PUUR (_kern): codeNorm, codeUitUrl, deelTekst, voortgang, deelLink,
+   voetTekst. Getoetst in test-vriend.js.
    ══════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
   var SLEUTEL = 'pl_uitnodiging';
+  var CODE_SLEUTEL = 'pl_mijn_code';
 
   // ── puur ─────────────────────────────────────────────────────────
   // Dezelfde regel als uitnodigCodeNorm() in worker.js: geen O, 0, I, 1 of L.
@@ -52,6 +60,9 @@
     return r.join(' · ');
   }
 
+  function deelLink(code) { return 'https://app.pidlane.nl' + (code ? '/?u=' + code : ''); }
+  function voetTekst(code) { return 'Gemaakt met PidLane — lees je eigen auto gratis uit: ' + deelLink(code); }
+
   // ── omgeving ─────────────────────────────────────────────────────
   function el(id) { return document.getElementById(id); }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -77,7 +88,42 @@
     } catch (e) { console.warn('PLVriend: uitnodigingslink niet verwerkt', e); return ''; }
   }
 
-  var _d = null;
+  var _d = null, _haalt = false;
+
+  // Wie is er ingelogd: de code hoort bij één account, niet bij het toestel.
+  function wie() {
+    try { var u = window.currentUser; return u ? String(u.user || u.name || '').toLowerCase() : ''; }
+    catch (e) { console.warn('PLVriend: gebruiker niet te lezen', e); return ''; }
+  }
+  function mijnCode() {
+    try {
+      var o = JSON.parse(localStorage.getItem(CODE_SLEUTEL) || 'null');
+      return (o && o.wie && o.wie === wie()) ? codeNorm(o.code) : '';
+    } catch (e) { console.warn('PLVriend: eigen code niet te lezen', e); return ''; }
+  }
+  function bewaarCode(code) {
+    try { if (wie() && codeNorm(code)) localStorage.setItem(CODE_SLEUTEL, JSON.stringify({ wie: wie(), code: codeNorm(code) })); }
+    catch (e) { console.warn('PLVriend: eigen code niet te bewaren', e); }
+  }
+  function isKlant() { try { return !!(window.PLKlant && PLKlant.isKlant && PLKlant.isKlant()); } catch (e) { console.warn('PLVriend: accountsoort niet te lezen', e); return false; } }
+  function vraagStand() {
+    return Promise.resolve(plFetch('/klant/platform', { method: 'POST', json: { actie: 'uitnodiging' } })).then(function (r) {
+      return r.json().then(function (d) { if (!r.ok || !d.ok) throw new Error(d.error || ('server gaf ' + r.status)); return d; });
+    }).then(function (d) { bewaarCode(d.mijnCode); return d; });
+  }
+  /* Op de achtergrond, één keer per sessie: de code voor de deelvoet. */
+  function haalCode() {
+    if (_haalt || mijnCode() || !isKlant() || typeof plFetch !== 'function') return Promise.resolve(mijnCode());
+    _haalt = true;
+    return vraagStand().then(function (d) { return d.mijnCode; }, function (e) {
+      _haalt = false; console.info('PLVriend: eigen code nog niet opgehaald — de deelvoet krijgt de kale link (' + ((e && e.message) || e) + ')');
+      return '';
+    });
+  }
+  /* De regel onder elk gedeeld rapport. Zonder code (nog niet opgehaald,
+     geen klantaccount) de kale link: dan blijft het reclame, zonder bonus. */
+  function voet() { if (!mijnCode()) haalCode(); return voetTekst(mijnCode()); }
+  function voetKort() { return deelLink(mijnCode()).replace(/^https:\/\//, ''); }
 
   function venster() {
     var o = el('plVriendOv');
@@ -104,9 +150,7 @@
       return Promise.resolve(null);
     }
     if (typeof plFetch !== 'function') { teken('<div class="pl-vriend-uitleg">Geen verbinding met de server.</div>'); return Promise.resolve(null); }
-    return Promise.resolve(plFetch('/klant/platform', { method: 'POST', json: { actie: 'uitnodiging' } })).then(function (r) {
-      return r.json().then(function (d) { if (!r.ok || !d.ok) throw new Error(d.error || ('server gaf ' + r.status)); return d; });
-    }).then(function (d) {
+    return vraagStand().then(function (d) {
       _d = d;
       if (d.beloning && d.beloning.beloond) beloond(d.beloning);
       teken(
@@ -162,7 +206,11 @@
   window.PLVriend = {
     open: open, sluit: sluit, deel: deel, kopieer: kopieer, bewaardeCode: bewaardeCode,
     naRegistratie: naRegistratie, beloond: beloond, vangLink: vangLink,
-    _kern: { codeNorm: codeNorm, codeUitUrl: codeUitUrl, deelTekst: deelTekst, voortgang: voortgang, SLEUTEL: SLEUTEL }
+    voet: voet, voetKort: voetKort, haalCode: haalCode, mijnCode: mijnCode,
+    _kern: { codeNorm: codeNorm, codeUitUrl: codeUitUrl, deelTekst: deelTekst, voortgang: voortgang, deelLink: deelLink, voetTekst: voetTekst, SLEUTEL: SLEUTEL, CODE_SLEUTEL: CODE_SLEUTEL }
   };
   vangLink();
+  // Na een herstelde sessie staat het account er een paar seconden na het
+  // laden; dan de code alvast ophalen. Eén keer, geen timer die blijft lopen.
+  setTimeout(function () { try { haalCode(); } catch (e) { console.warn('PLVriend: code ophalen niet gestart', e); } }, 8000);
 })();

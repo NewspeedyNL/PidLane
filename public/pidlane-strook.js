@@ -454,6 +454,8 @@
       if (s && s.status !== 'ok') s.status = 'ok';
     });
     _hervatNu = !!opties.hervat;
+    // Een echte verbinding telt mee voor de review-vraag (PLReview, 14-11-2026).
+    if (!opties.hervat) { try { if (window.PLReview) PLReview.verbonden(); } catch (e) { console.warn('PLStrook: PLReview.verbonden', e); } }
     // Al gevraagd bij het wachtmoment (en Later gekozen): niet nog eens.
     if (!kentekenBekend() && !_st.kentGevraagd) vraagKenteken();
     else if (_st.stappen[2].status !== 'ok') zet(_st, 'auto', 'ok', autoTekst());
@@ -491,6 +493,8 @@
       catch (e) { diag('dagcheck niet bewaard: ' + (e.message || e), 'warn'); }
       var r = foutcodeRegel(PLFoutcodes.stoplicht(s));
       stap('codes', r.status, r.tekst);
+      // Geen foutcodes: een goed moment om om een beoordeling te vragen.
+      if (r.status === 'ok') { try { if (window.PLReview) PLReview.goedMoment('foutcodes groen'); } catch (e) { console.warn('PLStrook: PLReview.goedMoment', e); } }
       return s;
     }, function (e) {
       stap('codes', 'let', 'uitlezen mislukt: ' + ((e && e.message) || e));
