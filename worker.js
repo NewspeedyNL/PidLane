@@ -7497,6 +7497,21 @@ async function logRondeOpruimen(env) {
 }
 __name(logRondeOpruimen, "logRondeOpruimen");
 
+// ── /app-versie (14-11-2026) ────────────────────────────────────────
+// Het id van de deploy die nu live staat, uit Cloudflare version metadata
+// ([version_metadata] in wrangler.toml). PLVersie (public/pidlane-versie.js)
+// vergelijkt het met het id van toen de pagina laadde, en biedt bij verschil
+// "Nu bijwerken" aan. Nooit gecachet: een oud antwoord is hier een leugen.
+// Openbaar en zonder sessie: er staat niets in dan een deploy-id en een tijd.
+function handleAppVersie(env) {
+  const m = env && env.CF_VERSION_METADATA;
+  const body = m && m.id ? { id: m.id, tag: m.tag || "", tijd: m.timestamp || "" } : { id: null };
+  return new Response(JSON.stringify(body), {
+    status: m && m.id ? 200 : 503,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...CORS }
+  });
+}
+__name(handleAppVersie, "handleAppVersie");
 var worker_default = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -7605,6 +7620,8 @@ var worker_default = {
         return await handleApkDownload(request, env);
       if (url.pathname === "/version.json" && request.method === "GET")
         return await handleVersionJson(request, env);
+      if (url.pathname === "/app-versie" && request.method === "GET")
+        return handleAppVersie(env);
       if (url.pathname === "/" || url.pathname === "/health")
         return json({ ok: true, service: "pidlane-proxy", ts: (/* @__PURE__ */ new Date()).toISOString() });
       return json({ error: "not_found", path: url.pathname }, 404);
