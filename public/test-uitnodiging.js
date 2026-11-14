@@ -50,7 +50,7 @@ async function laadWorker() {
   const i = bron.lastIndexOf('export {');
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const mod = bron.slice(0, i) +
-    'export { worker_default as default, makeToken, kpKlantId, D1_SCHEMA, uitnodigCodeNorm, uitnodigOordeel, kpAlleWissen, uitnodigKoppel };\n';
+    'export { worker_default as default, makeToken, kpKlantId, D1_SCHEMA, uitnodigCodeNorm, uitnodigOordeel, kpAlleWissen, uitnodigKoppel, uitnodigBeloon };\n';
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'uitn-')), 'worker.mjs');
   fs.writeFileSync(f, mod);
   return import('file://' + f);
@@ -157,6 +157,31 @@ async function laadWorker() {
   const v3 = 'eeeeeeeeeeeeeeee'; profiel(v3, new Date(Date.now() + 3000).toISOString());
   await auto(eva.token, v3);
   toets('boven het plafond (2): Eva krijgt 10, Anna niets meer', saldo('eva@voorbeeld.nl') === 10 && saldo('anna@voorbeeld.nl') === 40);
+  // Twee verzoeken tegelijk (de app opent Mijn voertuigen terwijl het
+  // opslaan nog loopt): de rij wordt eerst geclaimd, dus één keer betalen.
+  const fien = await registreer('fien@voorbeeld.nl', st.mijnCode); await akkoord(fien.token);
+  const v4 = 'ffffffffffffffff'; await auto(fien.token, v4); profiel(v4, new Date(Date.now() + 4000).toISOString());
+  const samen = await Promise.all([1, 2, 3].map(() => post('/klant/platform', { actie: 'uitnodiging' }, fien.token)));
+  toets('drie verzoeken tegelijk: één keer 10 voor de vriend', saldo('fien@voorbeeld.nl') === 10 && samen.filter((d) => d.beloning && d.beloning.beloond).length === 1,
+    'saldo ' + saldo('fien@voorbeeld.nl') + ', beloond ' + samen.filter((d) => d.beloning && d.beloning.beloond).length);
+  // Deterministisch: een ander verzoek claimt de rij net nadat deze hem las.
+  // Dan hoort dit verzoek níét te betalen (de claim raakt 0 rijen).
+  const gijs = await registreer('gijs@voorbeeld.nl', st.mijnCode); await akkoord(gijs.token);
+  const v5 = '0123456789abcdef'; await auto(gijs.token, v5); profiel(v5, new Date(Date.now() + 5000).toISOString());
+  const gijsId = await W.kpKlantId('gijs@voorbeeld.nl');
+  const echtDb = env.LOGDB;
+  const racer = { prepare: (sql) => {
+    const st0 = echtDb.prepare(sql);
+    if (!/^SELECT \* FROM kp_uitnodiging WHERE vriend_id/.test(sql)) return st0;
+    return { bind: (...a) => ({ first: async () => {
+      const r = await st0.bind(...a).first();
+      db.prepare('UPDATE kp_uitnodiging SET beloond = ? WHERE vriend_id = ?').run('door een ander verzoek', gijsId);
+      return r;
+    } }) };
+  } };
+  const voor = saldo('gijs@voorbeeld.nl') || 0;
+  const race = await W.uitnodigBeloon({ db: racer, klantId: gijsId, env, u: 'gijs@voorbeeld.nl' });
+  toets('een ander verzoek claimde de rij al: niet nog eens betalen', race === null && (saldo('gijs@voorbeeld.nl') || 0) === voor, JSON.stringify(race) + ' saldo ' + saldo('gijs@voorbeeld.nl'));
   const zelf = await registreer('Anna@Voorbeeld.nl', st.mijnCode);
   toets('je eigen code bij een tweede registratie: dubbel adres geweigerd', zelf._status === 409);
   // Via de registratie komt dat adres nooit langs de koppeling (409 eerst), dus
