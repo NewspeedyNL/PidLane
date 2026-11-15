@@ -123,6 +123,26 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('de rij staat bovenaan zijn kaart', twee.eerste);
     toets('de accu met de decimalen van volt', !twee.gv || /\.\d\d$/.test(twee.gv), twee.gv);
 
+    console.log('\n2a. Motor uit (#718): toerental 0 op de accu is "uit", geen meting');
+    const uit = await app.ev(`(async function(){
+      const echt=PLAandrijving.laatste;
+      try{
+        PLAandrijving.laatste=function(){ return { toestand:'ACCU_RIJDT', motorDraait:false }; };
+        pidVals['010C']=0; applyG('010C', 0); pidVals['010D']=48; applyG('010D', 48); ovzBij();
+        const c=document.getElementById('gc-010C'), s=document.getElementById('gc-010D');
+        const r={ heeft:!!c, tekst:c && document.getElementById('gv-010C').textContent, klasse:c && c.className,
+                  snel:s && document.getElementById('gv-010D').textContent };
+        PLAandrijving.laatste=function(){ return { toestand:'DRAAIT_RIJDT', motorDraait:true }; };
+        applyG('010C', 1800); ovzBij();
+        r.na=c && document.getElementById('gv-010C').textContent; r.naKlasse=c && c.className;
+        return r;
+      } finally { PLAandrijving.laatste=echt; }
+    })()`);
+    toets('toerental staat in Overzicht (anders zegt de proef niets)', uit.heeft, JSON.stringify(uit));
+    toets('rijdt op de accu: toerental zegt "uit" en is gedimd', uit.tekst === 'uit' && /ovz-uit/.test(uit.klasse), JSON.stringify(uit));
+    toets('… snelheid blijft een getal', uit.snel && uit.snel !== 'uit', uit.snel);
+    toets('TEGENPROEF: motor draait weer: het getal komt terug', uit.na && uit.na !== 'uit' && !/ovz-uit/.test(uit.naKlasse), JSON.stringify(uit));
+
     console.log('\n2b. Grijs: een trage sensor die niet aan de beurt was blijft gewoon (07-10-2026)');
     const grijs = await app.ev(`(async function(){
       stopPoll();

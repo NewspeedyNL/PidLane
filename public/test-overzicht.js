@@ -218,6 +218,15 @@ console.log('\nOverzicht per categorie (#439)');
   // De kop
   eis(c.ovzKop(0, 0).tekst === 'normaal' && c.ovzKop(2, 0).tekst === '2 let op' && c.ovzKop(2, 0).kl === 'or', 'kop: normaal of N let op');
   eis(c.ovzKop(1, 1).kl === 'rd' && /gevaar/.test(c.ovzKop(1, 1).tekst), 'gevaar wint van let op');
+  eis(c.ovzKop(0, 0, 3, 3).tekst === 'uit' && c.ovzKop(0, 0, 2, 3).tekst === 'normaal', 'kop: uit alleen als elke rij uit staat (#718)');
+  eis(c.ovzKop(0, 1, 3, 3).kl === 'rd', 'gevaar wint van uit');
+
+  // Motor uit (#718): 0,00 van een stilstaande motor is "uit", geen meting.
+  const acc = { toestand: 'ACCU_RIJDT', motorDraait: false };
+  eis(c.ovzMotorUit('010C', acc) && c.ovzMotorUit('0104', acc) && c.ovzMotorUit('0111', acc) && c.ovzMotorUit('0110', acc), 'rijdt op de accu: toerental, belasting, gasklep, luchtmassa uit');
+  eis(!c.ovzMotorUit('010D', acc) && !c.ovzMotorUit('015B', acc) && !c.ovzMotorUit('0142', acc) && !c.ovzMotorUit('0105', acc), '… snelheid, aandrijfaccu, 12V en koelwater blijven een meting');
+  eis(!c.ovzMotorUit('010C', { toestand: 'DRAAIT_RIJDT', motorDraait: true }), 'motor draait: gewoon de meting');
+  eis(!c.ovzMotorUit('010C', { toestand: 'ONBEKEND', motorDraait: false }) && !c.ovzMotorUit('010C', null), 'onbekend of geen aandrijfstatus: geen uit');
 
   // De volgorde binnen een categorie
   const ord = {};

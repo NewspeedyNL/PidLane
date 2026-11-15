@@ -38,6 +38,21 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Overzicht bij een stilstaande motor (15-11-2026) ──
+  {
+    issue: '#718',
+    naam: 'Overzicht toont "uit" voor toerental, belasting, gasklep, luchtmassa en trims als de motor stilstaat (rijden op de accu, start/stop), en geen oordeel',
+    waarom: 'Uit het gebruik: bij elektrisch rijden stonden bovenin Motor drie rijen 0,00 — een meting van een motor die niet loopt.',
+    proef: async function () {
+      if (typeof window.ovzMotorUit !== 'function') return { staat: 'FOUT', detail: 'ovzMotorUit ontbreekt — herladen?' };
+      var acc = { toestand: 'ACCU_RIJDT', motorDraait: false };
+      if (!ovzMotorUit('010C', acc) || ovzMotorUit('010D', acc) || ovzMotorUit('010C', { toestand: 'DRAAIT_RIJDT', motorDraait: true }) || ovzMotorUit('010C', { toestand: 'ONBEKEND', motorDraait: false }))
+        return { staat: 'FOUT', detail: 'ovzMotorUit scheidt motor-uit niet van rijden, motor aan of onbekend' };
+      var r = (window.PLAandrijving && typeof PLAandrijving.laatste === 'function') ? PLAandrijving.laatste() : null;
+      return { staat: 'OK', detail: 'aandrijving nu: ' + (r ? r.toestand + (r.motorDraait === false ? ' (motorwaarden: uit)' : '') : 'nog geen meting') };
+    }
+  },
+
   // ── Rijbeeld op de energieweergave (15-11-2026) ──
   {
     issue: '#717',

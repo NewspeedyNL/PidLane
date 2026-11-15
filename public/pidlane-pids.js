@@ -866,10 +866,21 @@ function ovzNoot(d, val, st){
   return st==='danger' ? 'Buiten het veilige bereik' : 'Buiten het normale bereik';
 }
 // De chip in de kop van een categorie.
-function ovzKop(warn, danger){
+function ovzKop(warn, danger, uit, totaal){
   if(danger) return { tekst: danger+' gevaar', kl:'rd' };
+  if(totaal>0 && uit===totaal) return { tekst:'uit', kl:'uit' };
   if(warn) return { tekst: warn+' let op', kl:'or' };
   return { tekst:'normaal', kl:'' };
+}
+// Motor uit (#718): op een hybride die op de accu rijdt, of bij start/stop,
+// zeggen toerental, belasting, gasklep, luchtmassa en de trims 0,00 — een
+// meting van een motor die niet loopt. Dan staat er "uit" en geen oordeel.
+// `aandr` = PLAandrijving.laatste(). Zonder aandrijfstatus: nee. Puur.
+const OVZ_MOTORLOOP = ['010C','0104','0111','0110','010B','010E','0106','0107','0108','0109',
+  '0124','0134','0114','0115','015E','CA02','CA03','CA04','0143','0144'];
+function ovzMotorUit(pid, aandr){
+  return OVZ_MOTORLOOP.indexOf(pid)>-1 && !!aandr && aandr.motorDraait===false &&
+    !!aandr.toestand && aandr.toestand!=='ONBEKEND';
 }
 // Binnen een categorie: afwijkend bovenaan, daarna de vaste rang. `st` per
 // pid ('ok'|'warn'|'danger'). Puur; geeft de nieuwe volgorde.
@@ -911,10 +922,11 @@ function ovzBij(){
   document.querySelectorAll('.ovz-cat').forEach(function(sec){
     const box=sec.querySelector('.ovz-vak'); if(!box) return;
     const kaarten=[].slice.call(box.querySelectorAll(':scope > .gc'));
-    const st={}; let warn=0, danger=0;
+    const st={}; let warn=0, danger=0, uit=0;
     kaarten.forEach(function(c){ const p=c.id.slice(3); st[p]=c.classList.contains('danger')?'danger':c.classList.contains('warn')?'warn':'ok';
-      if(st[p]==='danger') danger++; else if(st[p]==='warn') warn++; });
-    const k=ovzKop(warn, danger), chip=sec.querySelector('.ovz-chip');
+      if(st[p]==='danger') danger++; else if(st[p]==='warn') warn++;
+      if(c.classList.contains('ovz-uit')) uit++; });
+    const k=ovzKop(warn, danger, uit, kaarten.length), chip=sec.querySelector('.ovz-chip');
     if(chip && chip.textContent!==k.tekst){ chip.textContent=k.tekst; chip.className='ovz-chip'+(k.kl?' '+k.kl:''); }
     const nu=kaarten.map(function(c){ return c.id.slice(3); }), nieuw=ovzSorteer(nu, st, ord);
     if(nieuw.join()!==nu.join()) nieuw.forEach(function(p){ const c=document.getElementById('gc-'+p); if(c) box.appendChild(c); });
@@ -949,7 +961,14 @@ function applyG(pid,val){
   // Het getal op het scherm: pedaal vanaf de rust, tank gedempt (PLToon).
   // Dezelfde regel als Slim en Visueel; de ruwe waarde blijft in pidVals.
   val=PLToon.waarde(pid,val);
-  const st=pidOordeel(d,val,pid);
+  let aandr=null;
+  if(pidViewMode==='overzicht'){
+    try{ aandr=(window.PLAandrijving && typeof PLAandrijving.laatste==='function') ? PLAandrijving.laatste() : null; }
+    catch(e){ console.warn('Overzicht: aandrijving onleesbaar — motorwaarden als meting', e); }
+  }
+  const uit=(pidViewMode==='overzicht') && ovzMotorUit(pid, aandr);
+  card.classList.toggle('ovz-uit', uit);
+  const st=uit ? 'ok' : pidOordeel(d,val,pid);
   // Er is een waarde binnen, dus de lege stand is voorbij. Via classList in
   // plaats van een className-toewijzing: die overschreef ook gc-manueel,
   // waardoor de paarse rand van een handmatig gezette sensor bij de eerste
@@ -964,11 +983,11 @@ function applyG(pid,val){
   }
   // In Overzicht met de eenheid erbij (#439): dan geldt de decimalenregel van
   // fvDec(), en staat de accu op 14.10 V in plaats van 14 V.
-  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=PLToon.tekst(pid,val) || ((pidViewMode==='overzicht') ? fv(val, d) : fv(val));
+  const gv=document.getElementById('gv-'+pid); if(gv) gv.textContent=uit ? 'uit' : (PLToon.tekst(pid,val) || ((pidViewMode==='overzicht') ? fv(val, d) : fv(val)));
   const gb=document.getElementById('gb-'+pid);
   if(gb){
     const b=ovzBand(d, val), u=gb.lastChild;
-    if(u && b.pos!==null) u.style.left='calc('+b.pos.toFixed(1)+'% - 1.5px)';
+    if(u && b.pos!==null && !uit) u.style.left='calc('+b.pos.toFixed(1)+'% - 1.5px)';
     gb.classList.toggle('warn', st==='warn'); gb.classList.toggle('danger', st==='danger');
     const no=document.getElementById('gno-'+pid), t=ovzNoot(d, val, st);
     if(no && no.textContent!==t) no.textContent=t;
