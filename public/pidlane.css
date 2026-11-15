@@ -2226,6 +2226,11 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
      ring liep onder de tanklichtbalk door en van het scherm af (28-10-2026). */
   body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); }
   body.pl-vis-vol .vhl-pod { flex:1 1 0; min-height:0; width:auto; max-width:74cqw; aspect-ratio:1; }
+  /* #716: een bevinding lag midden over het hoofdgetal en de cijfers. Staand
+     krijgt hij een eigen strook boven de tanklichtbalk; zolang er een staat,
+     schuiven de ringen op (flex) in plaats van eronder te verdwijnen. */
+  body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen { position:fixed; left:12px; right:12px; width:auto; max-width:none; bottom:calc(var(--pl-sab, 0px) + 11vh); z-index:3; }
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vis-meldingen:not(:empty)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 64px); }
   /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
   body.pl-vis-vol .vhl-tank { left:16cqw; right:16cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }   /* niet onder 🏁 door */
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }

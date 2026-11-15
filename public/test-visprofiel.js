@@ -375,6 +375,18 @@ console.log('\n— een plek zelf invullen: op naam, met de hand, nooit dubbel �
   waar('Nulstellen roept PLTelemetrie.nulstellen() aan', P.nulstellen() === true);
 }
 
+console.log('\nG2. Hyperlane op een hybride zonder vermogensvraag (#716)');
+{
+  // Zonder CA18 valt de grote ring terug op 010C. Dan is het weer de toerenring:
+  // naam en schaal van Toerental, niet het toerental onder "Vermogen %" op −50…100.
+  const zonder = P.indeling('hyperlane', q => q !== 'CA18', 'hybride', {});
+  waar('zonder CA18: 010C op de grote ring, als gewone plek', zonder.plekken.toeren === '010C' && zonder.basis.toeren === true, JSON.stringify(zonder.basis));
+  const h = P.html('hyperlane', zonder);
+  waar('…met het label van het toerental, niet Vermogen', !/Vermogen/.test(h), h.slice(0, 120));
+  const met = P.indeling('hyperlane', () => true, 'hybride', {});
+  waar('tegenproef: met CA18 blijft het de vermogensring', met.plekken.toeren === 'CA18' && !met.basis.toeren && /Vermogen/.test(P.html('hyperlane', met)));
+}
+
 console.log('\nH. De energieweergave voor hybride en EV (#435)');
 {
   const H = laad(BRON), Q = H.PLVisProfiel;

@@ -405,6 +405,9 @@ function held(sc, x, tekst, vorig, st){
   if(n(x.versn) && x.versn>=(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)) return { w:tekst(g(x.versn), 2), e:'g', l:'ACCELERATIE' };
   if(sc==='koud' && n(x.koel)) return { w:tekst(x.koel, 0), e:'°C', l:'OPWARMEN' };
   if(sc==='stil' && x.klok) return { w:x.klok, e:'', l:'' };
+  // #716: een hybride op de accu. Verbruik is dan 0,0 en gas staat al in de
+  // cijfers eronder; het midden zegt hoe de auto nu rijdt.
+  if(x.ev) return { w:'EV', e:'', l:'ELEKTRISCH' };
   if(n(x.verbruik) && st!=='sport') return { w:tekst(x.verbruik, 1), e:'L/100', l:'VERBRUIK NU' };
   if(n(x.gas)) return { w:tekst(x.gas, 0), e:'%', l:'GAS' };
   return { w:'—', e:'', l:'' };
@@ -429,6 +432,7 @@ function heldWaarde(l, sc, x, tekst, st){
   // Vol gas: ook een verbruik dat er al stond gaat meteen weg
   if(l==='VERBRUIK NU') return n(x.verbruik) && st!=='sport' && !(n(x.gas) && x.gas>=VOLGAS) ? { w:tekst(x.verbruik, 1), e:'L/100' } : null;
   if(l==='GAS') return n(x.gas) ? { w:tekst(x.gas, 0), e:'%' } : null;
+  if(l==='ELEKTRISCH') return x.ev ? { w:'EV', e:'' } : null;
   if(l==='') return sc==='stil' && x.klok ? { w:x.klok, e:'' } : null;
   return null;
 }
@@ -1145,6 +1149,7 @@ function frame(nu){
     // Het hoofdgetal (zes keer per seconde: rustig genoeg om te lezen)
     const hx={ koel:e.koel, verbruik:e.verbruik, gas:e.gas, versn:s.vs ? s.vs.a : null,
                        launchS:s.nul.start!==null ? T-s.nul.start : null,
+                       ev:motorStilNu(),
                        klok:('0'+nu8.getHours()).slice(-2)+':'+('0'+nu8.getMinutes()).slice(-2) };
     const st=stand(), h=held(sc, hx, tekstVan, s.heldL, st);
     s.heldL=h.l;   // de hysterese hoort bij het slimme getal, ook als het nu niet in beeld is

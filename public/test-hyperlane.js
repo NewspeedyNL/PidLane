@@ -225,6 +225,11 @@ const tk = (v, dec) => P.tekst(v, dec);
 const hx = x => Object.assign({ koel: 90, verbruik: 6.4, gas: 20, versn: 0, launchS: null, klok: '20:47' }, x);
 waar('gewoon rijden: verbruik nu', JSON.stringify(H.held('rijden', hx({}), tk)) === JSON.stringify({ w: '6,4', e: 'L/100', l: 'VERBRUIK NU' }));
 waar('cruise ook verbruik', H.held('cruise', hx({}), tk).l === 'VERBRUIK NU');
+// #716: een hybride op de accu — niet verbruik 0,0 of gas groot in het midden
+waar('#716: op de accu staat EV in het midden', JSON.stringify(H.held('rijden', hx({ ev: true }), tk)) === JSON.stringify({ w: 'EV', e: '', l: 'ELEKTRISCH' }), JSON.stringify(H.held('rijden', hx({ ev: true }), tk)));
+waar('#716: …maar hard optrekken blijft acceleratie', H.held('rijden', hx({ ev: true, versn: 10 }), tk).l === 'ACCELERATIE');
+waar('#716: tegenproef — met de motor aan weer verbruik', H.held('rijden', hx({ ev: false }), tk).l === 'VERBRUIK NU');
+waar('#716: EV blijft staan zolang de auto op de accu rijdt', !!H.heldWaarde('ELEKTRISCH', 'rijden', hx({ ev: true }), tk) && H.heldWaarde('ELEKTRISCH', 'rijden', hx({ ev: false }), tk) === null);
 waar('hard optrekken (≥ 4 km/h/s): acceleratie in g', H.held('rijden', hx({ versn: 10 }), tk).l === 'ACCELERATIE' && H.held('rijden', hx({ versn: 10 }), tk).w === '0,28');
 waar('rustig optrekken (2 km/h/s): gewoon verbruik', H.held('rijden', hx({ versn: 2 }), tk).l === 'VERBRUIK NU');
 waar('zacht afremmen (−6 km/h/s, nog geen remscène) is geen acceleratie', H.held('rijden', hx({ versn: -6 }), tk).l === 'VERBRUIK NU');
