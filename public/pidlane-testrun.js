@@ -5183,11 +5183,20 @@ function _teken() {
 // Hoort bij _blok5() hierboven: daar staat de controle, hier de vraag.
 // Herschrijf ze samen.
 const CAMPAGNE = {
-  titel: 'OPLEVERING 24-10 — meetcoach: één vraag bij verbinden, één actie in Live, de rest meet en verzendt vanzelf',
+  titel: 'OPLEVERING 16-11 — één rit sluit #650, #509 en #667: meetcoach aan, drie keer naar Maps, na de rit vier analyses',
   // vragen is een getter (#690): de laatste regel komt uit de proevenlijst,
   // en die wordt pas geladen als de testrun opent.
   get vragen() { return this._vragen.concat([_dekkingRegel()]); },
   _vragen: [
+    '── RIT 16-11: ÉÉN RIT, DRIE ISSUES DICHT ────────',
+    'VOORAF. Haal de meetopdrachten op (meetcoach doet het vanzelf bij verbinden). Kies bij "wat kan deze rit": stoplicht, snelweg en stilstaan. Zet Tankbeurten bijhouden aan (Mijn voertuigen → Profiel).',
+    '#650 DE OPSTART. Verbind met de motor uit, start daarna. Opdracht "Gaten in de snelheid" hoort gesloten te eindigen: toestand-gat-s onder 5 (was 20 door de opstart). Staat er toch een gat, dan zegt het bewijs in Second opinion waar (tS).',
+    '#650 BEREKEND. Zet Slim visueel aan met Verbruik nu en Bereik met deze tank. Komt berekend-buiten boven 0, dan staat in het bewijs nu per CA-code hoe vaak, aan welke kant en bij welke bronwaarden. Plak dat blok in #650; dan is de oorzaak bekend en kan hij dicht na de reparatie.',
+    '#650 NA DE RIT. Na het parkeren toont de meetcoach "📋 Na de rit, binnen een half uur: open 4× een analyse". Doe dat (Slim, AI-rapport of Er is iets mis), ook na een herverbinding. verzamel-na-rit hoort dan ≥ 1 te zijn.',
+    '#509 DE ACHTERGROND. Wissel drie keer onderweg naar Maps en blijf daar minstens 30 s. Contact uit/aan bij een stoplicht zoals de meetcoach vraagt. Dicht als verbind-st-stappen = 0. Zo niet: het bewijs noemt per ATST-stap hoeveel seconden na de achtergrond hij viel. Onder 10 s = de rust is te kort, erboven = een echte timingvraag. Weigeringen met reden "elm-init" horen bij het opstarten en zijn geen fout.',
+    '#667 DE TANKVRAAG. Contact uit en weer aan zonder te tanken: geen vraag. Kwam hij toch, tik Nee; bij de volgende keer uit/aan op dezelfde plek komt hij niet terug. Ga je tanken: de vraag komt wel. Beide gezien = #667 dicht.',
+    '#695 ALLEEN MET EEN HYBRIDE. Home vraagt eenmalig "Kan deze auto elektrisch wegrijden?". Beantwoord hem; Overzicht en Visueel horen daarna bij de vorm te passen (#506).',
+    '#691 BATTERIJ (los van deze rit). 30 min Hyperlane met het scherm aan en daarna 30 min met de app op de achtergrond. Noteer per halfuur het percentage uit de Android-batterijstatistiek van PidLane in #691.',
     '── WAAROM DEZE RONDE ────────',
     'DE MEETCOACH ZEGT HOE VER JE BENT. Bovenaan: hoeveel proeven klaar en hoe ver de rit is. Daaronder "Stap 1 van 3" met Volgende ›, ☰ Kies uit lijst en ✕ Niet deze rit, en wat vanzelf meet met "nog 2:30". In de lijst: welke proeven niet bij deze rit passen, weggezette stappen terug, en ✎ Rit aanpassen (de ritklok loopt door). Een uur snelweg zonder Stoplichten aangevinkt = geen contact-uit-stap. Klopt "nog …" niet met wat je reed, of mis je een stap: plak de regel van blok 5 over de meetcoach.',
     'GEEN MEETKAMER MEER NODIG. Bij verbinden vraagt Live één keer: hoe lang rij je, en wat kan deze rit (stoplicht, snelweg, helling, stilstaan). Daarna staat er bovenaan Live één actie tegelijk — doe hem als het kan, of tik Kan nu niet. Alle opdrachten laden vanzelf, hun sensoren lezen mee, en een uitkomst gaat bij verbreken of na een minuut contact uit vanzelf naar Second opinion. Een opstelling hoeft niet meer gekeurd: ongekeurd telt als auto, afkeuren kan achteraf. Sta je stil, dan vraagt de balk of hij de bus even mag hebben — alleen na Ja.',

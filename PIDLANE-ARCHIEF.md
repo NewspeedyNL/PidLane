@@ -16,6 +16,41 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 16-11-2026 — Issueronde na #722: drie issues waren al grotendeels gebouwd
+
+- **#705 stond open met zes lege vinkjes, en alle zes zaten in #706** (`f3bd7dd`,
+  09-11). PR #722 zei eerlijk "niet nagelopen", en daardoor kwam het issue
+  opnieuw in de keuzelijst als groot werk. Les: lees `git log --grep=#nnn`
+  vóór je een issue inplant, niet pas als je de code opent.
+- **#509 idem voor de helft.** De rust na de achtergrond (`plStNaAchtergrond`)
+  en de D1-regel bij elke ATST-stap kwamen met #651. Wat er nog niet was, is het
+  antwoord op de vraag van het issue zelf: van de 27 weigeringen op 14-10 was niet
+  te zeggen of ze bij het opstarten of na Maps vielen. Nu draagt elke weigering
+  de reden van de sluiting (`_elmPoortReden`) en de tijd sinds de achtergrond, en
+  gaan ze met de ATST-stappen (ook met hun achtergrondtijd) in het bewijs.
+- **#691: punten 1 en 2 waren al gebouwd** (#692, #702: PLRust en het beeldtempo
+  van Hyperlane). Punt 3 (CSS) is nu gedaan, met één klasse `pl-rust` op `<html>`
+  in plaats van `animation-play-state` per paneel. Per paneel bijhouden wat in
+  beeld is, kost meer dan het oplevert zolang het scherm uit de grote verbruiker is.
+- **#690 is geen "laad later".** `pidlane-testrun.js` start bij de boot `PLRit`
+  en `PLBudget`, en draagt de gat-duidingen die `PLAanlevering` naar de klant-AI
+  stuurt. Uitgesteld laden zou die stil uitzetten: de aanroepers vangen een
+  ontbrekende functie met `typeof` af en zwijgen dan. Dat is dezelfde vorm als
+  #188. Het plan in twee PR's staat in het issue.
+- **#650 punt 1.** De toeschouwer telde `onbekend` als gat zodra hij verbonden
+  was. Hij telde dus ook de protocoldetectie (de eerste `0100` duurde 5126 ms),
+  de VIN en de survey. Nu telt een gat pas vanaf de eerste bekende toestand. Een
+  gat midden in de rit telt nog steeds (`test-toeschouwer.js` §3).
+- **#650 punt 2, `buitenBij`.** Die bewaarde het *hoogste* punt buiten de tegel.
+  Een waarde onder de ondergrens werd dus nooit vastgelegd zolang er al één
+  boven lag. Nu is het punt dat het verst buiten de tegel ligt, aan beide kanten,
+  met een telling van onder en boven.
+- **Bijvangst, niet gerepareerd:** `openRitAnalyse()` → `resetRitUI()` wist
+  `ritFaseData`, maar laat `ritEindTijd` staan. Open je de ritanalyse na een rit
+  en sluit je hem zonder te starten, dan geeft `plRitBron()` een rit met een lege
+  `hist` en een geldige eindtijd. Het verzamelscherm ziet dan "de rit van
+  zojuist" zonder data. Dat is niet gemeten op een toestel, alleen gelezen.
+
 ## 15-11-2026 — Issueronde zonder rit: wat de bron anders bleek dan het issue
 
 - **#681, Tiguan 88 %.** Het issue noemde 27 codes met `waarom: simulatie` in
