@@ -64,7 +64,9 @@
     // `slip` sneller dan de langzaamste, bij gas. `spreidMs`: de vier wielen
     // komen niet in één antwoord; ouder uit elkaar is geen vergelijking.
     // minKmh: de wielen zijn hele km/h; bij 10 km/h is één tel al 10 %.
-    ws: { kmh: 8, pedaal: 15, slip: 0.10, minKmh: 3, spreidMs: 2500, minS: 60 }
+    ws: { kmh: 8, pedaal: 15, slip: 0.10, minKmh: 3, spreidMs: 2500, minS: 60,
+      // #669: de nulstand van deze rit — zonder gas, boven kalKmh; pas vanaf kalN monsters
+      kalN: 10, kalMax: 60, kalKmh: 20 }
   };
 
   // ── Het onderhoudslogboek ─────────────────────────────────────────
@@ -261,6 +263,15 @@
     return s.v0 + (s.v1 - s.v0) * (t - s.t0) / (s.t1 - s.t0);
   }
 
+  function kalBij(a, k, x, max) {
+    if (!isFinite(x) || x <= 0) return;
+    var l = a[k] || (a[k] = []); l.push(Math.round(x * 1e4) / 1e4); if (l.length > max) l.shift();
+  }
+  function kalVan(l, n) {
+    if (!l || l.length < n) return null;
+    var s = l.slice().sort(function (x, y) { return x - y; }), m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
   function wielTik(a, m, dt, kmh) {
     var c = CFG.ws, w = m.wielen, ped = getal(m.pedaal);
     if (!w || kmh === null || kmh <= c.kmh) { a.wsAan = false; return; }
@@ -280,6 +291,18 @@
     var vr = (v.VL + v.VR) / 2, ac = (v.AL + v.AR) / 2;
     // Klopt de schaal? Het gemiddelde van de vier tegen 010D.
     a.wvS = (a.wvS || 0) + Math.abs((vr + ac) / 2 - kmh) / kmh * 100; a.wvN = (a.wvN || 0) + 1;
+    // DE NULSTAND (#669, 15-11-2026). Een gezonde CX-5 gaf rit na rit 5,4–5,9 %
+    // afwijking: een vaste fout (bandomtrek, rolstraal, schaal), geen slip.
+    // Zonder gas en boven kalKmh leren we per rit (1) de schaal van de vier
+    // wielen tegen 010D en (2) de verhouding achter/voor. De rest-afwijking
+    // rekent vanaf die schaal, en slip vanaf die verhouding.
+    if (ped !== null && ped < c.pedaal && Math.min(vr, ac) > c.kalKmh && kmh > c.kalKmh) {
+      kalBij(a, 'wkF', (vr + ac) / 2 / kmh, c.kalMax); kalBij(a, 'wkQ', ac / vr, c.kalMax);
+    }
+    var F = kalVan(a.wkF, c.kalN), Q = kalVan(a.wkQ, c.kalN);
+    if (F !== null) { a.wrS = (a.wrS || 0) + Math.abs((vr + ac) / 2 / (kmh * F) - 1) * 100; a.wrN = (a.wrN || 0) + 1; }
+    // Achter op de schaal van voor; zonder nulstand (nog) de ruwe waarde.
+    if (Q !== null) ac = ac / Q;
     var tV = Math.max(tt.VL, tt.VR), tA = Math.max(tt.AL, tt.AR);
     asStap(a, 'wsV', tV, vr); asStap(a, 'wsA', tA, ac);
     var tc = Math.min(tV, tA), voor = asOp(a.wsV, tc), achter = asOp(a.wsA, tc);
@@ -311,6 +334,8 @@
     // Tractie: alleen als het lang genoeg te zien was. Niet gemeten is geen 0.
     if ((a.tcD || 0) >= CFG.tc.minS) o.tc = a.tcn || 0;
     if ((a.wsD || 0) >= CFG.ws.minS) o.ts = a.wsn || 0;
+    // De nulstand van de wielen (#669): de vaste schaalfout tegen 010D, in %.
+    var wf = kalVan(a.wkF, CFG.ws.kalN); if (wf !== null) o.wf = rond((wf - 1) * 100, 1);
     return Object.keys(o).length ? o : null;
   }
 

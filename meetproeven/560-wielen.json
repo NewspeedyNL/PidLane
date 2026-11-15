@@ -43,12 +43,21 @@
         ]
       },
       {
-        "issue": "#560",
-        "naam": "de wielsnelheden kloppen met de snelheid (hoogstens 5 % afwijking)",
-        "app": "wiel-afwijking-pct",
+        "issue": "#669",
+        "naam": "na de nulstand kloppen de wielen met de snelheid (≤ 2 %)",
+        "app": "wiel-rest-pct",
         "tussen": [
           0,
-          5
+          2
+        ]
+      },
+      {
+        "issue": "#669",
+        "naam": "vaste schaalfout wielen tegen 010D binnen 8 % (bandmaat)",
+        "app": "wiel-schaal-pct",
+        "tussen": [
+          -8,
+          8
         ]
       },
       {

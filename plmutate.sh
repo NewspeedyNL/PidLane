@@ -1745,6 +1745,7 @@ MUTATIES=(
 "public/pidlane-tank.js@@    if (tankSprong(anker, nuPeil)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };@@    var s0 = tankSprong(anker, nuPeil); if (s0) { st.gevraagd = true; uit.sprong = s0; }@@test-tank.js@@helling of drempel: een scheef peil in stilstand is meteen een tankvraag"
 "public/pidlane-tank.js@@    if (st.gevraagd || nu < st.pauzeTot) return uit;@@    if (st.gevraagd) return uit;@@test-tank.js@@na een tankvraag komt er binnen drie kwartier alweer een"
 "public/pidlane-tank.js@@    if (!st.buf.length && st.rij.length >= CFG.peilN) {@@    if (false) {@@test-tank.js@@het anker komt weer uit een (scheve) stilstand in plaats van het rijden ervoor"
+"public/pidlane-conditie.js@@    if (Q !== null) ac = ac / Q;@@@@test-winterrit.js@@een vaste as-verhouding (andere bandmaat voor en achter) telt bij elke optrekking als wielslip — #669"
 "public/pidlane-contact.js@@      if (!pids.some(function (p) { return omg.kortOk(p); })) return false;@@@@test-contact.js@@NO DATA van een PID die de auto niet heeft maakt na zes rondes contact uit (#487)"
 "public/pidlane-rust.js@@        if (!mag(t)) stop(t);@@        if (false) stop(t);@@test-rust.js@@uit beeld blijft de timer staan en maakt de processor wakker"
 "public/pidlane-rust.js@@    function mag(t) { return !omg.verborgen() || (t.meet && verbonden()); }@@    function mag(t) { return !omg.verborgen(); }@@test-rust.js@@een meettimer stopt uit beeld ook tijdens een rit: met Maps ervoor meet de app niets"

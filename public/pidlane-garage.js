@@ -845,6 +845,9 @@
       case 'wiel-vers-pct': return a.wsR ? Math.round((a.wsD || 0) / a.wsR * 100) : null;
       case 'wiel-slip-n': return a.wsD ? (a.wsn || 0) : null;
       case 'wiel-afwijking-pct': return a.wvN ? Math.round(a.wvS / a.wvN * 10) / 10 : null;
+      // #669: na de nulstand van deze rit (PLConditie, zonder gas geleerd).
+      case 'wiel-rest-pct': return a.wrN ? Math.round(a.wrS / a.wrN * 10) / 10 : null;
+      case 'wiel-schaal-pct': { var s = window.PLConditie && PLConditie.samenvat ? PLConditie.samenvat(a) : null; return s && typeof s.wf === 'number' ? s.wf : null; }
     }
     return null;
   }

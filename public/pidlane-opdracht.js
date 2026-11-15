@@ -200,7 +200,10 @@
     'wiel-vers-s':        ['PLGarage', 'daarvan seconden met vier verse waarden binnen 2,5 s (vergelijkbaar)'],
     'wiel-vers-pct':      ['PLGarage', 'deel van wiel-rijden-s dat vergelijkbaar was, in %'],
     'wiel-slip-n':        ['PLGarage', 'keren gemeten wielslip (snelste as ≥ 10 % sneller bij gas), deze rit'],
-    'wiel-afwijking-pct': ['PLGarage', 'gemiddelde afwijking van de vier wielen samen tegen 010D, in %']
+    'wiel-afwijking-pct': ['PLGarage', 'gemiddelde afwijking van de vier wielen samen tegen 010D, in %'],
+    // 15-11-2026 — #669: de vaste fout eruit (nulstand zonder gas, deze rit)
+    'wiel-schaal-pct':    ['PLGarage', 'vaste schaalfout van de vier wielen tegen 010D (nulstand zonder gas), in %, met teken'],
+    'wiel-rest-pct':      ['PLGarage', 'gemiddelde afwijking tegen 010D ná de nulstand van deze rit, in %']
   };
   function _appMaat(naam) {
     var bron = APPMATEN[naam];
