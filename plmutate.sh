@@ -1708,6 +1708,8 @@ MUTATIES=(
 "public/pidlane-tank.js@@    if (ka !== null && kb !== null && kb > ka && kb - ka <= CFG.kmMax) {@@    if (false) {@@test-tank.js@@de afgelezen km-standen worden genegeerd en de ritten tellen"
 "public/pidlane-tank.js@@        c.opgemaakt = c.restBekend ? bel - c.rest : bel;@@        c.opgemaakt = bel;@@test-tank.js@@gehaald vergeet wat er bij het tanken nog in de tank zat"
 "public/pidlane-tank.js@@          if (l === null) { heel = false; break; }@@          if (l === null) continue;@@test-tank.js@@een beurt zonder liters maakt het volle-tankverbruik te laag"
+"public/pidlane-tank.js@@    if (tankSprong(anker, nuPeil, drempel)) st.kand@@    if (tankSprong(anker, nuPeil)) st.kand@@test-tank.js@@een Nee op de tankvraag leert niets: dezelfde scheve sprong vraagt na elke contact uit/aan opnieuw — #667"
+"public/pidlane-tank.js@@Math.max(oud, Math.round((sp + CFG.leerMarge) * 10) / 10)@@Math.round((sp + CFG.leerMarge) * 10) / 10@@test-tank.js@@een kleine onterechte sprong verlaagt de geleerde drempel weer — #667"
 "public/pidlane-tank.js@@        for (var j = start + 1; j <= i; j++) {@@        for (var j = i; j <= i; j++) {@@test-tank.js@@de halve beurt tussen twee volle tanken telt niet mee"
 "public/pidlane-tank.js@@      if (isNaN(s) || s < van || s >= tot || typeof r.km !== 'number') return;@@      if (isNaN(s) || typeof r.km !== 'number') return;@@test-tank.js@@ritten buiten de tankcyclus tellen mee"
 "public/pidlane-tank.js@@'<div class=\"gr-klein\">📝 ' + esc(t.notitie)@@'<div class=\"gr-klein\">📝 ' + t.notitie@@test-tank.js@@een notitie komt als HTML op het scherm"
