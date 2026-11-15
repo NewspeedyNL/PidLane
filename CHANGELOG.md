@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 15-11-2026 — Issueronde zonder rit
+ ═════════════════════════════════════════════════════
+   • Tankvraag leert van "Nee, niet getankt": per voertuig een drempel net boven de onterechte sprong (#667)
+   • Home: herinnerkaart met Aanzetten / Niet nodig, uitleg achter ⓘ (#715)
+   • Check mijn auto: getoetst met een échte tik; het checkvenster komt boven wat erover ligt (#714)
+   • Wielslip: nulstand per rit zonder gas; opdracht 44 meet wiel-rest-pct en wiel-schaal-pct (#669)
+   • Hyperlane staand: toerenring zonder CA18, EV in het midden op de accu, bevinding in een eigen strook (#716)
+   • Overzicht: een categorie die helemaal uit staat klapt in (#718)
+   • Visueel: stand als woord nu met browserproef en tegenproef (#683)
+
+ ═════════════════════════════════════════════════════
  15-11-2026 — Bevinding vuile MAF niet meer op een hybride
  ═════════════════════════════════════════════════════
 

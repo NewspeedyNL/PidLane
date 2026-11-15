@@ -362,6 +362,15 @@ async function startApp(opties) {
     },
     /* Een schermafdruk als PNG, om een UI-wijziging met eigen ogen te zien
        (29-09-2026). Geen toets: een proef oordeelt met ev(), niet met pixels. */
+    /* Een échte vingertik op (x, y) in CSS-pixels (#714, 15-11-2026): touchStart
+       en touchEnd via het debugprotocol, zodat de browser zelf bepaalt welk
+       element er bovenop ligt en of er een click uit volgt — zoals op de
+       telefoon. Een el.click() slaat dat allemaal over. */
+    async tik(x, y) {
+      await cmd('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+      await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x, y: y }] });
+      await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    },
     async schermafdruk(pad) {
       const r = await cmd('Page.captureScreenshot', { format: 'png' });
       fs.writeFileSync(pad, Buffer.from((r.result || r).data, 'base64'));

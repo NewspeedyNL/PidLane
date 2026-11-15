@@ -280,7 +280,7 @@ function plekkenVan(p, motor, stand){
   // naast de eigen lijst van Motor (p.hybride) — waar de grootheid dezelfde
   // blijft maar een andere bron beter past.
   if(elektrisch(motor))
-    hier=hier.map(function(x){ return x.elektrisch ? Object.assign({}, x, x.elektrisch) : x; });
+    hier=hier.map(function(x){ return x.elektrisch ? Object.assign({}, x, x.elektrisch, { _basis:x }) : x; });
   return hier;
 }
 /* Het profiel zoals deze motor het ziet: dezelfde velden, andere plekken. */
@@ -394,7 +394,7 @@ function kortVan(naam){
 function indeling(id, mag, motor, opts){
   const st=standNu(), p=voor(id, motor, st);
   if(!p || !p.plekken) return null;
-  const uit={ id:p.id, motor:motor||null, stand:st, plekken:{}, vervang:{}, weergave:{} }, bezet=[];
+  const uit={ id:p.id, motor:motor||null, stand:st, plekken:{}, vervang:{}, weergave:{}, basis:{} }, bezet=[];
   const def=function(q){ return (opts && Array.isArray(opts.defs)) ? opts.defs.filter(function(d){ return d && d.pid===q; })[0] : null; };
   // Wat elke plek uit zijn EIGEN keten zou halen. Dezelfde PID op twee
   // plekken mag als beide ketens hem noemen (de telemetrie zet TL01 op de
@@ -412,6 +412,10 @@ function indeling(id, mag, motor, opts){
     }
     uit.plekken[x.rol]=pid;
     if(pid) bezet.push(pid);
+    // #716: de elektrische variant viel terug op de bron van de gewone plek
+    // (hybride zonder CA18: 010C). Dan ook de gewone plek — naam, schaal en
+    // rol — en niet het toerental onder "Vermogen %" op −50…100.
+    if(pid && x._basis && pid!==x.keten[0] && x._basis.keten.indexOf(pid)>=0) uit.basis[x.rol]=true;
     // Met de hand gekozen en niet uit de eigen keten of de naamtreffers: een
     // andere grootheid, dus zijn eigen naam en (zo bekend) zijn eigen schaal.
     const kz=opts && opts.keuze && opts.keuze[p.id+'/'+x.rol];
@@ -448,8 +452,9 @@ function ketens(id, motor, opts){
    eigen naam en schaal. */
 function voorInd(id, ind){
   const p=voor(id, ind && ind.motor, ind && ind.stand);
-  if(!p || !p.plekken || !ind || (!ind.vervang && !ind.weergave)) return p;
+  if(!p || !p.plekken || !ind || (!ind.vervang && !ind.weergave && !ind.basis)) return p;
   return Object.assign({}, p, { plekken:p.plekken.map(function(x){
+    if(ind.basis && ind.basis[x.rol] && x._basis) x=x._basis;
     const v=ind.vervang && ind.vervang[x.rol], w=ind.weergave && ind.weergave[x.rol];
     const y=v ? Object.assign({}, x, v) : x;
     return w ? Object.assign({}, y, weergaveVelden(w, y)) : y;

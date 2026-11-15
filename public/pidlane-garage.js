@@ -845,6 +845,9 @@
       case 'wiel-vers-pct': return a.wsR ? Math.round((a.wsD || 0) / a.wsR * 100) : null;
       case 'wiel-slip-n': return a.wsD ? (a.wsn || 0) : null;
       case 'wiel-afwijking-pct': return a.wvN ? Math.round(a.wvS / a.wvN * 10) / 10 : null;
+      // #669: na de nulstand van deze rit (PLConditie, zonder gas geleerd).
+      case 'wiel-rest-pct': return a.wrN ? Math.round(a.wrS / a.wrN * 10) / 10 : null;
+      case 'wiel-schaal-pct': { var s = window.PLConditie && PLConditie.samenvat ? PLConditie.samenvat(a) : null; return s && typeof s.wf === 'number' ? s.wf : null; }
     }
     return null;
   }
@@ -1100,10 +1103,13 @@
   // de vraag stellen. Niet in de demo: daar is geen echte tank.
   var _peil = {};
   function peilSleutel(vid) { return 'pl_tank_peil_' + vid; }
+  // Wat dit voertuig leerde van "Nee, niet getankt" (#667): { drempel, nee }.
+  function leerSleutel(vid) { return 'pl_tank_leer_' + vid; }
   function tankTik(v, kmh, nu) {
     if (!tankenAan(v) || !window.PLTank || !PLTank.peilTik) return;
     var a = lees(peilSleutel(v.id), null);
-    var r = PLTank.peilTik(_peil, kmh, pv('012F'), nu, a);
+    var d = PLTank.drempelVan ? PLTank.drempelVan(lees(leerSleutel(v.id), null)) : undefined;
+    var r = PLTank.peilTik(_peil, kmh, pv('012F'), nu, a, d);
     _peil = r.st;
     if (r.anker) schrijf(peilSleutel(v.id), r.anker);
     if (r.sprong) tankVraag(v, r.sprong);
@@ -1113,7 +1119,12 @@
     var ja = false;
     try { ja = (typeof plBevestig === 'function') ? await plBevestig(vraag, 'Invullen', 'Nee, niet getankt', '⛽ Tankbeurt') : false; }
     catch (e) { console.warn('PLGarage: tankvraag', e); }
-    if (!ja) { melding('Oké — geen tankbeurt'); return; }
+    if (!ja) {
+      // Een "Nee" is een waarneming: dezelfde sprong vraagt op deze auto niet nog eens.
+      if (PLTank.leerNee) schrijf(leerSleutel(v.id), PLTank.leerNee(lees(leerSleutel(v.id), null), s));
+      melding('Oké — geen tankbeurt. Een sprong als deze vraag ik op deze auto niet meer.');
+      return;
+    }
     var bereik = pv('CA09');
     open(v.id);
     _st.tab = 'tanken'; _st.tankForm = PLTank.uitSprong(s, typeof bereik === 'number' ? bereik : null);

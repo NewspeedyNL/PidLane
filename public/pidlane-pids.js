@@ -928,6 +928,12 @@ function ovzBij(){
       if(c.classList.contains('ovz-uit')) uit++; });
     const k=ovzKop(warn, danger, uit, kaarten.length), chip=sec.querySelector('.ovz-chip');
     if(chip && chip.textContent!==k.tekst){ chip.textContent=k.tekst; chip.className='ovz-chip'+(k.kl?' '+k.kl:''); }
+    // #718: een categorie die helemaal "uit" staat (de motor van een hybride op
+    // de accu) klapt in tot zijn kop; een tik op de kop houdt hem open.
+    const dicht=k.kl==='uit' && sec.dataset.open!=='1';
+    if(sec.classList.contains('ovz-ingeklapt')!==dicht) sec.classList.toggle('ovz-ingeklapt', dicht);
+    const kop=sec.querySelector('.ovz-kop');
+    if(kop && !kop.dataset.tik){ kop.dataset.tik='1'; kop.addEventListener('click', function(){ if(!sec.classList.contains('ovz-ingeklapt') && sec.dataset.open!=='1') return; sec.dataset.open=sec.dataset.open==='1'?'':'1'; ovzBij(); }); }
     const nu=kaarten.map(function(c){ return c.id.slice(3); }), nieuw=ovzSorteer(nu, st, ord);
     if(nieuw.join()!==nu.join()) nieuw.forEach(function(p){ const c=document.getElementById('gc-'+p); if(c) box.appendChild(c); });
   });

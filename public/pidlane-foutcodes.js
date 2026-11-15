@@ -629,9 +629,27 @@
     ov.style.display = 'flex';
     _st.fase = 'lijst';
     teken();
+    nietBedekt(ov);
     // Verbonden en nog niets gelezen: meteen uitlezen — dat is waarvoor je
     // dit venster opent.
     if (!_st.scan && !_st.bezig && (isVerbonden() || isDemo()) && !isRemote()) scan();
+  }
+
+  /* #714: op de telefoon "deed de knop niets" terwijl hij in Chromium het
+     venster opent. Ligt er iets over het venster, dan zeggen we dat (met de
+     naam van wat erboven ligt) en zetten we het venster erboven. */
+  function nietBedekt(ov) {
+    setTimeout(function () {
+      try {
+        var d = ov.querySelector('.fc-doos'); if (!d || ov.style.display !== 'flex') return;
+        var q = d.getBoundingClientRect(), t = document.elementFromPoint(q.left + q.width / 2, q.top + Math.min(20, q.height / 2));
+        if (!t || t.closest('#plFcOv')) return;
+        var w = t.closest('[id]'), naam = w ? '#' + w.id : t.tagName, z = 0;
+        for (var e = t; e && e !== document.body; e = e.parentElement) { var zi = parseInt(getComputedStyle(e).zIndex, 10); if (zi > z) z = zi; }
+        console.warn('PLFoutcodes: het checkvenster lag onder ' + naam + ' (z ' + z + ') — erboven gezet');
+        ov.style.zIndex = String(Math.max(9600, z + 1));
+      } catch (e) { console.warn('PLFoutcodes: bedekking van het checkvenster niet te bepalen', e); }
+    }, 250);
   }
 
   function sluit() {

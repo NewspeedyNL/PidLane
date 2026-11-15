@@ -193,6 +193,35 @@ console.log('\n#560 — tractie-ingrijpen, afgeleid');
     }
     toets('wielen: te snel en te traag heffen elkaar niet op (10 %)', Math.abs(a.wvS / a.wvN - 10) < 1e-9, a.wvS / a.wvN);
   }
+  {
+    // #669: een gezonde auto met een vaste fout. De vier wielen lezen 5,5 % hoger
+    // dan 010D en de achteras nog eens 12 % hoger dan voor (andere bandmaat of
+    // slijtage). Eerst 30 tikken zonder gas, dan 30 met gas en gelijke snelheid.
+    const rit669 = (metGas) => {
+      let a = null, t = 0;
+      for (let i = 0; i < 60; i++) {
+        t += 2000; const vv = 50 * 1.055, va = vv * 1.12;
+        a = C.tik(a, { kmh: 50, rpm: 2000, pedaal: i < 30 || !metGas ? 0 : 30, gasklep: 25, pedaalT: t, gasklepT: t,
+          wielen: { VL: { v: vv, t: t }, VR: { v: vv, t: t }, AL: { v: va, t: t }, AR: { v: va, t: t } } }, 2);
+      }
+      return a;
+    };
+    const a = rit669(true), s = C.samenvat(a) || {};
+    toets('#669: een vaste as-verhouding van 12 % geeft na de nulstand geen slip', s.ts === 0, JSON.stringify(s));
+    toets('#669: de vaste schaalfout staat in de samenvatting (+11,8 %)', Math.abs(s.wf - 11.8) < 0.15, JSON.stringify(s));
+    toets('#669: de rest-afwijking na de nulstand is ~0', a.wrN > 0 && a.wrS / a.wrN < 0.1, a.wrS / a.wrN);
+    toets('#669: de ruwe afwijking blijft wat hij was (~11,8 %)', Math.abs(a.wvS / a.wvN - 11.8) < 0.15, a.wvS / a.wvN);
+    // Tegenproef: met 12 % as-verschil vanaf de eerste tik én gas is er geen nulstand te leren: dan telt het wél als slip.
+    let b = null, t = 0;
+    for (let i = 0; i < 60; i++) { t += 2000; b = C.tik(b, { kmh: 50, rpm: 2000, pedaal: 30, gasklep: 25, pedaalT: t, gasklepT: t,
+      wielen: { VL: { v: 50, t: t }, VR: { v: 50, t: t }, AL: { v: 56, t: t }, AR: { v: 56, t: t } } }, 2); }
+    toets('#669: tegenproef — zonder nulstand blijft een groot as-verschil bij gas slip', (C.samenvat(b) || {}).ts === 1, JSON.stringify(C.samenvat(b)));
+    // Echte slip ná de nulstand: achteras 15 % boven zijn eigen nulstand, bij gas.
+    let c2 = null; t = 0;
+    for (let i = 0; i < 60; i++) { t += 2000; const extra = i >= 40 && i < 43 ? 1.15 : 1; c2 = C.tik(c2, { kmh: 50, rpm: 2000, pedaal: i < 30 ? 0 : 30, gasklep: 25, pedaalT: t, gasklepT: t,
+      wielen: { VL: { v: 50, t: t }, VR: { v: 50, t: t }, AL: { v: 54 * extra, t: t }, AR: { v: 54 * extra, t: t } } }, 2); }
+    toets('#669: echte slip bovenop de nulstand telt nog steeds, één keer', (C.samenvat(c2) || {}).ts === 1, JSON.stringify(C.samenvat(c2)));
+  }
   const trw = (bt, ts, tc) => rit({ duur_s: 900, km: 10, max_koelwater: 88, cd: { bt, ts, tc } });
   const g = WR.tractie([trw(-1, 1, 3), trw(-1, 1, 3)], { nu: NU }) || {};
   toets('gemeten gaat voor afgeleid: 2× (niet 6×), zonder "mogelijk"', /^2× wielslip bij -1 °C/.test(g.titel || ''), g.titel);

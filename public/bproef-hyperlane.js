@@ -284,6 +284,31 @@ function toets(naam, waar, uitleg) {
     console.log('\n3. Weg uit de weergave');
     toets('een andere weergave stopt de lus (geen accuverbruik in een leeg vak)', r.stoptNaWissel, JSON.stringify(r));
 
+    console.log('\n4. Staand, volledig scherm, met een bevinding (#716)');
+    await app.venster(390, 844);
+    const st = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      PLVisProfiel.bewaar('hyperlane'); setPidView('visueel');
+      for (let i = 0; i < 8 && PLVisueel.profiel() !== 'hyperlane'; i++) PLVisueel.volgende();
+      PLVisThema.aan(); await wacht(1200);
+      const m = document.getElementById('visMeld');
+      m.innerHTML = '<div class="vis-meld bev"><span class="vis-meld-tx"><b>Proefbevinding</b><small>staat er niet overheen</small></span></div>';
+      await wacht(400);
+      const R = e => { const q = e.getBoundingClientRect(); return { l: q.left, t: q.top, r: q.right, b: q.bottom, w: q.width }; };
+      const over = (a, b) => a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      const meld = R(m.querySelector('.vis-meld')), mid = R(document.querySelector('.vhl-mid'));
+      const ringen = [...document.querySelectorAll('.vhl-ring')].map(R);
+      const uit = { meld, mid, ringen: ringen.map(x => Math.round(x.w)), vw: innerWidth,
+        overMid: over(meld, mid), overRing: ringen.some(x => over(meld, x)) };
+      m.innerHTML = ''; await wacht(300);
+      uit.ringZonder = [...document.querySelectorAll('.vhl-ring')].map(e => Math.round(e.getBoundingClientRect().width));
+      PLVisThema.uit();
+      return uit;
+    })()`);
+    toets('de bevinding ligt niet over het hoofdgetal en de cijfers', !st.overMid, JSON.stringify(st));
+    toets('…en niet over de meters', !st.overRing, JSON.stringify(st));
+    toets('zonder bevinding zijn de meters minstens 40 % van de breedte', st.ringZonder.length === 2 && st.ringZonder.every(w => w >= 0.4 * st.vw), JSON.stringify(st.ringZonder));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();

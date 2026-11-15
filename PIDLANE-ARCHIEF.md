@@ -16,6 +16,33 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 15-11-2026 — Issueronde zonder rit: wat de bron anders bleek dan het issue
+
+- **#681, Tiguan 88 %.** Het issue noemde 27 codes met `waarom: simulatie` in
+  de noemer. Nagelezen in `nepvloot/profielen.json`: het zijn 27 keer
+  `waarom: adressering` (OBDb `pri:"17"` / `fcm1` op 7E0). `simulatie` stond
+  sinds #670 al buiten de noemer (`tel()` in `bproef-dekking.js`). Adressering
+  hoort er wél in: de app kan ze echt niet vragen. Er is dus niets te beslissen
+  aan de definitie; het gat zit in de adressering (CAN-prioriteit, flow control
+  mode 1), en dat is #674-werk met een rit erachter. De twee `vreemd` op −40 °C
+  (`2211BE`, `22179C` @7E0) zijn de ondergrens: terecht afgekeurd. `222A61`
+  (2589 Ah) is nog niet naast een tweede bron gelegd.
+- **#714, Check mijn auto in de demo.** Ook met een échte vingertik (nieuw:
+  `app.tik()` in `plbrowser.js`) via Probeer demo → autokeuze opent het
+  checkvenster in Chromium. De oorzaak op de telefoon is niet gevonden. Wat er
+  nu staat: als er iets over het venster ligt, zegt `PLFoutcodes` in de console
+  wát, en zet het venster erboven. De chip "—" bij foutcodes vóór de eerste
+  check is geen fout: er is nog niets gelezen.
+- **#669, wielslip.** Slip werd al as tegen as gerekend, niet tegen 010D; de
+  5,5 % zat in `wiel-afwijking-pct` (vier wielen samen tegen 010D). Nu per rit
+  een nulstand zonder gas: de schaalfout (`wiel-schaal-pct`, met teken) en de
+  verhouding achter/voor, waarvandaan slip en `wiel-rest-pct` rekenen. Of de
+  CX-5 daarmee onder 2 % komt, zegt pas de volgende rit met opdracht 44.
+- **#716, Hyperlane staand.** De bovenste ring van een hybride heet Vermogen
+  (CA18, −50…100 %); zonder CA18 viel zijn keten terug op 010C, en dan stond
+  het toerental onder dat label en op die schaal. Die terugval krijgt nu de
+  gewone toerenplek (`ind.basis`).
+
 ## 15-11-2026 — Energieweergave: het woord in het midden sprong na het wegrijden (#717)
 
 Schermopname eigenaar, demo Hyundai hybride: bij het wegrijden wisselde het

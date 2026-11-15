@@ -50,7 +50,11 @@
     bevestigN: 10,      // zoveel metingen na de sprong, waarvan
     bevestigRij: 5,     // zoveel rijdend: van de helling af, op vlakke weg
     bevestigMs: 90e3,   // en over minstens anderhalve minuut
-    pauzeMs: 45 * 60e3  // na een vraag (ja of nee) zo lang geen nieuwe
+    pauzeMs: 45 * 60e3, // na een vraag (ja of nee) zo lang geen nieuwe
+    // Leren van "Nee, niet getankt" (#667, 15-11-2026): de drempel van dít
+    // voertuig gaat tot net boven de onterechte sprong, met een plafond.
+    leerMarge: 3,       // procentpunt boven de onterechte sprong
+    sprongMax: 30       // hoger dan dit gaat de drempel nooit
     // Stap 3 (13-10-2026): samenvatting per cyclus uit de ritten.
     ,ritL100MinKm: 20   // minder km met liters = geen verbruik uit de ritten
   };
@@ -234,11 +238,12 @@
     return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
   }
   /* Van anker `oud` naar peil `nu` ({pct, t}): getankt? */
-  function tankSprong(oud, nu) {
+  /* `drempel` = de geleerde drempel van dit voertuig (drempelVan), anders sprongMin. */
+  function tankSprong(oud, nu, drempel) {
     if (!oud || !nu || typeof oud.pct !== 'number' || typeof nu.pct !== 'number') return null;
     if (nu.pct > 100 || oud.pct < 0) return null;
     var d = nu.pct - oud.pct;
-    if (d < CFG.sprongMin) return null;
+    if (d < (typeof drempel === 'number' && isFinite(drempel) ? drempel : CFG.sprongMin)) return null;
     return { voor: Math.round(oud.pct * 10) / 10, na: Math.round(nu.pct * 10) / 10, sprong: Math.round(d * 10) / 10, sinds: oud.t || null, op: nu.t };
   }
   /* Eén tik. `st` = de toestand (begin met {}), `anker` = het bewaarde
@@ -255,7 +260,7 @@
           `bevestigRij` rijdend. Zakt het peil terug, dan was het de helling,
           en wordt die mediaan het anker;
        3. na een vraag `pauzeMs` lang geen nieuwe. */
-  function peilTik(st, kmh, pct, nu, anker) {
+  function peilTik(st, kmh, pct, nu, anker, drempel) {
     st = st || {};
     st = { buf: (st.buf || []).slice(), rij: (st.rij || []).slice(), stil: !!st.stil, gevraagd: !!st.gevraagd,
       kand: st.kand ? { m: st.kand.m.slice(), rij: st.kand.rij, sinds: st.kand.sinds, op: st.kand.op } : null, pauzeTot: st.pauzeTot || 0 };
@@ -269,7 +274,7 @@
       if (rijdt) { st.buf = []; st.stil = false; }
       if (st.kand.m.length >= CFG.bevestigN && st.kand.rij >= CFG.bevestigRij && nu - st.kand.sinds >= CFG.bevestigMs) {
         var peil = { pct: Math.round(mediaan(st.kand.m.map(function (x) { return x.p; })) * 10) / 10, t: nu };
-        var s = tankSprong(anker, peil);
+        var s = tankSprong(anker, peil, drempel);
         if (s) { s.op = st.kand.op; uit.sprong = s; st.pauzeTot = nu + CFG.pauzeMs; }
         uit.anker = peil; st.kand = null; st.gevraagd = true; st.rij = [];
       }
@@ -295,8 +300,22 @@
       if (!anker) { uit.anker = nuPeil; return uit; }
     }
     if (st.gevraagd || nu < st.pauzeTot) return uit;
-    if (tankSprong(anker, nuPeil)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };
+    if (tankSprong(anker, nuPeil, drempel)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };
     return uit;
+  }
+  /* Leren van een "Nee" (#667). `leer` = wat er per voertuig bewaard is
+     ({ drempel, nee }) of null. Een "Nee" op sprong `s` is een waarneming:
+     zo'n sprong is op deze auto geen tankbeurt. De drempel gaat tot net
+     boven die sprong, nooit omlaag en nooit boven sprongMax. Puur. */
+  function leerNee(leer, s) {
+    var oud = drempelVan(leer), sp = s && typeof s.sprong === 'number' && isFinite(s.sprong) ? s.sprong : null;
+    var nee = (leer && typeof leer.nee === 'number' ? leer.nee : 0) + 1;
+    if (sp === null) return { drempel: oud, nee: nee };
+    return { drempel: Math.min(CFG.sprongMax, Math.max(oud, Math.round((sp + CFG.leerMarge) * 10) / 10)), nee: nee };
+  }
+  function drempelVan(leer) {
+    var d = leer && typeof leer.drempel === 'number' && isFinite(leer.drempel) ? leer.drempel : CFG.sprongMin;
+    return Math.min(CFG.sprongMax, Math.max(CFG.sprongMin, d));
   }
   /* Wat het formulier al weet na een herkende tankbeurt. */
   function uitSprong(s, bereikApp) {
@@ -410,5 +429,5 @@
 
   window.PLTank = { CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
     samenvatting: samenvatting, csv: csv, ritSom: ritSom, html: html, uitFormulier: uitFormulier,
-    mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, CFG: CFG, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
+    mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, leerNee: leerNee, drempelVan: drempelVan, CFG: CFG, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
 })();

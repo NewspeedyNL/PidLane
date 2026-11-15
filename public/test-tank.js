@@ -154,13 +154,27 @@ console.log('\n7. Stap 2: tanken herkennen aan het brandstofpeil (13-10-2026)');
 
   // Een tikreeks: geeft per tik de uitkomst van peilTik terug, met het anker
   // zoals PLGarage het bewaart. Eén tik = tien seconden.
-  const reeks = (anker, tikken, st0) => {
+  const reeks = (anker, tikken, st0, drempel) => {
     let st = st0 || {}, a = anker; const vragen = [];
-    tikken.forEach(([kmh, pct], i) => { const r = T.peilTik(st, kmh, pct, 1e6 + i * 1e4, a); st = r.st; if (r.anker) a = r.anker; if (r.sprong) vragen.push(r.sprong); });
+    tikken.forEach(([kmh, pct], i) => { const r = T.peilTik(st, kmh, pct, 1e6 + i * 1e4, a, drempel); st = r.st; if (r.anker) a = r.anker; if (r.sprong) vragen.push(r.sprong); });
     return { vragen, anker: a, st };
   };
   const stil = (pct, n) => Array.from({ length: n || 5 }, () => [0, pct]);
   const rij = (pct, n) => Array.from({ length: n || 12 }, () => [50, pct]);
+
+  // #667: leren van "Nee, niet getankt". Na contact uit/aan staat het peil op
+  // deze auto 18 punt hoger en blijft dat tijdens het rijden — geen tankbeurt.
+  const scheef = [].concat(rij(40, 6), stil(58), rij(58));
+  const eerst = reeks({ pct: 40, t: 0 }, scheef);
+  toets('#667: de scheve sprong vraagt de eerste keer', eerst.vragen.length === 1 && eerst.vragen[0].sprong === 18, JSON.stringify(eerst.vragen));
+  const leer = T.leerNee(null, eerst.vragen[0]);
+  toets('#667: een Nee zet de drempel net boven die sprong (18 + 3)', leer.drempel === 21 && leer.nee === 1, JSON.stringify(leer));
+  toets('#667: dezelfde sprong vraagt daarna niet nog eens', reeks({ pct: 40, t: 0 }, scheef, {}, T.drempelVan(leer)).vragen.length === 0);
+  toets('#667: tegenproef — zonder het geleerde vraagt hij wél weer', reeks({ pct: 40, t: 0 }, scheef).vragen.length === 1);
+  toets('#667: een echte tankbeurt (20 → 90) vraagt nog steeds', reeks({ pct: 20, t: 0 }, [].concat(stil(90), rij(89)), {}, T.drempelVan(leer)).vragen.length === 1);
+  toets('#667: de drempel gaat nooit omlaag', T.leerNee(leer, { sprong: 16 }).drempel === 21);
+  toets('#667: en nooit boven het plafond', T.leerNee(leer, { sprong: 60 }).drempel === T.CFG.sprongMax);
+  toets('#667: een onleesbaar bewaard leer valt terug op sprongMin', T.drempelVan({ drempel: 'x' }) === T.CFG.sprongMin && T.drempelVan(null) === T.CFG.sprongMin);
 
   // Geval 1: app dicht bij de pomp. Anker 12 %, nieuwe sessie op 96 %, en wegrijden.
   let r = reeks({ pct: 12, t: 0 }, [].concat(stil(96), rij(95)));

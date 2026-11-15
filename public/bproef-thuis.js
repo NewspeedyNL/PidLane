@@ -120,6 +120,79 @@ function toets(naam, waar, uitleg) {
     toets('de hoofdknop staat boven de vouw (in de duimzone, boven de onderbalk)',
       await app.ev(`(function(){ const b=[...document.querySelectorAll('#plThuisHeld .th-cta')].find(x=>!x.hidden); if(!b) return false; const r=b.getBoundingClientRect(); return r.bottom < innerHeight - 60; })()`),
       await app.ev(`JSON.stringify([...document.querySelectorAll('#plThuisHeld .th-cta')].filter(x=>!x.hidden).map(x=>x.getBoundingClientRect().bottom))`));
+
+    console.log('\n── 6. herinnerkaart: Aanzetten of Niet nodig, uitleg achter ⓘ (#715) ──');
+    const her = await app.ev(`(function(){
+      const echt = PLHerinner.regel, echtZet = PLHerinner.zet; let gezet = null;
+      localStorage.removeItem('pl_thuis_weg');
+      PLHerinner.regel = () => ({ aan: false, aantal: 1, plugin: false });
+      PLHerinner.zet = v => { gezet = v; };
+      try {
+        PLThuis.teken();
+        const kaart = () => document.querySelector('#plThuisNuKaart [data-nu="herinner"]');
+        // Hij staat onderaan "Voor jou nu": blader er met › naartoe.
+        for (let i = 0; i < 6 && !kaart(); i++) PLThuis.volgende();
+        const k = kaart(); const r = { kaart: !!k };
+        if (!k) return r;
+        r.knoppen = [...k.querySelectorAll('.th-keus button')].map(b => b.textContent);
+        r.uitlegVerborgen = k.querySelector('small').hidden;
+        k.querySelector('.th-info').click(); r.uitlegOpen = !k.querySelector('small').hidden;
+        k.querySelector('.th-k-ja').click(); r.gezet = gezet;
+        kaart().querySelector('.th-k-nee').click();
+        r.wegNaNee = !kaart();
+        PLThuis.teken(); let weg = !kaart();
+        for (let i = 0; i < 6; i++) { PLThuis.volgende(); weg = weg && !kaart(); }
+        r.blijftWeg = weg;
+        localStorage.removeItem('pl_thuis_weg'); PLThuis.teken();
+        for (let i = 0; i < 6 && !kaart(); i++) PLThuis.volgende();
+        r.tegenproef = !!kaart();
+        return r;
+      } finally { PLHerinner.regel = echt; PLHerinner.zet = echtZet; localStorage.removeItem('pl_thuis_weg'); PLThuis.teken(); }
+    })()`);
+    toets('de kaart heeft twee keuzes: Aanzetten en Niet nodig', her.kaart && JSON.stringify(her.knoppen) === '["Aanzetten","Niet nodig"]', JSON.stringify(her));
+    toets('de uitleg staat achter ⓘ: dicht, en een tik opent hem', her.uitlegVerborgen && her.uitlegOpen, JSON.stringify(her));
+    toets('Aanzetten zet de herinneringen aan', her.gezet === true, JSON.stringify(her));
+    toets('Niet nodig verbergt de kaart, ook na opnieuw tekenen', her.wegNaNee && her.blijftWeg, JSON.stringify(her));
+    toets('tegenproef: zonder de bewaarde keuze staat hij er weer', her.tegenproef, JSON.stringify(her));
+
+    console.log('\n── 7. demo via Probeer demo → autokeuze, dan een échte tik op Check mijn auto (#714) ──');
+    await app.venster(390, 844);
+    // Op de telefoon is de klant ingelogd; hier staat het inlogscherm nog.
+    await app.ev(`document.getElementById('loginOv').classList.add('hidden'); localStorage.removeItem('pl_thuis_weg'); PLThuis.teken(); 'ok'`);
+    const demoGestart = await app.ev(`(async function(){
+      const b = [...document.querySelectorAll('#plThuisMini button')].find(x => /demo/i.test(x.textContent)); if (!b) return 'geen Probeer demo';
+      b.click(); await new Promise(r => setTimeout(r, 1500));
+      const k = [...document.querySelectorAll('[onclick]')].find(x => x.offsetParent && /startDemoCar\\(0/.test(x.getAttribute('onclick') || ''));
+      if (!k) return 'geen autokeuze'; k.click(); await new Promise(r => setTimeout(r, 2500));
+      document.getElementById('loginOv').classList.add('hidden'); PLThuis.teken();
+      return typeof demoMode !== 'undefined' && !!demoMode;
+    })()`);
+    toets('de demo loopt na Probeer demo en de autokeuze', demoGestart === true, String(demoGestart));
+    const punt = await app.ev(`(function(){ const b = document.getElementById('plCheckBtn'); if (!b || b.hidden) return null; const q = b.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; })()`);
+    toets('Check mijn auto is de hoofdknop in de demo', !!punt, JSON.stringify(punt));
+    if (punt) {
+      await app.tik(punt.x, punt.y);
+      await new Promise(r => setTimeout(r, 1200));
+      const fc = await app.ev(`(function(){ const o = document.getElementById('plFcOv'); if (!o) return { open: false };
+        const d = o.querySelector('.fc-doos').getBoundingClientRect(), top = document.elementFromPoint(d.left + d.width / 2, d.top + 20);
+        return { open: o.style.display === 'flex', bovenop: !!(top && top.closest('#plFcOv')) }; })()`);
+      toets('een vingertik opent het checkvenster', fc.open, JSON.stringify(fc));
+      toets('…en niets ligt eroverheen', fc.bovenop, JSON.stringify(fc));
+      // Ligt er toch iets over (zoals op de telefoon), dan zet het venster zich erboven.
+      const bedekt = await app.ev(`(async function(){
+        PLFoutcodes.sluit();
+        const d = document.createElement('div'); d.id = 'proefDeken'; d.style.cssText = 'position:fixed;inset:0;z-index:9700;background:transparent';
+        document.body.appendChild(d);
+        try {
+          PLFoutcodes.open(); await new Promise(r => setTimeout(r, 600));
+          const o = document.getElementById('plFcOv'), q = o.querySelector('.fc-doos').getBoundingClientRect();
+          const top = document.elementFromPoint(q.left + q.width / 2, q.top + 20);
+          return { z: o.style.zIndex, bovenop: !!(top && top.closest('#plFcOv')) };
+        } finally { d.remove(); }
+      })()`);
+      toets('ligt er iets over het checkvenster, dan komt het erboven', bedekt.bovenop, JSON.stringify(bedekt));
+      await app.ev(`PLFoutcodes.sluit(); PLZonder.stopDemo(); 'ok'`);
+    }
     toets('de app draait nog zonder fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();

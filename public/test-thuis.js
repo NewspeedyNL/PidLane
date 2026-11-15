@@ -60,6 +60,7 @@ eis('rood › oranje › winter; "nooit uitgelezen" staat al als chip', J(k.map(
 k = K.kandidaten({ punten: [{ ernst: 'info', tekst: '2 zelftests nog niet klaar' }], winter: true, herinner: { aan: false } });
 eis('winter boven een info-punt, herinnering onderaan', J(k.map(x => x.id)) === J(['winter', 'punt0', 'herinner']), J(k.map(x => x.id)));
 eis('herinnering die al aan staat: geen kaart', !K.kandidaten({ herinner: { aan: true } }).length);
+eis('#715: "Niet nodig" gekozen: geen kaart meer', !K.kandidaten({ herinner: { aan: false }, herinnerWeg: true }).length);
 k = K.kandidaten({ verbonden: true, pidVals: { '0105': 41 } });
 eis('verbonden met koude motor: een kaart "Motor nog koud"', k.length === 1 && /koud/.test(k[0].titel), J(k));
 eis('de koude motor van nu gaat voor het winteradvies, een open punt niet', J(K.kandidaten({ verbonden: true, pidVals: { '0105': 41 }, winter: true, punten: [{ ernst: 'oranje', tekst: 'APK' }] }).map(x => x.id)) === J(['punt0', 'koud', 'winter']));

@@ -38,6 +38,34 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Tankvraag leert van Nee (15-11-2026) ──
+  {
+    issue: '#667',
+    naam: 'Een "Nee, niet getankt" zet de drempel van dit voertuig net boven die sprong: dezelfde sprong vraagt niet nog eens, een echte tankbeurt wel',
+    waarom: 'Uit het gebruik: de tankvraag kwam na contact uit/aan steeds terug, op dezelfde scheve meting.',
+    proef: async function () {
+      if (!window.PLTank || typeof PLTank.leerNee !== 'function' || typeof PLTank.drempelVan !== 'function') return { staat: 'FOUT', detail: 'PLTank.leerNee ontbreekt — herladen?' };
+      var l = PLTank.leerNee(null, { sprong: 18 }), d = PLTank.drempelVan(l);
+      if (PLTank.tankSprong({ pct: 40 }, { pct: 58 }, d) || !PLTank.tankSprong({ pct: 20 }, { pct: 90 }, d))
+        return { staat: 'FOUT', detail: 'drempel ' + d + ' houdt 18 punt niet tegen of laat 70 punt niet door' };
+      return { staat: 'OK', detail: 'na een Nee op 18 punt: drempel ' + d + ' (plafond ' + PLTank.CFG.sprongMax + ')' };
+    }
+  },
+
+  // ── Hyperlane op een hybride zonder vermogensvraag (15-11-2026) ──
+  {
+    issue: '#716',
+    naam: 'Hyperlane op een hybride zonder CA18 toont de toerenring als toerenring, niet het toerental onder "Vermogen %"',
+    waarom: 'In de demo-hybride stond 1588 tpm in een ring met de schaal −50…100 % en het label Vermogen.',
+    proef: async function () {
+      if (!window.PLVisProfiel) return { staat: 'FOUT', detail: 'PLVisProfiel ontbreekt' };
+      var ind = PLVisProfiel.indeling('hyperlane', function (q) { return q !== 'CA18'; }, 'hybride', {});
+      if (ind.plekken.toeren !== '010C' || !ind.basis || !ind.basis.toeren || /Vermogen/.test(PLVisProfiel.html('hyperlane', ind)))
+        return { staat: 'FOUT', detail: 'zonder CA18: ' + ind.plekken.toeren + ' met ' + JSON.stringify(ind.basis) };
+      return { staat: 'OK', detail: 'zonder CA18 de toerenring, met CA18 de vermogensring' };
+    }
+  },
+
   // ── Overzicht bij een stilstaande motor (15-11-2026) ──
   {
     issue: '#718',

@@ -156,6 +156,38 @@ function toets(naam, waar, uitleg) {
     toets('de keuzes zijn onthouden onder basis/…', basis.keuze['basis/links'] === '0142' && basis.keuze['basis/vak'] === '22DD01', JSON.stringify(basis.keuze));
     toets('Automatisch zet koelwater terug op de boog links (tegenproef)', basis.terug === '0105', JSON.stringify(basis));
 
+    // #683: een stand (versnelling) op een plek van Visueel staat er als woord;
+    // met een eigen weergave (PLToon) als getal. Tegenproef in plmutate.sh:
+    // standTekst uit de regel in pidlane-visprofiel.js halen → het woord verdwijnt.
+    console.log('\n6. Een stand op een plek: woord, met eigen weergave het getal (#683)');
+    const stand = await app.ev(`(async function(){
+      const wacht = ms => new Promise(r => setTimeout(r, ms));
+      PLEigen.zet([{ code:'221003', naam:'Current gear', formule:'A', eenheid:'', ecu:'7E1', min:1, max:4,
+                     standen:{ 1:'First gear', 2:'Second gear', 4:'Fourth gear' } }], 'CX-5');
+      buildDiscoveredPIDList();
+      localStorage.removeItem('pl_weergave');
+      localStorage.setItem('pl_vis_keuze', JSON.stringify({ 'temp/buiten': '221003' }));
+      PLVisProfiel.bewaar('temp');
+      setPidView('visueel');
+      for (let i = 0; i < 8 && PLVisueel.profiel() !== 'temp'; i++) PLVisueel.volgende();
+      await wacht(600);
+      const ind = PLVisueel.staat().ind.profiel, w = () => (document.getElementById('vpf-w-buiten') || {}).textContent;
+      const r = { plek: ind.plekken.buiten };
+      PLVisProfiel.bij(ind.id, ind, '221003', 2, 'ok'); r.woord = w();
+      PLVisProfiel.bij(ind.id, ind, '221003', 3, 'ok'); r.buiten = w();
+      PLToon.zetEigen('221003', { dec: 0 });
+      // De indeling neemt de weergave mee bij het opbouwen (profielOpts); hier
+      // alleen de plek, zodat de proef de regel in bij() raakt en niet de opbouw.
+      const ind2 = Object.assign({}, ind, { weergave: { buiten: PLToon.eigen('221003') } });
+      PLVisProfiel.bij(ind2.id, ind2, '221003', 2, 'ok'); r.eigen = w();
+      PLToon.zetEigen('221003', null); localStorage.removeItem('pl_vis_keuze'); PLEigen.zet(null);
+      return r;
+    })()`);
+    toets('de stand staat op de plek BUITEN', stand.plek === '221003', JSON.stringify(stand));
+    toets('waarde uit de lijst: het woord', stand.woord === 'Second gear', JSON.stringify(stand));
+    toets('waarde buiten de lijst: het getal', /^3/.test(stand.buiten || ''), JSON.stringify(stand));
+    toets('met een eigen weergave: het getal, geen woord', /^2/.test(stand.eigen || ''), JSON.stringify(stand));
+
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     if (app) await app.stop();
