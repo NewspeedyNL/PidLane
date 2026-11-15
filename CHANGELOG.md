@@ -15,6 +15,16 @@
 
  - "Mogelijk vuile MAF / verstopt luchtfilter" ging af tijdens elektrisch
    rijden: toerental en belasting van vlak ervoor, luchtmassa al op nul. De
+ ═════════════════════════════════════════════════════
+ 15-11-2026 — Overzicht: motorwaarden "uit" bij een stilstaande motor (#718)
+ ═════════════════════════════════════════════════════
+
+ - Rijdt een hybride op de accu, of staat de motor stil bij start/stop
+   (PLAandrijving: motorDraait false), dan tonen toerental, belasting,
+   gasklep, luchtmassa, trims en verbruik "uit" in plaats van 0,00, gedimd en
+   zonder oordeel (ovzMotorUit). Staat een hele kaart uit, dan zegt de kop
+   "uit". Elektrisch stond al boven Motor bij een hybride of EV.
+
    regel krijgt de hybride-poort van de thermostaatregel (_bevPoort).
  15-11-2026 — Rijbeeld op de energieweergave (#717)
  ═════════════════════════════════════════════════════

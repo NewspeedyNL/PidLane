@@ -314,7 +314,7 @@ var PL_HULP = {
         '<p><b>Live</b> in de onderbalk toont de metingen van de auto op dit moment. Bovenaan kies je hoe je kijkt: Overzicht, Slim, Visueel of <b>Grafiek</b>. ' +
         'Welke sensoren er gemeten worden kies je met <b>🎛️ Sensoren</b> linksboven.</p>' +
         '<ul>' +
-        '<li><b>Overzicht</b> — alle sensoren, per categorie (Rijden, Motor, Temperaturen, Brandstof, Uitlaat, Elektrisch). ' +
+        '<li><b>Overzicht</b> — alle sensoren, per categorie (Rijden, Motor, Temperaturen, Brandstof, Uitlaat, Elektrisch). Bij een hybride of elektrische auto staat Elektrisch boven Motor; staat de motor stil (rijden op de accu, start/stop), dan zeggen toerental, belasting en de andere motorwaarden <b>uit</b> in plaats van 0. ' +
         'Per sensor één rij met een balkje: het groene stuk is normaal voor die sensor, het streepje is nu. Valt hij erbuiten, dan kleurt hij oranje of rood ' +
         'met een korte uitleg eronder, en zegt de kop van de categorie hoeveel er afwijken. Bij een hybride of elektrische auto staat Elektrisch bovenaan. ' +
         'Met <b>Compact</b> en <b>Ruim</b> kies je rijen of grotere tegels. Hoogstens vier rijen krijgen een trendlijn: ' +
