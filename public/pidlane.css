@@ -4510,3 +4510,6 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-iteration-count: 1 !important; }
 }
+
+/* Uit beeld (#691): PLRust zet .pl-rust op <html>; elke animatie staat dan stil. */
+html.pl-rust *, html.pl-rust *::before, html.pl-rust *::after { animation-play-state: paused !important; }

@@ -91,6 +91,21 @@ function toets(naam, waar, uitleg) {
     toets('terug: meteen één keer ververst', r.terugMeteen === 1, JSON.stringify(r));
     toets('terug: alle timers lopen weer', r.terugActief === (b.taken || []).length, JSON.stringify(r));
 
+    // #691 punt 3: de CSS-animaties staan uit beeld stil.
+    const css = await app.ev(`(async function(){
+      const d = document.createElement('div'); d.style.cssText = 'animation: plProefDraai 1s linear infinite'; d.id = 'proefAnim';
+      const st = document.createElement('style'); st.textContent = '@keyframes plProefDraai{to{opacity:.2}}'; document.head.appendChild(st); document.body.appendChild(d);
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+      document.dispatchEvent(new Event('visibilitychange'));
+      const r = { klasse: document.documentElement.classList.contains('pl-rust'), stand: getComputedStyle(d).animationPlayState };
+      delete document.visibilityState; document.dispatchEvent(new Event('visibilitychange'));
+      r.terug = getComputedStyle(d).animationPlayState; r.klasseTerug = document.documentElement.classList.contains('pl-rust');
+      d.remove(); st.remove();
+      return r;
+    })()`);
+    toets('uit beeld: animaties staan stil (#691)', css.klasse && css.stand === 'paused', JSON.stringify(css));
+    toets('terug in beeld: ze lopen weer', !css.klasseTerug && css.terug === 'running', JSON.stringify(css));
+
     console.log('\n3. TEGENPROEF — de wissel niet melden');
     const t = await meet(false);
     toets('dan tikt de chip door (minstens twee keer in 2,6 s)', t.verborgen >= 2, JSON.stringify(t));
