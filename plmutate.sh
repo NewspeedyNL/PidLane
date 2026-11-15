@@ -2906,7 +2906,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(w && typeof w.min==='number' && getalKan(p, def)) return [w.min, w.max];@@@@test-weergave.js@@een eigen schaal maakt een sensor niet plaatsbaar op een boog van de Basismeter"
 "public/pidlane-visueel.js@@  if(w && typeof w.min==='number' && getalKan(p, def)) return [w.min, w.max];@@  if(w && typeof w.min==='number') return [w.min, w.max];@@test-weergave.js@@met een eigen schaal komt het toerental op een boog, dat al de naald is"
 "public/pidlane-toon.js@@    if (HEEL.indexOf(pid) < 0 || !getal(val)) return null;@@    return null;@@test-toon.js@@Overzicht toont weer 7.80 waar Visueel 8% zegt"
-"public/pidlane-pids.js@@  val=PLToon.waarde(pid,val);\n  const st=pidOordeel(d,val,pid);@@  const st=pidOordeel(d,val,pid);@@bproef-toon.js@@Overzicht toont het ruwe pedaal (20) waar Visueel 0 zegt"
+"public/pidlane-pids.js@@  val=PLToon.waarde(pid,val);\n  let aandr=null;@@  let aandr=null;@@bproef-toon.js@@Overzicht toont het ruwe pedaal (20) waar Visueel 0 zegt"
 "public/pidlane-visueel.js@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.\n  val=PLToon.waarde(pid, val);@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.@@bproef-toon.js@@Visueel toont het ruwe pedaal (20) waar Overzicht 0 zegt"
 "public/pidlane-visueel.js@@  if(!aanGezet || !H || typeof H.leds!=='function') return null;@@  if(!H || typeof H.leds!=='function') return null;@@test-visueel.js@@schakeladvies uitzetten doet niets: de lampjes blijven branden"
 "public/pidlane-visueel.js@@  if(soort!=='vermogen') s+=schakelTekening();@@  s+=schakelTekening();@@test-visueel.js@@schakellampjes op de vermogensnaald van een hybride, waar geen toerental is"
