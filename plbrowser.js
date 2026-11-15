@@ -340,6 +340,15 @@ async function startApp(opties) {
     return res.result ? res.result.value : undefined;
   }
 
+  // De testrun, de meetkamer en de meetcoach laden sinds 15-11-2026 pas bij
+  // gebruik of voor de beheerder (#690, pidlane-testrunlader.js). De proeven
+  // draaien als de beheerder: die heeft ze er na de login vanzelf. Wie de
+  // klantkant wil zien (bproef-testrunlader.js) zet o.zonderTestrun.
+  if (!o.zonderTestrun) {
+    try { await ev("window.PLTestrunLader ? PLTestrunLader.laad('proef').then(function(){ return true; }) : true"); }
+    catch (e) { ch.kill(); srv.close(); throw new Error('De testrun laadt niet na de boot: ' + e.message); }
+  }
+
   return {
     ev,
     fouten, dialogen, verzoeken, gemist,

@@ -2136,7 +2136,7 @@ function closeConnOv(){
 <script src="pidlane-bulkvenster.js"></script><!-- leest de bulk-opname terug en trekt er conclusies uit — vereist ná pidlane-bulk.js -->
 <script src="pidlane-export.js"></script><!-- opslaan: keuze tekst/PDF + gedeelde huisstijl -->
 <script src="pidlane-ritwaarnemer.js"></script><!-- PLBudget, PLRit en de gat-duidingen (#690): draaien vanaf het laden, ook zonder testrun; vóór pidlane-testrun.js -->
-<script src="pidlane-testrun.js"></script><!-- testrun: één knop, één rit, één logboek -->
+<script src="pidlane-testrunlader.js"></script><!-- PLTestrunLader (#690): testrun, meetkamer en meetcoach pas bij gebruik of voor de beheerder; plaatshouders voor openTestrun e.a. -->
 <script src="pidlane-logboek.js"></script><!-- logboek: voegt BT-, app- en PID-logs samen in één tijdlijn -->
 <script src="pidlane-privacy.js"></script><!-- privacy: prominente BT-disclosure vóór connectSerial + verklaring in menu -->
 <script src="pidlane-start.js"></script><!-- startscherm: adapterprofielen, geheugen, cascade-voortgang -->
@@ -2176,8 +2176,6 @@ function closeConnOv(){
 <script src="pidlane-opdracht.js"></script><!-- PLOpdracht (#241): de meetopdracht voor de volgende testrun, als DATA uit Airtable; keurt zelf wat er binnenkomt en wordt alleen door de testrun gebruikt -->
 <script src="pidlane-toeschouwer.js"></script><!-- PLToeschouwer: stilstand, rijden, contact uit en helling als gebeurtenissen; markeert ze voor de beheerder zodat een meetproef vanzelf doorstapt — ná pidlane-opdracht.js, leest PLContact en PLTelemetrie bij elke tik -->
 <script src="pidlane-bron.js"></script><!-- PLBron (#242): op welke bron draait deze app — banner bij een preview, wisselknop in het Admin-menu -->
-<script src="pidlane-meetkamer.js"></script><!-- PLMeetkamer (#246): de lus in beeld in het testrunscherm; moet ná pidlane-testrun.js, pidlane-opdracht.js en pidlane-bron.js — hij leest die drie en meet zelf niets -->
-<script src="pidlane-meetcoach.js"></script><!-- PLMeetcoach (24-10-2026) — meetproeven zonder meetkamer: alles laden, balk in Live met één actie, bus overnemen na vragen, vanzelf verzenden — admin; vereist ná pidlane-opdracht.js, pidlane-toeschouwer.js en pidlane-testrun.js -->
 <script src="pidlane-inrichten.js"></script><!-- PLInrichten: de setup-wizard na de eerste verbinding per voertuig; roept PLGarage, PLDash, PLRond, PLVisProfiel, PLSchema en measureConnSpeed aan -->
 <script src="pidlane-help-inhoud.js"></script><!-- PL_HULP: de tekst van de handleiding — alleen data, bijhouden zie de kop van het bestand -->
 <script src="pidlane-help.js"></script><!-- PLHelp: het handleidingvenster en de uitroeptekens bij knoppen; leest PL_HULP -->
