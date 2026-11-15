@@ -2159,7 +2159,7 @@ MUTATIES=(
 "public/pidlane-thuis.js@@    if (t === 'geen') return 'verbind';@@    if (t === 'geen') return 'check';@@test-thuis.js@@zonder adapter zegt Home toch Check mijn auto"
 "public/pidlane-thuis.js@@      u.push(f == null ? { k: 'fout', w: '—', l: 'foutcodes', n: 'stil' }@@      u.push(f == null ? { k: 'fout', w: '0', l: 'foutcodes', n: 'ok' }@@test-thuis.js@@nooit uitgelezen staat als 0 foutcodes, groen"
 "public/pidlane-thuis.js@@    if (!ind.snel.length) u.push('s:geen');@@@@test-thuis.js@@alle Snel-doelen uitgezet komt na herladen terug als de standaard"
-"public/pidlane-thuis.js@@  var GEWICHT = { rood: 30, oranje: 20, live: 16, winter: 15, info: 5, herinner: 3 };@@  var GEWICHT = { rood: 30, oranje: 20, live: 12, winter: 15, info: 5, herinner: 3 };@@test-thuis.js@@het winteradvies duwt de koude motor van nu weg"
+"public/pidlane-thuis.js@@  var GEWICHT = { rood: 30, oranje: 20, live: 16, winter: 15, info: 5, vraag: 4, herinner: 3 };@@  var GEWICHT = { rood: 30, oranje: 20, live: 12, winter: 15, info: 5, vraag: 4, herinner: 3 };@@test-thuis.js@@het winteradvies duwt de koude motor van nu weg"
 "public/pidlane-thuis.js@@    var w = el('plWinterKaart'); if (w) el('plThuisNu').appendChild(w);@@@@bproef-thuis.js@@de winterkaart blijft los boven Home staan in plaats van in Voor jou nu"
 "public/pidlane-thuis.js@@    '#plThuis [hidden],#plThuisOv[hidden]{display:none!important}' +@@@@bproef-thuis.js@@verborgen hoofdknoppen staan toch in beeld: drie knoppen tegelijk"
 "public/pidlane-voorkeur.js@@    var nieuw = Object.assign({}, _pref || {}); nieuw[k] = w;@@    var nieuw = {}; nieuw[k] = w;@@bproef-thuis.js@@het startscherm bewaren wist de andere voorkeuren van de klant"
