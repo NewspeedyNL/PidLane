@@ -2210,7 +2210,7 @@ MUTATIES=(
 "public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"
 "public/pidlane-demo.js@@  demoMode=true; connected=true; dataStable=true;\n  plDemoAan();\n  closeConnOv();@@  demoMode=true; connected=true; dataStable=true;\n  closeConnOv();@@test-demozandbak.js@@de gewone demostart zet de zandbak niet aan"
 "public/pidlane-demo.js@@    if(!ingelogd) setTimeout(()=>{ try{@@    if(false) setTimeout(()=>{ try{@@bproef-demozandbak.js@@een demo zonder login eindigt op een verbindscherm achter de login"
-"public/pidlane-demo.js@@  const demoPIDs=demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);@@  const demoPIDs=demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
+"public/pidlane-demo.js@@    : demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);@@    : demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
 # ── Zonder adapter (29-09-2026) ──
 # De kenteken-check zegt dingen waar iemand op handelt. Een verkeerde kleur
 # hier is geen cosmetiek: "verzekerd" op een onverzekerde auto, of "logisch"
