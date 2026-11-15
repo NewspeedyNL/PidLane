@@ -110,8 +110,8 @@ function bouw(t) {
     s, { filename: 'pidlane-kwaliteit.js' });
   // De echte gatsplitsing: welk gat binnen een achtergrondperiode valt en welk
   // erbuiten. De speling van 12 s staat daar en niet hier.
-  vm.runInContext(knip('pidlane-testrun.js', 'function _plGatenSplits', '/* IS DE ONDERRAND BEREIKBAAR'),
-    s, { filename: 'pidlane-testrun.js' });
+  vm.runInContext(knip('pidlane-ritwaarnemer.js', 'function _plGatenSplits', '/* IS DE ONDERRAND BEREIKBAAR'),
+    s, { filename: 'pidlane-ritwaarnemer.js' });
   s.plGatDuiding = s.plGatDuiding; s.plMeetgatDuiding = s.plMeetgatDuiding;
   vm.runInContext('window.plGatDuiding=plGatDuiding;window.plMeetgatDuiding=plMeetgatDuiding;', s);
 

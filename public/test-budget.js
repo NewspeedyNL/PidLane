@@ -5,7 +5,7 @@ const fs=require('fs');
 let ok=0,fout=0;
 function t(n,v,d){ if(v){ok++;console.log('  ok    '+n);} else {fout++;console.log('  FOUT  '+n+(d?' — '+d:''));} }
 
-const src=fs.readFileSync('pidlane-testrun.js','utf8');
+const src=fs.readFileSync('pidlane-ritwaarnemer.js','utf8')+fs.readFileSync('pidlane-testrun.js','utf8');   // PLBudget staat sinds #690 apart, blok 7 nog in de testrun
 
 // ── 1. Markering van eigen belasting ──
 t('sampler markeert monsters tijdens een testrun',

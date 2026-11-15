@@ -312,8 +312,8 @@ MUTATIES=(
 "public/pidlane-meeluister.js@@          if (!levend.trim() || /STOPPED|\?/.test(levend)) mislukt@@          if (!levend.trim()) mislukt@@test-meeluister.js@@een adapter die nog STOPPED zegt geldt als hersteld"
 "public/pidlane-meeluister.js@@        if (!_bits(proto)) return ontleed('', proto);@@        if (false) return ontleed('', proto);@@test-meeluister.js@@op een K-lijn gaat er toch ATMA de bus op"
 "public/pidlane-rijsituatie.js@@      await PLScanSlot.doe('diep zoeken', {}, sweep);@@      await sweep(async (pid,t)=>await sendCmd(pid,t));@@test-diepzoeken.js@@diep zoeken gaat weer buiten het scanslot om (de fout zoals hij gemeld is)"
-"public/pidlane-testrun.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
-"public/pidlane-testrun.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
+"public/pidlane-ritwaarnemer.js@@  var kent = !!perioden;@@  var kent = true;@@test-gatduiding.js@@zonder PLAchtergrond wordt \"niet te zeggen\" toch een uitspraak over #18"
+"public/pidlane-ritwaarnemer.js@@  var SPELING = 12000;@@  var SPELING = 0;@@test-gatduiding.js@@de speling tussen de twee tijdassen is weg, dus bijna elk gat valt buiten"
 "public/pidlane-testrun.js@@if (q && q !== '\\u2014' && uit.indexOf(q) === -1) uit.push(q);@@uit.push(q);@@test-blok5lijst.js@@de dekking van blok 5 ontdubbelt niet meer en laat de streep staan"
 "public/pidlane-proeven.js@@    issue: '#29',@@    issue: '',@@test-blok5lijst.js@@een proef in blok 5 is zijn issue kwijt en valt daarmee uit de dekking"
 "public/pidlane-testrun.js@@  return 'BLOK 5 DEKT DEZE RONDE: ' + d.join(', ')@@  return 'BLOK 5 DEKT DEZE RONDE: #19, #15'@@test-blok5lijst.js@@de dekkingsregel in CAMPAGNE is weer met de hand overgeschreven"
@@ -340,8 +340,8 @@ MUTATIES=(
 "public/pidlane-logboek.js@@        t: r.t || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@        t: r.ts || r.tijd || '',\n        ms: (typeof r.ms === 'number' ? r.ms : null),\n        bron: 'PID',@@test-logboeksort.js@@de PID-regels lezen weer een veldnaam die de diagring niet heeft"
 # ── de vier reparaties van 03-09-2026 (#103 t/m #106) ──
 "public/pidlane-testrun.js@@    if (gezien.has(sleutel)) return;@@@@test-opruimmelding.js@@dezelfde opruiming in beide logs telt weer dubbel (#104)"
-"public/pidlane-testrun.js@@      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf@@@@test-rit.js@@een gemelde herverbinding komt bovenop de bemonstering (#103)"
-"public/pidlane-testrun.js@@      herverbindingen++;\n      vorigVerbonden = true;@@      vorigVerbonden = true;@@test-rit.js@@een gemelde herverbinding wordt niet meer geteld (#103)"
+"public/pidlane-ritwaarnemer.js@@      if (vorigVerbonden === false) return false;   // tik() heeft de val gezien en telt hem zelf@@@@test-rit.js@@een gemelde herverbinding komt bovenop de bemonstering (#103)"
+"public/pidlane-ritwaarnemer.js@@      herverbindingen++;\n      vorigVerbonden = true;@@      vorigVerbonden = true;@@test-rit.js@@een gemelde herverbinding wordt niet meer geteld (#103)"
 "public/pidlane-testrun.js@@  if (prof && prof.ts && typeof verbondenT === 'number' && prof.ts >= verbondenT)@@  if (false)@@test-profielmelding.js@@het profieloordeel kijkt weer naar leeftijd in plaats van naar het verbindingsmoment (#86)"
 "public/pidlane-testrun.js@@    return new Set(_trHerstel.actief);@@    return new Set(activePIDs);@@test-stille-selectie.js@@de gebruikersselectie leest tijdens een run weer de sweeplijst (#90)"
 "public/pidlane-testrun.js@@  const inSelectie = _gebruikersSelectie().has(pid);@@  const inSelectie = activePIDs.has(pid);@@test-stille-selectie.js@@_waaromNiet duidt weer op de sweeplijst (#90)"
@@ -648,9 +648,9 @@ MUTATIES=(
 # stempels. Zonder de loopgat-uitzondering geeft 90 s bevriezing een loopgat
 # van 90 s én een meetgat van 5 s — en dan wijst blok 14 tegelijk naar de
 # achtergrondkwestie en naar de bus. Dat is de vorm van #77 en #103.
-"public/pidlane-testrun.js@@if (bekendeTik > 0 && gemetenTik === 0) {@@if (gemetenTik === 0) {@@test-rit.js@@de openingstik van een rit telt zichzelf als meetgat"
-"public/pidlane-testrun.js@@} else if (meetgatSinds) {@@} else if (false) {@@test-rit.js@@een meetgat sluit niet meer af en groeit door tot na het herstel"
-"public/pidlane-testrun.js@@if (!loopgatNu) {@@if (true) {@@test-rit.js@@een achtergrondbevriezing opent ook een meetgat en wijst zo naar de bus"
+"public/pidlane-ritwaarnemer.js@@if (bekendeTik > 0 && gemetenTik === 0) {@@if (gemetenTik === 0) {@@test-rit.js@@de openingstik van een rit telt zichzelf als meetgat"
+"public/pidlane-ritwaarnemer.js@@} else if (meetgatSinds) {@@} else if (false) {@@test-rit.js@@een meetgat sluit niet meer af en groeit door tot na het herstel"
+"public/pidlane-ritwaarnemer.js@@if (!loopgatNu) {@@if (true) {@@test-rit.js@@een achtergrondbevriezing opent ook een meetgat en wijst zo naar de bus"
 
 # ── De begeleide run kost alleen nog wat een rit kost (#166, 10-09-2026) ──
 # Vier fouten die je bij precies deze verbouwing maakt. De eerste twee zijn de
@@ -675,9 +675,9 @@ MUTATIES=(
 # adapter NIET maakt. De derde draait de duiding van een meetgat om: binnen de
 # achtergrond is het de afknijping (#18), niet de bus. De vierde zet de lat van
 # tien minuten terug in de #19-proef, die daarmee voor elke ronde onhaalbaar werd.
-"public/pidlane-testrun.js@@if (zelfOvergeslagen) { laatstLoop = nu; return; }@@if (zelfOvergeslagen) { return; }@@test-rit.js@@een testrun boekt weer zijn eigen loopgat en stuurt je naar de bus"
+"public/pidlane-ritwaarnemer.js@@if (zelfOvergeslagen) { laatstLoop = nu; return; }@@if (zelfOvergeslagen) { return; }@@test-rit.js@@een testrun boekt weer zijn eigen loopgat en stuurt je naar de bus"
 "public/pidlane-testrun.js@@      const sindsLoop = sindsM(gaten), sindsMeet = sindsM(meetgaten);@@      const sindsLoop = sindsM(gaten), sindsMeet = [];@@test-begeleid.js@@de adapterstap is weer blind voor het meetgat, en dat is het enige gat dat er valt"
-"public/pidlane-testrun.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
+"public/pidlane-ritwaarnemer.js@@        ? ' — alle meetgaten vallen binnen een periode waarin de app weg was: dan is dit de afgeknepen '@@        ? ' — alle meetgaten vallen buiten elke periode waarin de app weg was: dan is dit de '@@test-gatduiding.js@@een meetgat in de achtergrond wordt weer aan de bus toegeschreven"
 "public/pidlane-proeven.js@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');@@      if (blind.length) tekort.push(blind.join(' en ') + ' stond niet in de pollronde');\n      if (duur < 600) tekort.push('maar ' + Math.round(duur / 60) + ' min gereden van de tien');@@test-blok5lijst.js@@de tien minuten staan weer als drempel in de #19-proef"
 
 # ── De onderrand: bereikbaar of vast achter de balk (#172, 10-09-2026) ──
@@ -687,8 +687,8 @@ MUTATIES=(
 # scrollt is dat altijd waar en nooit iets waard. De twee fouten die je hier
 # echt kunt maken zijn allebei een terugval naar die oude vraag: de
 # scrollruimte niet meewegen, of hem wél lezen maar niet aftrekken.
-"public/pidlane-testrun.js@@  var vast = tekort - rest;                         // wat er ook uitgescrold blijft staan@@  var vast = tekort;                                // wat er ook uitgescrold blijft staan@@test-schermranden.js@@de scrollruimte telt niet meer mee: elke scrollende pagina is weer een bevinding"
-"public/pidlane-testrun.js@@  var rest = Math.max(0, scrollRest || 0);          // hoeveel er nog te scrollen valt@@  var rest = 1e9;                                   // hoeveel er nog te scrollen valt@@test-schermranden.js@@er is altijd genoeg scrollruimte, dus een echt onbereikbare onderrand valt weg"
+"public/pidlane-ritwaarnemer.js@@  var vast = tekort - rest;                         // wat er ook uitgescrold blijft staan@@  var vast = tekort;                                // wat er ook uitgescrold blijft staan@@test-schermranden.js@@de scrollruimte telt niet meer mee: elke scrollende pagina is weer een bevinding"
+"public/pidlane-ritwaarnemer.js@@  var rest = Math.max(0, scrollRest || 0);          // hoeveel er nog te scrollen valt@@  var rest = 1e9;                                   // hoeveel er nog te scrollen valt@@test-schermranden.js@@er is altijd genoeg scrollruimte, dus een echt onbereikbare onderrand valt weg"
 # ── Geen wachtwoord in de Play-inzending (#174, 10-09-2026) ──
 # Deze repository is PUBLIEK, en §7 van PLAY-INZENDING.md vraagt om een
 # reviewaccount met tegoed erop. De sleutelscan in CI zoekt naar API-sleutels

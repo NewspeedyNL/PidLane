@@ -146,6 +146,8 @@ function deel2() {
   vm.createContext(s);
   // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
   vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-ritwaarnemer.js', 'utf8'), s,
+    { filename: 'pidlane-ritwaarnemer.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s,
     { filename: 'pidlane-testrun.js' });
 
@@ -435,6 +437,8 @@ async function deel4() {
   vm.createContext(s);
   // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
   vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
+  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-ritwaarnemer.js', 'utf8'), s,
+    { filename: 'pidlane-ritwaarnemer.js' });
   vm.runInContext(fs.readFileSync(__dirname + '/pidlane-testrun.js', 'utf8'), s,
     { filename: 'pidlane-testrun.js' });
 

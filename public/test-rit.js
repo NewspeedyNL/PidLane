@@ -67,6 +67,7 @@ function laadPLRit() {
   vm.createContext(s);
   // De proeven van blok 5 staan sinds 08-11-2026 in een eigen bestand (#690); CAMPAGNE leest ze bij het laden.
   vm.runInContext(fs.readFileSync(require('path').join(__dirname, 'pidlane-proeven.js'), 'utf8'), s, { filename: 'pidlane-proeven.js' });
+  vm.runInContext(fs.readFileSync('pidlane-ritwaarnemer.js', 'utf8'), s, { filename: 'pidlane-ritwaarnemer.js' });
   vm.runInContext(fs.readFileSync('pidlane-testrun.js', 'utf8'), s, { filename: 'pidlane-testrun.js' });
   if (!s.PLRit) throw new Error('PLRit niet gevonden in pidlane-testrun.js');
   if (typeof s.PLRit.tik !== 'function') throw new Error('PLRit.tik() ontbreekt — dan is de accumulator niet te toetsen');
@@ -572,7 +573,7 @@ toetsSchoon('herverbindingen worden geteld', keurHerverbindingTellen(S));
 toetsSchoon('de eerste verbinding van een sessie telt niet mee (#77)', keurEersteVerbindingGeenHerverbinding());
 toetsSchoon('"Rit nulstellen" laat de verbindingsvlag staan (#77)', keurWisResetVlagNiet());
 toetsSchoon('de _trBezig-guard staat vóór de bemonstering (broncontrole, zie boven)',
-  keurNietTijdensRun(fs.readFileSync('pidlane-testrun.js', 'utf8')));
+  keurNietTijdensRun(fs.readFileSync('pidlane-ritwaarnemer.js', 'utf8')));
 toetsSchoon('er wordt niet bemonsterd in demomodus', keurNietInDemo(S));
 toetsSchoon('niet-getallen vergiftigen de min/max niet', keurRommelGenegeerd(S));
 toetsSchoon('wis() maakt alles leeg', keurWisIsSchoon(S));
