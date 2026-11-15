@@ -213,7 +213,11 @@ function _startDemoCore(car, kent){
   // lambdasondes, een elektrische een toerental. Een kentekendemo kent de
   // brandstof pas na het RDW; tot dan geldt benzine, en het fantoomfilter van
   // mergeVehicleData() haalt weg wat niet past zodra de brandstof binnen is.
-  const demoPIDs=demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);
+  // Een demo-auto met een eigen pakket (de Mazda: dat van een echte CX-5)
+  // rijdt daarmee; de rest krijgt de algemene set per brandstof.
+  const demoPIDs=(car && Array.isArray(car.pids) && car.pids.length)
+    ? car.pids.filter(p=>getPidDef(p))
+    : demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);
   supportedPIDs=new Set(demoPIDs);
   buildDiscoveredPIDList();
 

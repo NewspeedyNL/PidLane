@@ -249,12 +249,26 @@ async function startApp(opties) {
   const wacht = new Map();
   const fouten = [], dialogen = [];
   let geladen = false, sessieId = null;
+  // De beeldstroom (screencast, 15-11-2026): voor opnames in marketing/. Elk
+  // getekend beeld komt als JPEG binnen, met zijn eigen tijdstempel.
+  const stroom = { map: null, n: 0, ms: [] };
 
   sock.addEventListener('message', ev => {
     let m;
     try { m = JSON.parse(ev.data); }
     catch (e) { console.warn('plbrowser: onleesbaar bericht van Chromium — ' + e.message); return; }
     if (m.id && wacht.has(m.id)) { wacht.get(m.id)(m); wacht.delete(m.id); return; }
+    if (m.method === 'Page.screencastFrame') {
+      const p = m.params;
+      const ack = { id: ++volgnr, method: 'Page.screencastFrameAck', params: { sessionId: p.sessionId } };
+      if (sessieId) ack.sessionId = sessieId;
+      sock.send(JSON.stringify(ack));
+      if (stroom.map) {
+        fs.writeFileSync(path.join(stroom.map, String(stroom.n++).padStart(4, '0') + '.jpg'), Buffer.from(p.data, 'base64'));
+        stroom.ms.push(p.metadata.timestamp * 1000);
+      }
+      return;
+    }
     if (m.method === 'Page.loadEventFired') geladen = true;
     if (m.method === 'Runtime.exceptionThrown') {
       const d = m.params.exceptionDetails;
@@ -364,9 +378,9 @@ async function startApp(opties) {
        knoppenbalk meetelt (#144). Opnieuw opstarten kost vijftien seconden per
        maat; dit kost niets. Geeft de gemeten window.innerHeight terug, zodat
        de aanroeper kan controleren dát het venster werkelijk meeging. */
-    async venster(breedte, hoogte) {
+    async venster(breedte, hoogte, dichtheid) {
       await cmd('Emulation.setDeviceMetricsOverride',
-                { width: breedte, height: hoogte, deviceScaleFactor: 2, mobile: true });
+                { width: breedte, height: hoogte, deviceScaleFactor: dichtheid || 2, mobile: true });
       return await ev('window.innerHeight');
     },
     /* Een schermafdruk als PNG, om een UI-wijziging met eigen ogen te zien
@@ -380,8 +394,25 @@ async function startApp(opties) {
       await cmd('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x, y: y }] });
       await cmd('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     },
+    // Eindigt pad op .jpg, dan JPEG: voor opnames (marketing/) ruim drie keer
+    // sneller dan PNG, en daar telt elk beeld per seconde.
+    /* De beeldstroom naar een map: map/NNNN.jpg, elk beeld zodra Chromium het
+       tekent. Veel sneller dan schermafdruk() in een lus (± 5 tegen 20+ per s
+       op Hyperlane). Stop geeft de tijden in ms vanaf het eerste beeld. */
+    async stroomStart(map, maxB, maxH) {
+      fs.mkdirSync(map, { recursive: true });
+      Object.assign(stroom, { map, n: 0, ms: [] });
+      if (!stroom.aan) { await cmd('Page.startScreencast', { format: 'jpeg', quality: 88, everyNthFrame: 1, maxWidth: maxB || 1920, maxHeight: maxH || 1920 }); stroom.aan = true; }
+    },
+    async stroomStop() {
+      const ms = stroom.ms.map(t => t - (stroom.ms[0] || 0));
+      stroom.map = null;
+      if (stroom.aan) { await cmd('Page.stopScreencast'); stroom.aan = false; }
+      return ms;
+    },
     async schermafdruk(pad) {
-      const r = await cmd('Page.captureScreenshot', { format: 'png' });
+      const jpg = /\.jpe?g$/i.test(pad);
+      const r = await cmd('Page.captureScreenshot', jpg ? { format: 'jpeg', quality: 88 } : { format: 'png' });
       fs.writeFileSync(pad, Buffer.from((r.result || r).data, 'base64'));
       return pad;
     },

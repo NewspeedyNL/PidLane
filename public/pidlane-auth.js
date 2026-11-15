@@ -626,6 +626,7 @@ const _ds={};
 // DTC-codes en voertuiggegevens om de beoordeling/het rapport te testen.
 // Alles wat hier gezet wordt, wordt in de UI als "MANUEEL" gelabeld.
 let _scenario={ enabled:false, pids:{}, dtcs:[], vehicle:null };
+const _demoT0=Date.now();   // klok voor de motorlooptijd (011F) in de demo
 function demo(pid){
   const d=getPidDef(pid); if(!d) return null;
   // ── SCENARIO-OVERRIDE (admin, demo-modus) ──
@@ -689,6 +690,42 @@ function demo(pid){
   // Emissie/overig
   if(pid==='0133') _ds[pid]=101+Math.random()*.5;                        // barometer ~101 kPa
   if(pid==='012C') _ds[pid]=Math.max(0,12+rijcyclus*8);                  // EGR 4-20%
+
+  // ── De rest van het echte CX-5-pakket (15-11-2026) ──
+  // Zonder eigen regel liep elke PID hierboven als ruis rond het midden van
+  // zijn bereik: een motorlampje dat aan en uit ging, 600 °C uitlaatdebiet.
+  // Status-PID's staan vast op een gezonde waarde.
+  if(pid==='0101') _ds[pid]=0;                                            // MIL uit, geen codes
+  if(pid==='0103') _ds[pid]=2;                                            // closed loop
+  if(pid==='011C') _ds[pid]=6;                                            // EOBD
+  if(pid==='0141') _ds[pid]=0;                                            // monitors: niets mis
+  if(pid==='0151') _ds[pid]=1;                                            // benzine
+  if(pid==='0108') _ds[pid]=(Math.random()-.5)*4;                         // STFT B2 ±2%
+  if(pid==='0109') _ds[pid]=1+Math.random()*1.5;                          // LTFT B2
+  if(pid==='0119') _ds[pid]=0.7+Math.sin(t/4300)*.05;                     // O2 B2S2 ~0.7V
+  if(pid==='011F') _ds[pid]=Math.round((t-_demoT0)/1000)+420;             // looptijd: 7 min + sinds start
+  if(pid==='0121') _ds[pid]=0;                                            // geen km met MIL
+  if(pid==='0130') _ds[pid]=38;                                           // warmlopen sinds wissen
+  if(pid==='0131') _ds[pid]=1240;                                         // km sinds wissen
+  if(pid==='0132') _ds[pid]=-400+Math.sin(t/9000)*150;                    // EVAP-dampdruk, licht vacuüm
+  if(pid==='012E') _ds[pid]=Math.max(0,10+Math.sin(t/7000)*8);            // EVAP-spoelklep 2-18%
+  if(pid==='013C') _ds[pid]=520+rijcyclus*120;                            // kat B1S1 400-640 °C
+  if(pid==='013D') _ds[pid]=510+rijcyclus*115;                            // kat B2S1
+  if(pid==='0144') _ds[pid]=1.0;                                          // lambda-doel stoichiometrisch
+  if(pid==='0145') _ds[pid]=Math.max(2,12+rijcyclus*18);                  // relatieve gasklep
+  if(pid==='0147') _ds[pid]=Math.max(8,20+rijcyclus*20);                  // absolute gasklep B
+  if(pid==='014A') _ds[pid]=Math.max(1,7+rijcyclus*10);                   // pedaal E (tweede sensor, half)
+  if(pid==='014C') _ds[pid]=Math.max(3,14+rijcyclus*20);                  // gasklep gestuurd
+  if(pid==='0155') _ds[pid]=(Math.random()-.5)*2;                         // sec. trim kort
+  if(pid==='0156') _ds[pid]=0.8;                                          // sec. trim lang
+  if(pid==='0123'||pid==='0159') _ds[pid]=7000+rijcyclus*2500;            // directe inspuiting 4,5-9,5 MPa
+  if(pid==='016D') _ds[pid]=7+rijcyclus*2.5;                              // idem in MPa
+  if(pid==='0162') _ds[pid]=Math.max(0,18+rijcyclus*25);                  // werkelijk koppel
+  if(pid==='0163') _ds[pid]=210;                                          // referentiekoppel 2.0 SkyActiv-G
+  if(pid==='0167') _ds[pid]=89+Math.sin(t/20000)*4;                       // koelwater, tweede sensor
+  if(pid==='0168') _ds[pid]=22+Math.sin(t/30000)*5;                       // inlaatlucht, tweede sensor
+  if(pid==='018E') _ds[pid]=9+Math.random();                              // wrijvingskoppel
+  if(pid==='019E') _ds[pid]=Math.max(8,40+rijcyclus*35);                  // uitlaatgasdebiet 8-75 kg/h
 
   // De aandrijving van de demo-auto (07-11-2026): zonder deze laag draaide
   // elke demo als de CX-5 hierboven — toerental nooit 0, dus een "hybride"

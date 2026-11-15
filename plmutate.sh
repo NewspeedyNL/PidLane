@@ -2210,7 +2210,7 @@ MUTATIES=(
 "public/pidlane-demo.js@@      if (Array.isArray(l)) for (var i = l.length - 1; i >= 0; i--) if (l[i] && l[i].demo) l.splice(i, 1);@@      void 0;@@test-demozandbak.js@@demorapporten blijven na de demo in het overzicht — en gaan als eerdere rapporten mee naar de AI"
 "public/pidlane-demo.js@@  demoMode=true; connected=true; dataStable=true;\n  plDemoAan();\n  closeConnOv();@@  demoMode=true; connected=true; dataStable=true;\n  closeConnOv();@@test-demozandbak.js@@de gewone demostart zet de zandbak niet aan"
 "public/pidlane-demo.js@@    if(!ingelogd) setTimeout(()=>{ try{@@    if(false) setTimeout(()=>{ try{@@bproef-demozandbak.js@@een demo zonder login eindigt op een verbindscherm achter de login"
-"public/pidlane-demo.js@@  const demoPIDs=demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);@@  const demoPIDs=demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
+"public/pidlane-demo.js@@    : demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding);@@    : demoPIDsForFuel('benzine');@@bproef-demozandbak.js@@elke demo-auto krijgt weer de sensoren van een benzine: lambdasondes op een diesel"
 # ── Zonder adapter (29-09-2026) ──
 # De kenteken-check zegt dingen waar iemand op handelt. Een verkeerde kleur
 # hier is geen cosmetiek: "verzekerd" op een onverzekerde auto, of "logisch"
@@ -2655,6 +2655,10 @@ MUTATIES=(
 "public/pidlane-motortype.js@@  return vorm === 'mild' || (!vorm && /\bmhev\b/.test(String(mt||'').toLowerCase()));@@  return vorm === 'mild';@@test-aandrijfprofiel.js@@de motornaam mHEV maakt geen mild hybride meer"
 "public/pidlane-demo.js@@  if(car && car.aandrijving){ vehicleInfo.aandrijving=car.aandrijving;@@  if(false){ vehicleInfo.aandrijving=car.aandrijving;@@bproef-demoaandrijving.js@@de demo-auto krijgt zijn aandrijfvorm niet: elke demo-hybride is een gewone hybride"
 "public/pidlane-auth.js@@    const o=demoAandrijving(pid, ap && (ap.vorm || (ap.elektrisch ? 'vol' : null)), t, _ds[pid]);@@    const o=undefined;@@bproef-demoaandrijving.js@@demo() rijdt weer elke auto als een benzine-CX-5"
+"public/pidlane-auth.js@@  if(pid==='0101') _ds[pid]=0; @@  if(pid==='0101') _ds[pid]=Math.random()>.5?1:0; @@test-demopakket.js@@het motorlampje in de demo knippert aan en uit"
+"public/pidlane-auth.js@@  if(pid==='013C') _ds[pid]=520+rijcyclus*120; @@  @@test-demopakket.js@@de katalysatortemperatuur in de demo is weer ruis rond 580 °C"
+"public/pidlane-data.js@@'018E','019E'] },@@'018E','019E','015C'] },@@test-demopakket.js@@de demo-Mazda krijgt een PID die de echte CX-5 niet meldt"
+"public/pidlane-demo.js@@    ? car.pids.filter(p=>getPidDef(p))@@    ? demoPIDsForFuel(vehicleInfo.brandstof||demoVin.brandstof, vehicleInfo.verbranding)@@test-demopakket.js@@de demo negeert het eigen pakket van de demo-auto"
 "public/pidlane-visprofiel.js@@  if(elektrisch(motor))\n    hier=hier.map(@@  if(false)\n    hier=hier.map(@@test-hybridemeters.js@@de elektrische variant per plek valt weg: Hyperlane toont weer toerental 0 op een hybride"
 "public/pidlane-visprofiel.js@@  if(x.zoekEerst) zoekHits();@@@@test-hybridemeters.js@@de HV-accu verliest weer van de inlaatlucht"
 "public/pidlane-visprofiel.js@@zoek:/^(?!.*(12 ?v|\baux|battery sensor|hulpaccu)).*(@@zoek:/^.*(@@test-hybridemeters.js@@de 12V-accusensor komt weer op de HV-accuplek"

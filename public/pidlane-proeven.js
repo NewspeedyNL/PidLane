@@ -38,6 +38,22 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Demo-Mazda met het echte CX-5-pakket (15-11-2026) ──
+  {
+    issue: '—',
+    naam: 'De demo-Mazda draagt het pakket van een echte CX-5 2018, en de app kent elke PID ervan',
+    waarom: 'De demo liet 25 algemene sensoren zien; nu de 52 die een CX-5 2018 meldt, met gezonde waarden per PID.',
+    proef: async function () {
+      var m = (window.DEMO_CARS || []).find(function (c) { return c.merk === 'Mazda' && c.model === 'CX-5'; });
+      if (!m || !Array.isArray(m.pids)) return { staat: 'FOUT', detail: 'DEMO_CARS heeft geen Mazda met een eigen pakket — herladen?' };
+      var onbekend = m.pids.filter(function (p) { return !getPidDef(p); });
+      if (onbekend.length) return { staat: 'FOUT', detail: 'de app kent ' + onbekend.join(' ') + ' niet' };
+      if (typeof demo !== 'function') return { staat: 'FOUT', detail: 'demo() ontbreekt' };
+      if (demo('0101') !== 0) return { staat: 'FOUT', detail: 'motorlampje in de demo staat aan' };
+      return { staat: 'OK', detail: m.pids.length + ' PID\'s, allemaal bekend; motorlampje uit' };
+    }
+  },
+
   // ── Opstart: testrun pas bij gebruik (16-11-2026) ──
   {
     issue: '#690',

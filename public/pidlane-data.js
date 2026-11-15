@@ -1610,7 +1610,14 @@ window.DEMO_VEHICLES ={
 
 // ── DEMO_CARS (was index.html regel 11479) ──
 window.DEMO_CARS =[
-  { merk:'Mazda',      model:'CX-5',  year:'2018', brandstof:'benzine', vin:'JM3KFBCL8J0123456', wmi:'JM3', motortype:'2.0 SkyActiv-G 165pk', icon:'🚙' },
+  // De Mazda rijdt met het echte pakket van een CX-5 2018 (15-11-2026): de
+  // mode 01-PIDs die de motor-ECU 7E8 meldt, uit het nepauto-profiel cx5
+  // (OBDb Mazda-CX-5 2018), minus wat de app niet kent (0102, 019D).
+  // test-demopakket.js houdt deze lijst gelijk aan dat profiel.
+  { merk:'Mazda',      model:'CX-5',  year:'2018', brandstof:'benzine', vin:'JM3KFBCL8J0123456', wmi:'JM3', motortype:'2.0 SkyActiv-G 165pk', icon:'🚙',
+    pids:['0101','0103','0104','0105','0106','0107','0108','0109','010B','010C','010D','010E','010F','0110','0111','0113','0115','0119',
+          '011C','011F','0121','0123','012E','012F','0130','0131','0132','0133','0134','013C','013D','0141','0142','0143','0144','0145',
+          '0146','0147','0149','014A','014C','0151','0155','0156','0159','0162','0163','0167','0168','016D','018E','019E'] },
   { merk:'Volkswagen', model:'Golf',  year:'2017', brandstof:'benzine', vin:'WVWZZZAUZHW123456', wmi:'WVW', motortype:'1.4 TSI 125pk',        icon:'🚗' },
   { merk:'Toyota',     model:'Yaris', year:'2019', brandstof:'hybride', vin:'VNKKD3D310A123456', wmi:'VNK', motortype:'1.5 Hybrid 100pk',     icon:'🚕' },
   { merk:'Volvo',      model:'V40',   year:'2016', brandstof:'diesel',  vin:'YV1MV7431G2123456', wmi:'YV1', motortype:'D2 120pk',             icon:'🚘' },
