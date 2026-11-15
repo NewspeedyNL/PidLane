@@ -117,6 +117,11 @@
     'spp-proeven-aan': ['PLSppProef', 'volle SPP-proeven met de patch aan, deze sessie'],
     'spp-proeven-uit': ['PLSppProef', 'volle SPP-proeven met de patch voor de proef uit, deze sessie'],
     'spp-erbij-aan':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch aan'],
+    // #667 — de tankvraag deze sessie (PLTank.telVraag vanuit tankVraag)
+    'tank-vragen':     ['PLTank', 'keren dat de vraag Getankt? kwam deze sessie'],
+    'tank-ja':         ['PLTank', 'keren Invullen op de tankvraag'],
+    'tank-nee':        ['PLTank', 'keren Nee, niet getankt op de tankvraag'],
+    'tank-sprong-max': ['PLTank', 'grootste peilsprong (procentpunt) waarbij de vraag toch kwam'],
     'spp-erbij-uit':   ['PLSppProef', 'meeste draaiende draden erbij in een volle proef met de patch uit'],
     'pip-langst-s':    ['PLPip', 'langste periode beeld-in-beeld met een verbonden auto, in seconden'],
     'pip-gat-s':       ['PLPip', 'langste gat tussen twee waarden in een PiP-periode van minstens een minuut, in seconden'],
