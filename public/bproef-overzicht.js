@@ -143,6 +143,23 @@ const KAARTEN = `(function(){ return [].filter.call(document.querySelectorAll('#
     toets('… snelheid blijft een getal', uit.snel && uit.snel !== 'uit', uit.snel);
     toets('TEGENPROEF: motor draait weer: het getal komt terug', uit.na && uit.na !== 'uit' && !/ovz-uit/.test(uit.naKlasse), JSON.stringify(uit));
 
+    // #718: staat elke rij van een categorie op "uit", dan klapt die in tot zijn kop.
+    const klap = await app.ev(`(function(){
+      const sec=[...document.querySelectorAll('.ovz-cat')].find(x=>x.style.display!=='none' && x.querySelectorAll('.ovz-vak > .gc').length);
+      if(!sec) return { geen:true };
+      const kaarten=[...sec.querySelectorAll('.ovz-vak > .gc')];
+      kaarten.forEach(c=>c.classList.add('ovz-uit')); ovzBij();
+      const r={ id:sec.id, dicht:sec.classList.contains('ovz-ingeklapt'), vakWeg:getComputedStyle(sec.querySelector('.ovz-vak')).display==='none' };
+      sec.querySelector('.ovz-kop').click(); r.openNaTik=!sec.classList.contains('ovz-ingeklapt');
+      sec.querySelector('.ovz-kop').click(); r.dichtNaTweede=sec.classList.contains('ovz-ingeklapt');
+      kaarten[0].classList.remove('ovz-uit'); ovzBij(); r.openAlsIetsMeet=!sec.classList.contains('ovz-ingeklapt');
+      kaarten.forEach(c=>c.classList.remove('ovz-uit')); ovzBij();
+      return r;
+    })()`);
+    toets('een categorie die helemaal uit staat klapt in tot zijn kop (#718)', klap.dicht && klap.vakWeg, JSON.stringify(klap));
+    toets('…een tik op de kop klapt hem open, een tweede weer dicht', klap.openNaTik && klap.dichtNaTweede, JSON.stringify(klap));
+    toets('TEGENPROEF: meet één rij weer iets, dan staat de categorie open', klap.openAlsIetsMeet, JSON.stringify(klap));
+
     console.log('\n2b. Grijs: een trage sensor die niet aan de beurt was blijft gewoon (07-10-2026)');
     const grijs = await app.ev(`(async function(){
       stopPoll();
