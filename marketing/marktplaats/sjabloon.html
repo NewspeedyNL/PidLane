@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<title>Marktplaats-sjabloon</title>
+<!-- Sjabloon voor maak.js: toon(i, {merk, kl, ruw}) zet dia i neer op 1200×900. -->
+<style>
+@font-face { font-family:"DM Sans"; src:url(../fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
+@font-face { font-family:"DM Mono"; src:url(../fonts/dmmono-500.woff2) format("woff2"); font-weight:500; }
+:root { --a:#4fd6f0; --b:#9a78ff; --c:#ff5050; --tx:#eef2fa; --mu:#9aa6bd; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { width:1200px; height:900px; background:#05070d; overflow:hidden; }
+body { font-family:'DM Sans',sans-serif; color:var(--tx); }
+.dia { position:absolute; inset:0; overflow:hidden; padding:46px 56px;
+  background: radial-gradient(circle at 88% 6%, color-mix(in srgb, var(--a) 30%, transparent), transparent 46%),
+              radial-gradient(circle at 4% 100%, color-mix(in srgb, var(--b) 26%, transparent), transparent 52%),
+              linear-gradient(165deg,#0c111d,#05070d 70%); }
+.dia::before { content:""; position:absolute; inset:0; opacity:.45; pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
+  background-size:48px 48px; }
+.kopregel { position:relative; display:flex; justify-content:space-between; align-items:center; }
+.woord { font-weight:800; letter-spacing:9px; font-size:22px; color:var(--a); text-shadow:0 0 22px color-mix(in srgb, var(--a) 70%, transparent); }
+.nr { font-family:'DM Mono',monospace; font-size:17px; color:var(--mu); }
+h1 { position:relative; font-size:62px; line-height:1.02; letter-spacing:-1.6px; font-weight:800; margin-top:18px; }
+h1 em { font-style:normal; background:linear-gradient(90deg,var(--a),var(--b)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { position:relative; font-size:25px; color:var(--mu); margin-top:12px; line-height:1.35; max-width:1000px; }
+.tel { position:absolute; background:#020306; border:3px solid #2c3550; padding:12px;
+  box-shadow:0 30px 80px rgba(0,0,0,.7), 0 0 60px color-mix(in srgb, var(--a) 22%, transparent); }
+.tel img { display:block; width:100%; height:100%; object-fit:cover; }
+.tel.lig { left:50%; transform:translateX(-50%); bottom:96px; width:1000px; height:474px; border-radius:46px; }
+.tel.lig img { border-radius:34px; }
+.tel.zoom { overflow:hidden; }
+.tel.zoom img { transform:scale(1.9); transform-origin:50% 30%; }
+.tel.sta { left:70px; bottom:40px; width:340px; height:735px; border-radius:50px; }
+.tel.sta img { border-radius:38px; object-position:top; }
+.dia.staand h1, .dia.staand .sub, .dia.staand ul { margin-left:430px; }
+.dia.staand h1 { font-size:54px; margin-top:110px; }
+ul { position:relative; list-style:none; margin-top:30px; display:grid; gap:16px; }
+li { display:flex; gap:14px; align-items:flex-start; font-size:24px; font-weight:500; line-height:1.3; }
+li::before { content:"✓"; flex:none; display:grid; place-items:center; width:32px; height:32px; border-radius:50%;
+  background:color-mix(in srgb, var(--a) 20%, transparent); color:var(--a); font-weight:800; font-size:18px; margin-top:-1px; }
+.voet { position:absolute; left:56px; right:56px; bottom:30px; display:flex; justify-content:space-between; align-items:center;
+  font-size:19px; color:var(--mu); }
+.voet b { color:var(--tx); }
+.dia.staand .voet { left:486px; flex-direction:column; align-items:flex-start; gap:4px; font-size:17px; }
+.stap { display:grid; grid-template-columns:repeat(3,1fr); gap:22px; margin-top:60px; position:relative; }
+.stap div { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:24px; padding:26px; }
+.stap i { font-style:normal; font-size:46px; display:block; }
+.stap b { display:block; font-size:25px; margin:12px 0 6px; }
+.stap span { color:var(--mu); font-size:20px; line-height:1.35; }
+.raster { display:grid; grid-template-columns:1fr 1fr; gap:10px 40px; margin-top:34px; position:relative; }
+.raster li { font-size:23px; }
+.klein { position:relative; margin-top:40px; font-size:18px; color:var(--mu); line-height:1.45; }
+</style>
+</head>
+<body>
+<div id="d"></div>
+<script>
+// Elke bewering hieronder hoort te kloppen op elke OBD2-auto: alleen wat de
+// demo met de universele PIDs (maak.js, UNIVERSEEL) ook echt toont.
+const VOET = '<span><b>OBD2-adapter</b> in de stekker onder het stuur · Bluetooth</span><span>benzine vanaf 2001 · diesel vanaf 2004</span>';
+const DIAS = [
+  { naam:'dashboard', lig:'rijden', h:'{M} <em>Dashboard</em>', s:'Gewoon op je eigen telefoon. Toeren, snelheid en temperatuur live uit je auto.' },
+  { naam:'merk', lig:'stil', zoom:true, h:'Jouw merk in de <em>tellerplaat</em>', s:'De app herkent je {m} en kleurt het dashboard in jouw stijl.' },
+  { naam:'nul-honderd', lig:'launch', h:'<em>0–100</em> km/h meten', s:'Vanuit stilstand: de timer start en stopt vanzelf.' },
+  { naam:'toerenteller', lig:'max', h:'Toerenteller met <em>schakellampjes</em>', s:'Lampjes lopen op naar het schakelmoment, met rode zone.' },
+  { naam:'waarschuwing', lig:'hitte', h:'Waarschuwt bij <em>oververhitting</em>', s:'Wordt de koelvloeistof te heet, dan kleurt het hele scherm rood.' },
+  { naam:'mijn-auto', sta:'thuis', h:'Jouw <em>{m}</em> op je startscherm', s:'Eén tik op Check mijn auto.', l:['Koelwater direct in beeld','Live, rapporten en alles in één app'] },
+  { naam:'foutcodes', sta:'check', h:'Storingslampje? <em>Lees het zelf uit</em>', s:'Foutcodes met uitleg in gewone taal.', l:['Foutcodes uitlezen','Uitleg wat het betekent','Foutcodes wissen na reparatie'] },
+  { naam:'live-sensoren', sta:'overzicht', h:'Alle <em>live waarden</em>', s:'Per categorie, met een minigrafiek per sensor.', l:['Snelheid en toerental','Motorbelasting en gasklep','Koelwater en inlaatlucht'] },
+  { naam:'slimme-weergave', sta:'slim', h:'Slim: wat <em>nú</em> telt', s:'De app kiest zelf wat er in beeld staat.', l:['Motor op temperatuur?','Grote cijfers, rustig scherm','Werkt in een telefoonhouder'] },
+  { naam:'zo-werkt-het', info:true },
+];
+function vul(t, o){ return t.replace(/\{M\}/g, o.merk).replace(/\{m\}/g, o.merkMooi); }
+function toon(i, o){
+  o.merkMooi = o.merk.charAt(0) + o.merk.slice(1).toLowerCase();
+  if (o.merk === 'BMW') o.merkMooi = 'BMW';
+  const r = document.documentElement.style;
+  r.setProperty('--a', o.kl[1]); r.setProperty('--b', o.kl[2]); r.setProperty('--c', o.kl[3]);
+  const d = DIAS[i], kop = '<div class="kopregel"><div class="woord">' + o.merk + ' DASHBOARD</div><div class="nr">' + (i+1) + ' / ' + DIAS.length + '</div></div>';
+  let h;
+  if (d.info) {
+    h = '<div class="dia">' + kop + '<h1>Zo <em>werkt</em> het</h1>' +
+      '<div class="stap"><div><i>🔌</i><b>1. Adapter erin</b><span>In de OBD2-stekker, meestal onder het stuur.</span></div>' +
+      '<div><i>📶</i><b>2. Bluetooth aan</b><span>Contact aan. De app zoekt zelf de adapter en je auto.</span></div>' +
+      '<div><i>📱</i><b>3. Rijden</b><span>Je telefoon is je extra dashboard.</span></div></div>' +
+      '<ul class="raster"><li>Toerental en snelheid</li><li>Koelvloeistoftemperatuur</li><li>Motorbelasting en gasklep</li><li>Inlaatluchttemperatuur</li><li>Foutcodes uitlezen en wissen</li><li>Keuringsstatus (gereedheid)</li></ul>' +
+      '<p class="klein">Deze waarden levert elke auto met OBD2/EOBD. Extra sensoren verschillen per auto; de app laat alleen zien wat jouw ' + o.merkMooi + ' echt meldt.</p>' +
+      '<div class="voet">' + VOET + '</div></div>';
+  } else if (d.lig) {
+    h = '<div class="dia">' + kop + '<h1>' + vul(d.h, o) + '</h1><p class="sub">' + vul(d.s, o) + '</p>' +
+      '<div class="tel lig' + (d.zoom ? ' zoom' : '') + '"><img src="' + o.ruw + '/' + d.lig + '.png"></div><div class="voet">' + VOET + '</div></div>';
+  } else {
+    h = '<div class="dia staand">' + kop + '<div class="tel sta"><img src="' + o.ruw + '/' + d.sta + '.png"></div>' +
+      '<h1>' + vul(d.h, o) + '</h1><p class="sub">' + vul(d.s, o) + '</p><ul>' + d.l.map(function(x){ return '<li>' + x + '</li>'; }).join('') + '</ul>' +
+      '<div class="voet">' + VOET + '</div></div>';
+  }
+  document.getElementById('d').innerHTML = h;
+  return d.naam;
+}
+</script>
+</body>
+</html>
