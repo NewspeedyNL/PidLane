@@ -77,14 +77,16 @@ const KAAL = `(function(){
   ['loginOv','welcomeScreen'].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.add('hidden'); });
   return true; })()`;
 // De waarden in het scenario zetten. 0149 (pedaal) en 0111 (gasklep) volgen
-// het gas; 0104 de belasting; 0110 (luchtmassa) toeren en gas, want daar
-// rekent de app het verbruik uit (de CX-5 meldt geen 015E): 2600 tpm met 30%
-// gas is 12,7 g/s, ± 5,8 L/100 bij 72 km/h. De G gaat rechtstreeks in pidVals.TL04.
+// het gas; 0104 de belasting; 0110 (luchtmassa) toeren × belasting, want
+// daar rekent de app het verbruik uit (de CX-5 meldt geen 015E), en een te
+// lage luchtmassa bij vol gas geeft de melding "vuile MAF" in beeld. Een 2.0
+// haalt bij 3400 tpm vol gas ± 57 g/s; 2600 tpm met 30% gas ± 11 g/s.
+// De G gaat rechtstreeks in pidVals.TL04.
 const zetWaarden = w => `(function(){
   _scenario.enabled=true;
   var p=_scenario.pids; p['010C']=${w.rpm.toFixed(0)}; p['010D']=${w.kmh.toFixed(1)}; p['0105']=${w.koel.toFixed(1)};
   p['0149']=${w.gas.toFixed(1)}; p['0111']=${Math.max(5, w.gas).toFixed(1)}; p['0104']=${Math.max(15, w.gas * .9).toFixed(1)};
-  p['0110']=${(w.rpm / 1000 * 2 + w.gas * .25).toFixed(2)};
+  p['0110']=${(w.rpm / 1000 * (1.5 + Math.max(15, w.gas * .9) * .17)).toFixed(2)};
   if(window.pidVals) pidVals.TL04=${(w.g || 0).toFixed(3)};
   return true; })()`;
 // Het scenario legt ±0,6% van het bereik aan ruis over elke waarde: ±1,7 km/h
