@@ -403,6 +403,54 @@
     return (t - res.sinds) >= D.evPauzeMs;
   }
 
+  // ── Het rijbeeld: hoe beweegt de auto voort? (15-11-2026, #717) ────
+  /* Op de energieweergave sprong het woord in het midden na het wegrijden
+     alle kanten op: "Laden" kwam uit één vertragend snelheidsmonster, en won
+     van de aandrijftoestand ernaast. Twee bronnen met elk een eigen tempo,
+     en de snelste won telkens.
+
+     beweging(nu, vorige) maakt er één oordeel van:
+       nu = { t, toestand (uit bepaal), vraag 0–100 of null, laad 0–100 of null }
+     Uitkomst: beeld 'stil' | 'ev' | 'motor' | 'zeilen' | 'laden' | 'start' | 'onbekend'.
+
+     Laden (terugwinnen) is alleen waar als de auto rijdt, het pedaal los is
+     en de vertraging aanhoudt — aan op B.ladenIn, uit pas onder B.ladenUit.
+     En elk nieuw beeld moet B.houdMs aanhouden voordat het het getoonde
+     vervangt; alleen 'start' gaat er buitenom (die heeft zijn eigen klok in
+     bepaal()). Zuiver: geen DOM, geen klok, getoetst in test-aandrijving.js. */
+  var B = {
+    houdMs: 1500,   // zo lang moet een nieuw beeld aanhouden
+    ladenIn: 20,    // laadzone % (≈1,6 km/h/s vertraging): hierboven begint laden
+    ladenUit: 6,    // laadzone %: hieronder houdt laden op
+    vraagLos: 3,    // pedaal % : hieronder telt het pedaal als los
+    vraagUit: 10    // pedaal % : hierboven stopt laden meteen
+  };
+  var RIJDT = { ACCU_RIJDT: 'ev', DRAAIT_RIJDT: 'motor', ZEILEN: 'zeilen' };
+  var STIL = { DRAAIT_STIL: 'motor', STARTSTOP: 'stil', UIT_VOOR_START: 'stil', START: 'start' };
+  function _beeldRauw(nu, v) {
+    var t = nu.toestand;
+    if (!t || t === 'ONBEKEND') return 'onbekend';
+    if (STIL[t]) return STIL[t];
+    if (!RIJDT[t]) return 'onbekend';
+    var laad = _getal(nu.laad), vraag = _getal(nu.vraag);
+    var wasLaden = !!(v && (v.beeld === 'laden' || v.kandidaat === 'laden'));
+    var los = vraag === null || vraag <= (wasLaden ? B.vraagUit : B.vraagLos);
+    if (laad !== null && los && laad >= (wasLaden ? B.ladenUit : B.ladenIn)) return 'laden';
+    return RIJDT[t];
+  }
+  function beweging(nu, vorige) {
+    nu = nu || {};
+    var v = vorige || null;
+    var t = (typeof nu.t === 'number') ? nu.t : 0;
+    var rauw = _beeldRauw(nu, v);
+    if (!v || !v.beeld) return { beeld: rauw, sinds: t, kandidaat: null, kandidaatSinds: t };
+    if (rauw === v.beeld) return { beeld: rauw, sinds: v.sinds, kandidaat: null, kandidaatSinds: t };
+    if (rauw === 'start') return { beeld: rauw, sinds: t, kandidaat: null, kandidaatSinds: t };
+    var kSinds = (v.kandidaat === rauw) ? v.kandidaatSinds : t;
+    if (t - kSinds >= B.houdMs) return { beeld: rauw, sinds: t, kandidaat: null, kandidaatSinds: t };
+    return { beeld: v.beeld, sinds: v.sinds, kandidaat: rauw, kandidaatSinds: kSinds };
+  }
+
   window.PLAandrijving = {
     bepaal: bepaal,
     uitPidVals: uitPidVals,
@@ -413,6 +461,8 @@
     reset: reset,
     rit: rit,
     evPauzeGerust: evPauzeGerust,
+    beweging: beweging,
+    beweegDrempels: B,
     drempels: D,
     labels: LABELS,
     labelsSerieel: LABELS_SERIEEL

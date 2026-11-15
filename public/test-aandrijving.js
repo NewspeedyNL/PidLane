@@ -226,6 +226,45 @@ t('looptijd uit 011F', nu.looptijd, 900);
 t('brandstofdebiet uit 015E', nu.fuelRate, 7.4);
 
 // ══════════════════════════════════════════════════════════════════
+// DEEL 1b — het rijbeeld (#717): één oordeel, niet per monster
+// ══════════════════════════════════════════════════════════════════
+console.log('\nrijbeeld (beweging)');
+{
+  const BW = A.beweging, BB = A.beweegDrempels;
+  waar('beweging() en zijn drempels zijn geëxporteerd', typeof BW === 'function' && BB && BB.houdMs > 0);
+  // Een reeks monsters om de 250 ms; geeft alle getoonde beelden terug.
+  function rit(monsters) {
+    let r = null; const gezien = [];
+    monsters.forEach(function (x, i) { r = BW(Object.assign({ t: i * 250 }, x), r); gezien.push(r.beeld); });
+    return { r: r, gezien: gezien };
+  }
+  const n = function (k, x) { return Array.from({ length: k }, function () { return Object.assign({}, x); }); };
+
+  t('het eerste monster geeft meteen een beeld', BW({ t: 0, toestand: 'ACCU_RIJDT' }, null).beeld, 'ev');
+  // DE KLACHT: na het wegrijden wisselt een losse snelheidsdip het woord.
+  const knip = rit(Array.from({ length: 16 }, function (_, i) { return { toestand: 'ACCU_RIJDT', vraag: 0, laad: i % 2 ? 30 : 0 }; }));
+  waar('vertraging die per monster aan/uit gaat: blijft EV, geen "Laden"', knip.gezien.every(function (b) { return b === 'ev'; }), knip.gezien.join(' '));
+  const knipT = rit(Array.from({ length: 16 }, function (_, i) { return { toestand: i % 2 ? 'ACCU_RIJDT' : 'DRAAIT_RIJDT' }; }));
+  waar('toestand die per monster wisselt: het eerste beeld blijft staan', knipT.gezien.every(function (b) { return b === 'motor'; }), knipT.gezien.join(' '));
+
+  const rem = rit(n(2, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 0 }).concat(n(8, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 30 })));
+  const eerste = rem.gezien.indexOf('laden');
+  waar('aanhoudend vertragen met het pedaal los: Laden', rem.r.beeld === 'laden', rem.gezien.join(' '));
+  waar('… maar pas na houdMs, niet bij het eerste monster', eerste >= 2 + BB.houdMs / 250, 'eerste laden op monster ' + eerste);
+  const tussen = rit(n(2, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 30 }).concat(n(8, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 30 }), n(10, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 10 })));
+  t('hysterese: eenmaal laden blijft het bij een zwakkere vertraging', tussen.r.beeld, 'laden');
+  const zwak = rit(n(12, { toestand: 'ACCU_RIJDT', vraag: 0, laad: 10 }));
+  t('… maar diezelfde zwakke vertraging start geen laden', zwak.r.beeld, 'ev');
+  const gas = rit(n(10, { toestand: 'DRAAIT_RIJDT', vraag: 0, laad: 40 }).concat(n(10, { toestand: 'DRAAIT_RIJDT', vraag: 40, laad: 40 })));
+  t('gas geven beëindigt laden (na houdMs): Motor', gas.r.beeld, 'motor');
+  t('stilstaand met draaiende motor: nooit laden', rit(n(12, { toestand: 'DRAAIT_STIL', vraag: 0, laad: 80 })).r.beeld, 'motor');
+  t('start/stop: Stil', rit(n(3, { toestand: 'STARTSTOP' })).r.beeld, 'stil');
+  const st = rit(n(10, { toestand: 'UIT_VOOR_START' }).concat([{ toestand: 'START' }]));
+  t('Motor start gaat er meteen door (eigen klok in bepaal)', st.r.beeld, 'start');
+  t('geen toestand: onbekend', BW({ t: 0 }, null).beeld, 'onbekend');
+}
+
+// ══════════════════════════════════════════════════════════════════
 // DEEL 2 — het anker in de pollronde
 // ──────────────────────────────────────────────────────────────────
 // De balk hangt aan 010C. Valt die weg, dan bevriest `pidVals['010C']` op zijn

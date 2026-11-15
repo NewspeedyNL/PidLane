@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Rijbeeld op de energieweergave (15-11-2026) ──
+  {
+    issue: '#717',
+    naam: 'Het woord in het midden van de energieweergave (EV, Motor, Laden …) komt uit één gestabiliseerd rijbeeld en springt niet meer per monster',
+    waarom: 'Uit het gebruik: na het wegrijden schoot de stand alle kanten op; "Laden" kwam uit één vertragend snelheidsmonster en won van de aandrijftoestand.',
+    proef: async function () {
+      if (!window.PLAandrijving || typeof PLAandrijving.beweging !== 'function') return { staat: 'FOUT', detail: 'PLAandrijving.beweging ontbreekt — herladen?' };
+      var BW = PLAandrijving.beweging, B = PLAandrijving.beweegDrempels, r = null, wissel = 0, vorig = null;
+      for (var i = 0; i < 16; i++) { r = BW({ t: i * 250, toestand: 'ACCU_RIJDT', vraag: 0, laad: i % 2 ? 30 : 0 }, r); if (vorig && r.beeld !== vorig) wissel++; vorig = r.beeld; }
+      if (wissel) return { staat: 'FOUT', detail: 'het rijbeeld wisselde ' + wissel + '× op een vertraging die per monster aan/uit ging' };
+      r = null;
+      for (var j = 0; j * 250 <= B.houdMs + 500; j++) r = BW({ t: j * 250, toestand: 'ACCU_RIJDT', vraag: 0, laad: j ? 30 : 0 }, r);
+      if (r.beeld !== 'laden') return { staat: 'FOUT', detail: 'aanhoudend vertragen met het pedaal los geeft geen Laden maar ' + r.beeld };
+      if (!window.PLVisProfiel || PLVisProfiel.toestandTekst({ toestand: 'ACCU_RIJDT' }, { laden: true }, 'ev') !== 'EV') return { staat: 'FOUT', detail: 'de weergave volgt het rijbeeld niet: een losse laadstand wint nog' };
+      return { staat: 'OK', detail: 'stabiel na ' + B.houdMs + ' ms; laden aan vanaf ' + B.ladenIn + '%, uit onder ' + B.ladenUit + '%' };
+    }
+  },
+
   // ── Deelvoet onder rapporten en de review-vraag (14-11-2026) ──
   {
     issue: '—',

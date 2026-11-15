@@ -16,6 +16,20 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 15-11-2026 — Energieweergave: het woord in het midden sprong na het wegrijden (#717)
+
+Schermopname eigenaar, demo Hyundai hybride: bij het wegrijden wisselde het
+midden tussen Laden, EV en Motor. Twee bronnen met een eigen tempo bepaalden
+hetzelfde woord: `PLAandrijving.bepaal()` (gestabiliseerd, 700 ms) en
+`vermogenStand().laden` (per snelheidsmonster, vertraging over 1,5 s). Die
+laatste won altijd, en bij optrekken in stop-en-go is er bijna elk monster een
+kleine dip. Dezelfde vorm als de rijstijl van Hyperlane op 10-11 hieronder.
+
+Oplossing: `PLAandrijving.beweging()` maakt er één oordeel van met hysterese
+en 1,5 s aanhouden. Wat níét opgelost is: of 20 % laadzone (≈1,6 km/h/s) op
+een echte hybride samenvalt met terugwinnen — er is geen generieke PID voor
+laadstroom (#693). Dat is een ritvraag.
+
 ## 14-11-2026 — Verbinden zonder vragen ging te ver; uitnodigen en zijn misbruik
 
 **Wat er misging (uit het gebruik, vier schermafdrukken).** Drie paden
