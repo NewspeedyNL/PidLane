@@ -198,5 +198,19 @@ console.log('\n6. De aandrijfvorm bevestigd door een mens (#695)');
   t('daarna is de vraag weg en de vorm bewezen', [s.PLKenmerk.vormVraagLive(), s.PLKenmerk.live().vorm.zeker], [null, 'bewezen']);
 }
 
+console.log('\n7. Data voor de grenzen: één logregel per model en antwoord (#695)');
+{
+  const ad = { vorm: 'vol', klasse: 'NOVC-HEV', kwElektrisch: 32, kwMotor: 77, bron: 'RDW' };
+  t('een volhybride wordt een regel met kW en klasse', (function () { const r = K.vormRegel(ad, { merk: 'Kia', model: 'Niro', jaar: '2021' }); return [r.vorm, r.kwE, r.kwM, r.klasse, r.antwoord]; })(), ['vol', 32, 77, 'NOVC-HEV', null]);
+  t('verbranding en elektrisch: geen regel (daar is niets te schatten)', [K.vormRegel({ vorm: 'verbranding' }, {}), K.vormRegel({ vorm: 'elektrisch' }, {})], [null, null]);
+  const regels = [];
+  const s = bouw({ vehicleInfo: { merk: 'Kia', model: 'Niro', year: '2021', vin: 'KNACC81CGM5000000', brandstof: 'hybride', aandrijving: ad }, logToSheets: function (type, msg, x) { regels.push({ type: type, msg: msg, x: x }); } });
+  t('het eerste kenteken van dit model: gelogd', s.PLKenmerk.vormLog(ad, { merk: 'Kia', model: 'Niro', jaar: '2021' }), true);
+  t('hetzelfde model nog eens: niet nog een keer', s.PLKenmerk.vormLog(ad, { merk: 'Kia', model: 'Niro', jaar: '2021' }), false);
+  s.PLKenmerk.antwoord('elektrischweg', false);
+  t('het antwoord van een mens is een eigen regel, met nee', regels.map((r) => r.type + ':' + r.x.antwoord), ['aandrijf:-', 'aandrijf:nee']);
+  t('de regel noemt de geschatte vorm en geen kenteken of VIN', /^aandrijf vorm=vol$/.test(regels[0].msg) && !/KNACC|kenteken/i.test(JSON.stringify(regels)), true);
+}
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

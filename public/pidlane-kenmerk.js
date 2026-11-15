@@ -286,6 +286,46 @@
 
   // ── LIVE ────────────────────────────────────────────────────────
   var MENS_IDS = ['slimladen', 'kenveldthermostaat', 'turbo', 'lpg', 'cvt', 'elektrischweg'];
+  /* DATA VOOR DE GRENZEN (#695, besluit 15-11-2026). AANDRIJF_MILD_KW (15) en
+     AANDRIJF_SERIEEL_FACTOR (1,05) komen uit een steekproef van 07-11. Elk
+     kenteken dat de app ziet, en elk antwoord op de vormvraag, wordt één
+     logregel `aandrijf` in D1: merk, model, jaar, klasse, kW elektrisch en
+     motor, de geschatte vorm en — als een mens antwoordde — of hij elektrisch
+     wegrijdt. Geen kenteken en geen VIN in de tekst; de VIN-kolom is het
+     pseudoniem van logToSheets. meetproeven/695-aandrijfvorm.sql leest ze.
+     Puur: de regel. Per toestel één keer per model+antwoord (`_vormGelogd`). */
+  function vormRegel(ad, auto, antwoord) {
+    if (!ad || !ad.vorm || ad.vorm === 'verbranding' || ad.vorm === 'elektrisch') return null;
+    auto = auto || {};
+    var x = { merk: String(auto.merk || '').trim(), model: String(auto.model || '').trim(), jaar: parseInt(auto.jaar, 10) || null,
+      klasse: ad.klasse || null, kwE: typeof ad.kwElektrisch === 'number' ? ad.kwElektrisch : null,
+      kwM: typeof ad.kwMotor === 'number' ? ad.kwMotor : null, vorm: ad.vorm,
+      antwoord: antwoord === true ? 'ja' : antwoord === false ? 'nee' : null };
+    x.sleutel = [x.merk, x.model, x.jaar, x.antwoord || '-'].join('|').toLowerCase();
+    return x;
+  }
+  var GELOGD = 'pl_aandrijf_gelogd';
+  function vormLog(ad, auto, antwoord) {
+    var r = vormRegel(ad, auto, antwoord); if (!r) return false;
+    var l = [];
+    try { l = JSON.parse(localStorage.getItem(GELOGD) || '[]'); if (!Array.isArray(l)) l = []; }
+    catch (e) { console.warn('PLKenmerk: lijst van gelogde aandrijvingen onleesbaar', e); l = []; }
+    if (l.indexOf(r.sleutel) >= 0) return false;
+    try {
+      if (typeof logToSheets !== 'function') return false;
+      logToSheets('aandrijf', 'aandrijf vorm=' + r.vorm, { merk: r.merk, model: r.model, jaar: r.jaar, klasse: r.klasse, kwE: r.kwE, kwM: r.kwM, antwoord: r.antwoord || '-' });
+      l.push(r.sleutel); if (l.length > 100) l = l.slice(-100);
+      localStorage.setItem(GELOGD, JSON.stringify(l));
+      return true;
+    } catch (e) { console.warn('PLKenmerk: aandrijfregel niet gelogd (#695)', e); return false; }
+  }
+  function _autoNu() {
+    try {
+      var vi = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
+      return { merk: vi.merk || vi.make || '', model: vi.model || '', jaar: vi.year || '', ad: vi.aandrijving || null };
+    } catch (e) { console.warn('PLKenmerk: vehicleInfo onleesbaar', e); return {}; }
+  }
+
   /* De vraag die de aandrijfvorm beslist (#695), of null. Alleen als de vorm
      uit een vermogensgrens komt én nog niemand hem beantwoordde. Puur. */
   function vormVraag(prof) {
@@ -370,6 +410,7 @@
     if (MENS_IDS.indexOf(id) < 0 || !window.PLWaarneming) return false;
     try {
       if (ja) PLWaarneming.meld(id, { bron: 'mens' }); else PLWaarneming.weerleg(id);
+      if (id === 'elektrischweg') { var an = _autoNu(); vormLog(an.ad, an, !!ja); }
       vergeet();
       Object.keys(_onbeslist).forEach(function (x) { if (_onbeslist[x].open.indexOf(id) > -1) delete _onbeslist[x]; });
       return true;
@@ -380,7 +421,7 @@
     NAAM: NAAM, VORM_NAAM: VORM_NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, laadHoog: laadHoog, LAAD_KLASSIEK: LAAD_KLASSIEK,
     profiel: profiel, geldt: geldt, toepassen: toepassen, laadspanning: laadspanning, laadBand: laadBand, koelwater: koelwater,
     noteer: noteer, wisNotitie: wisNotitie, onbeslist: onbeslist, vragen: vragen, promptBlok: promptBlok,
-    bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp, vormVraag: vormVraag,
+    bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp, vormVraag: vormVraag, vormRegel: vormRegel, vormLog: vormLog,
     vormVraagLive: function () { try { return vormVraag(live()); } catch (e) { console.warn('PLKenmerk: vormvraag', e); return null; } },
     letOpLive: function (pid) {
       var t = (typeof PID_LET_OP !== 'undefined') ? PID_LET_OP : null;

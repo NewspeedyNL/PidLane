@@ -546,6 +546,9 @@
     // Een mild hybride is zijn verbranding (aandrijfUitRdw, pidlane-voertuigdata.js).
     var ad = (typeof aandrijfUitRdw === 'function') ? aandrijfUitRdw(brandstoffen || [], rij.merk) : null;
     if (typeof aandrijfUitRdw !== 'function') console.warn('PLGarage: aandrijfUitRdw ontbreekt — een mild hybride wordt als hybride opgeslagen');
+    // Data voor de grenzen van aandrijfUitRdw (#695): één logregel per model.
+    try { if (ad && window.PLKenmerk && PLKenmerk.vormLog) PLKenmerk.vormLog(ad, { merk: rij.merk, model: rij.handelsbenaming, jaar: String(rij.datum_eerste_toelating || '').slice(0, 4) }); }
+    catch (e) { console.warn('PLGarage: aandrijfregel niet gelogd (#695)', e); }
     if (ad && ad.vorm === 'mild') p.brandstof = ad.brandstof;
     else if (el && fos) p.brandstof = 'hybride';
     else if (el) p.brandstof = 'elektrisch';
