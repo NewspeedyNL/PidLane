@@ -1000,6 +1000,17 @@
     try { berekend = (window.PLBerekend && typeof PLBerekend.buitenPerCode === 'function') ? PLBerekend.buitenPerCode() : null; }
     catch (e) { console.warn('Opdracht: PLBerekend is onleesbaar voor het bewijs (#650)', e); }
     if (berekend && !Object.keys(berekend).length) berekend = null;
+    // ATST-stappen en ELM-weigeringen met tijd en achtergrondcontext (#509):
+    // één rit moet zeggen of ze bij het opstarten, na Maps of onderweg vielen.
+    var verbind = null;
+    try {
+      var sl = (window.PLVerbind && typeof PLVerbind.stapLog === 'function') ? PLVerbind.stapLog() : [];
+      var wl = (window.PLElm && typeof PLElm.weigerLog === 'function') ? PLElm.weigerLog() : [];
+      if (sl.length || wl.length) verbind = {
+        atst: sl.slice(-20).map(function (x) { return { tS: rel(x.t), van: x.oud, naar: x.nieuw, achtergrondSindsS: x.achtergrondSindsS === undefined ? null : x.achtergrondSindsS }; }),
+        weigeringen: wl.slice(-20).map(function (x) { return { tS: rel(x.t), cmd: x.cmd, reden: x.reden, achtergrondSindsS: x.achtergrondSindsS }; })
+      };
+    } catch (e) { console.warn('Opdracht: ATST en weigeringen zijn onleesbaar voor het bewijs (#509)', e); }
     var b = {
       v: 1, opdracht: (o && o.naam) || '', staat: v.staat || '', reden: v.reden || '',
       venster: v.venster ? { s: v.venster.s } : null,
@@ -1017,11 +1028,13 @@
       } : null,
       rit: rit ? { meetgaten: (rit.meetgaten || []).slice(-20), herverbindingen: rit.herverbindingen } : null,
       antwoorden: o ? antwoordTekst(o) : '',
-      berekend: berekend
+      berekend: berekend,
+      verbind: verbind
     };
     // Te groot: eerst de oudste gebeurtenissen en perioden eraf, dan de meetgaten.
     var lijsten = b.toeschouwer ? [b.toeschouwer.gebeurtenissen, b.toeschouwer.perioden] : [];
     if (b.rit) lijsten.push(b.rit.meetgaten);
+    if (b.verbind) lijsten.push(b.verbind.weigeringen);
     var i = 0;
     while (JSON.stringify(b).length > BEWIJS_MAX && lijsten.some(function (l) { return l.length; })) {
       var l = lijsten[i++ % lijsten.length];
