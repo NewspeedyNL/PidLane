@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 15-11-2026 — Demo-Mazda met het echte CX-5-pakket
+ ═════════════════════════════════════════════════════
+   • Demo: de Mazda CX-5 rijdt met de 52 mode 01-PIDs die een CX-5 2018 meldt (nepauto-profiel cx5), elk met een gezonde waarde; status-PIDs vast (MIL uit). test-demopakket.js + vier mutaties
+   • Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  16-11-2026 — Besluiten na #723: testrun uitgesteld, batterijmeting, D1 klaar voor de rit
  ═════════════════════════════════════════════════════
    • Opstart: testrun, meetkamer en meetcoach (± 380 KB) laden pas bij gebruik of vanzelf voor de beheerder; PLRit, PLBudget en de gat-duidingen staan los in pidlane-ritwaarnemer.js (#690)
