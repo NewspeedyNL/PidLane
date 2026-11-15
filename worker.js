@@ -7217,6 +7217,44 @@ async function handleAdminMeekijk(request, env) {
 }
 __name(handleAdminMeekijk, "handleAdminMeekijk");
 
+// ── Batterijmeting van de beheerder (#691, besluit 15-11-2026) ──────
+// De app meet bij een beheerderslogin een paar weken mee hoe snel de accu
+// leegloopt per toestand (pidlane-batterijmeting.js, als logregel "batterij").
+// Wat Android zelf zegt (Instellingen → Batterij → PidLane) kan de app niet
+// lezen; dat vult de beheerder in, met een schermafdruk als hij wil. Die komt
+// hier: één rij per melding, de foto verkleind tot hoogstens 400 KB als data-URL.
+// Alleen de rol admin. Geen klantgegevens, geen kenteken.
+const BAT_FOTO_MAX = 400 * 1024;
+async function handleAdminBatterij(request, env) {
+  const s = await auth(request, env);
+  if (!s) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (s.r !== "admin") return json({ ok: false, error: "Alleen voor beheerders." }, 403);
+  if (!env.LOGDB) return json({ ok: false, error: "Opslag niet beschikbaar." }, 503);
+  const rl = await rateLimit(env, "admin-batterij", s.u || "admin", { limit: 30, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+  let b = {};
+  try { b = await request.json(); } catch (e) { /* stil: kapotte JSON — b blijft {}, de controle hieronder weigert */ }
+  const pct = Number(b.pct), uren = b.uren === undefined || b.uren === null || b.uren === "" ? null : Number(b.uren);
+  if (!(pct >= 0 && pct <= 100)) return json({ ok: false, error: "Vul het percentage van PidLane in (0–100)." }, 400);
+  if (uren !== null && !(uren > 0 && uren <= 168)) return json({ ok: false, error: "Uren tussen 0 en 168." }, 400);
+  const foto = typeof b.foto === "string" && b.foto ? b.foto : null;
+  if (foto && (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(foto) || foto.length > BAT_FOTO_MAX))
+    return json({ ok: false, error: "De schermafdruk is geen afbeelding of groter dan 400 KB." }, 400);
+  const notitie = String(b.notitie || "").slice(0, 500);
+  const meting = b.meting && typeof b.meting === "object" ? JSON.stringify(b.meting).slice(0, 4000) : null;
+  try {
+    const db = env.LOGDB;
+    await db.prepare("CREATE TABLE IF NOT EXISTS batterij_meting (id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, wie TEXT, pct REAL NOT NULL, uren REAL, notitie TEXT, meting TEXT, foto TEXT)").run();
+    const r = await db.prepare("INSERT INTO batterij_meting (ts, wie, pct, uren, notitie, meting, foto) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .bind(new Date().toISOString(), String(s.u || "admin").slice(0, 80), pct, uren, notitie, meting, foto).run();
+    return json({ ok: true, id: r && r.meta ? r.meta.last_row_id || null : null });
+  } catch (e) {
+    console.error("[batterij] niet opgeslagen", e && e.message || e);
+    return json({ ok: false, error: "Niet opgeslagen." }, 500);
+  }
+}
+__name(handleAdminBatterij, "handleAdminBatterij");
+
 // ── De opruimer ─────────────────────────────────────────────────────
 // Draait uit de cron (zie scheduled() onderaan) en uit de adminpagina, zodat
 // beide precies hetzelfde doen. Geeft terug wat er weg is en wat er nog wacht.
@@ -7779,6 +7817,8 @@ var worker_default = {
         return lockOrigin(request, await handleAdminBronnen(request, env));
       if (url.pathname === "/admin/meekijk" && request.method === "POST")
         return lockOrigin(request, await handleAdminMeekijk(request, env));
+      if (url.pathname === "/admin/batterij" && request.method === "POST")
+        return lockOrigin(request, await handleAdminBatterij(request, env));
       if (url.pathname === "/klant/registreer" && request.method === "POST")
         return lockOrigin(request, await handleKlantRegistreer(request, env, ctx));
       if (url.pathname === "/klant/login" && request.method === "POST")

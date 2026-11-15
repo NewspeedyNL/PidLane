@@ -38,6 +38,49 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Opstart: testrun pas bij gebruik (16-11-2026) ──
+  {
+    issue: '#690',
+    naam: 'PLRit en de gat-duidingen draaien los van de testrun, en de testrun is via de lader geladen',
+    waarom: 'De testrun (300 KB) laadt niet meer bij elke start; wat klantpaden ervan lazen staat in pidlane-ritwaarnemer.js.',
+    proef: async function () {
+      if (!window.PLTestrunLader) return { staat: 'FOUT', detail: 'PLTestrunLader ontbreekt — herladen?' };
+      var st = PLTestrunLader.staat();
+      if (typeof window.plGatDuiding !== 'function' || !window.PLRit || !window.PLBudget) return { staat: 'FOUT', detail: 'PLRit, PLBudget of plGatDuiding ontbreekt' };
+      if (st !== 'geladen') return { staat: 'FOUT', detail: 'blok 5 draait, maar de lader zegt "' + st + '"' };
+      if (window.openTestrun && window.openTestrun._plaatshouder) return { staat: 'FOUT', detail: 'openTestrun is na het laden nog de plaatshouder' };
+      return { staat: 'OK', detail: 'geladen via de lader; PLRit telt ' + ((PLRit.gaten && PLRit.gaten().length) || 0) + ' gat(en)' };
+    }
+  },
+
+  // ── Batterijmeting bij de beheerder (16-11-2026) ──
+  {
+    issue: '#691',
+    naam: 'De batterijmeting loopt bij de beheerder en heeft monsters',
+    waarom: 'Of #691 iets scheelt zegt alleen de accu; de app meet tot 13-12 mee en vraagt het Android-percentage.',
+    proef: async function () {
+      if (!window.PLBatterij) return { staat: 'FOUT', detail: 'PLBatterij ontbreekt — herladen?' };
+      if (Date.now() > PLBatterij.CFG.tot) return { staat: 'LET OP', detail: 'de meetperiode is voorbij; haal pidlane-batterijmeting.js weg' };
+      if (typeof navigator.getBattery !== 'function') return { staat: 'LET OP', detail: 'deze browser heeft geen Battery API; er wordt niets gemeten' };
+      if (!PLBatterij.actief()) return { staat: 'FOUT', detail: 'niet actief, terwijl de testrun alleen voor de beheerder is' };
+      var s = PLBatterij.samenvatting(), n = PLBatterij.monsters().length;
+      return { staat: 'OK', detail: n + ' monster(s), ' + PLBatterij.logN() + ' keer naar D1; ' + (Object.keys(s).map(function (k) { return k + ' ' + (s[k].pctUur === null ? s[k].min + ' min' : s[k].pctUur + ' %/u'); }).join(', ') || 'nog geen stuk zonder laden') };
+    }
+  },
+
+  // ── Tankvraag geteld voor de meetopdracht (16-11-2026) ──
+  {
+    issue: '#667',
+    naam: 'De tankvraag telt zijn vragen en antwoorden als app-maat voor de meetopdracht',
+    waarom: 'Zonder telling kon een meetopdracht niet zeggen of de vraag na een Nee terugkwam.',
+    proef: async function () {
+      if (!window.PLTank || typeof PLTank.maat !== 'function') return { staat: 'FOUT', detail: 'PLTank.maat ontbreekt — herladen?' };
+      var v = PLTank.maat('tank-vragen'), nee = PLTank.maat('tank-nee');
+      if (typeof v !== 'number' || typeof nee !== 'number') return { staat: 'FOUT', detail: 'tank-vragen ' + v + ', tank-nee ' + nee };
+      return { staat: 'OK', detail: v + ' vraag/vragen deze sessie, ' + nee + '× Nee, grootste sprong ' + (PLTank.maat('tank-sprong-max') === null ? '—' : PLTank.maat('tank-sprong-max') + ' punt') };
+    }
+  },
+
   // ── Meetopdrachten: de opstart is geen gat (16-11-2026) ──
   {
     issue: '#650',

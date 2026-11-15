@@ -546,6 +546,9 @@
     // Een mild hybride is zijn verbranding (aandrijfUitRdw, pidlane-voertuigdata.js).
     var ad = (typeof aandrijfUitRdw === 'function') ? aandrijfUitRdw(brandstoffen || [], rij.merk) : null;
     if (typeof aandrijfUitRdw !== 'function') console.warn('PLGarage: aandrijfUitRdw ontbreekt — een mild hybride wordt als hybride opgeslagen');
+    // Data voor de grenzen van aandrijfUitRdw (#695): één logregel per model.
+    try { if (ad && window.PLKenmerk && PLKenmerk.vormLog) PLKenmerk.vormLog(ad, { merk: rij.merk, model: rij.handelsbenaming, jaar: String(rij.datum_eerste_toelating || '').slice(0, 4) }); }
+    catch (e) { console.warn('PLGarage: aandrijfregel niet gelogd (#695)', e); }
     if (ad && ad.vorm === 'mild') p.brandstof = ad.brandstof;
     else if (el && fos) p.brandstof = 'hybride';
     else if (el) p.brandstof = 'elektrisch';
@@ -1119,6 +1122,7 @@
     var ja = false;
     try { ja = (typeof plBevestig === 'function') ? await plBevestig(vraag, 'Invullen', 'Nee, niet getankt', '⛽ Tankbeurt') : false; }
     catch (e) { console.warn('PLGarage: tankvraag', e); }
+    try { if (PLTank.telVraag) PLTank.telVraag(s, ja); } catch (e) { console.warn('PLGarage: tankvraag niet geteld (#667)', e); }
     if (!ja) {
       // Een "Nee" is een waarneming: dezelfde sprong vraagt op deze auto niet nog eens.
       if (PLTank.leerNee) schrijf(leerSleutel(v.id), PLTank.leerNee(lees(leerSleutel(v.id), null), s));

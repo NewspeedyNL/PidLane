@@ -33,7 +33,7 @@
     ],
     "proeven": [
       {"issue": "#487", "naam": "na de stilte staat alles zoals ervoor", "app": "contact-terug-anders", "tussen": [0, 0]},
-      {"issue": "#509", "naam": "ATST hoogstens één keer bijgestuurd", "app": "verbind-st-stappen", "tussen": [0, 1]},
+      {"issue": "#509", "naam": "ATST niet bijgestuurd, ook niet na Maps", "app": "verbind-st-stappen", "tussen": [0, 0]},
       {"issue": "#487", "naam": "geen weigeringen van de ELM tijdens de stilte", "app": "contact-weigeringen", "tussen": [0, 2]}
     ]
   },

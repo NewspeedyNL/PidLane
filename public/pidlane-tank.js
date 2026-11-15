@@ -427,7 +427,26 @@
     return h;
   }
 
-  window.PLTank = { CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
+  /* App-maten voor een meetopdracht (#667): hoe vaak de vraag kwam deze
+     sessie, met welk antwoord, en de grootste sprong die toch vroeg. Alleen
+     tellen; de beslissing blijft in peilTik/tankSprong. */
+  var _tel = { vragen: 0, ja: 0, nee: 0, sprongMax: null };
+  function telVraag(s, ja) {
+    _tel.vragen++; if (ja) _tel.ja++; else _tel.nee++;
+    var sp = s && typeof s.na === 'number' && typeof s.voor === 'number' ? Math.round(s.na - s.voor) : null;
+    if (sp !== null && (_tel.sprongMax === null || sp > _tel.sprongMax)) _tel.sprongMax = sp;
+  }
+  function maat(naam) {
+    switch (naam) {
+      case 'tank-vragen': return _tel.vragen;
+      case 'tank-ja': return _tel.ja;
+      case 'tank-nee': return _tel.nee;
+      case 'tank-sprong-max': return _tel.sprongMax;
+      default: return null;
+    }
+  }
+
+  window.PLTank = { telVraag: telVraag, maat: maat, CFG: CFG, bedragVan: bedragVan, ritKm: ritKm, kmTussen: kmTussen, cycli: cycli, volleTank: volleTank,
     samenvatting: samenvatting, csv: csv, ritSom: ritSom, html: html, uitFormulier: uitFormulier,
     mediaan: mediaan, tankSprong: tankSprong, peilTik: peilTik, leerNee: leerNee, drempelVan: drempelVan, CFG: CFG, uitSprong: uitSprong, cyclusRitten: cyclusRitten };
 })();

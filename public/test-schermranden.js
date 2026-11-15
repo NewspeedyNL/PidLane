@@ -312,6 +312,7 @@ console.log('\n5. De onderrand: bereikbaar of vast achter de balk? (#172)');
   zand.PLLoad = { staat() { return { mult: 1, tempoPct: 100 }; }, cfg: {} };
   vm.createContext(zand);
   vm.runInContext(lees('pidlane-proeven.js'), zand, { filename: 'pidlane-proeven.js' });   // sinds 08-11-2026 los (#690)
+  vm.runInContext(lees('pidlane-ritwaarnemer.js'), zand, { filename: 'pidlane-ritwaarnemer.js' });
   vm.runInContext(lees('pidlane-testrun.js'), zand, { filename: 'pidlane-testrun.js' });
 
   const O = zand.plOnderrandOordeel;

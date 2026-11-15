@@ -1,0 +1,20 @@
+{
+  "schema": 2,
+  "naam": "Tankvraag na contact uit en aan, en na tanken (#667)",
+  "reden": "Tankbeurten bijhouden aan. Contact twee keer uit en aan zonder tanken; komt de vraag, tik Nee. Tank je, dan hoort de vraag wél te komen.",
+  "sensoren": ["012F", "010D"],
+  "duurS": 1800,
+  "tikS": 5,
+  "voorwaarden": [
+    {"wat": "Minstens twee keer contact uit en weer aan", "app": "toestand-contact-uit-n", "tussen": [2, 99]},
+    {"wat": "Brandstofpeil gelezen", "pid": "012F", "meet": "aantal", "tussen": [10, 1000000]}
+  ],
+  "vragen": [
+    {"id": "getankt", "tekst": "Heb je deze rit getankt?", "opties": ["ja", "nee"]},
+    {"id": "na_nee", "tekst": "Kwam de vraag terug na een Nee, op dezelfde plek?", "opties": ["nee", "ja", "er kwam geen vraag"]}
+  ],
+  "proeven": [
+    {"issue": "#667", "naam": "hoogstens één keer Nee nodig: na een Nee leert hij", "app": "tank-nee", "tussen": [0, 1]},
+    {"issue": "#667", "naam": "zonder tanken geen sprong boven 30 punt die toch vroeg", "app": "tank-sprong-max", "tussen": [0, 30]}
+  ]
+}

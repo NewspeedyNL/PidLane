@@ -266,5 +266,15 @@ console.log('\n9. Stap 3: de samenvatting per cyclus');
   toets('scherm: ritten, rijtijd en de vergelijking met getankt', /2 ritten · 5:00 u gereden · gem\. 100 km\/u/.test(h) && /de app mat 45,0 l \(90 %\)/.test(h), h.slice(h.indexOf('ritten') - 80, h.indexOf('ritten') + 220));
 }
 
+console.log('\n— app-maten voor de meetopdracht (#667) —');
+{
+  toets('niets gevraagd: tank-vragen 0, sprong onbekend (null)', T.maat('tank-vragen') === 0 && T.maat('tank-sprong-max') === null);
+  T.telVraag({ voor: 40, na: 58 }, false);
+  T.telVraag({ voor: 12, na: 90 }, true);
+  toets('twee vragen: één Nee, één Ja', T.maat('tank-vragen') === 2 && T.maat('tank-nee') === 1 && T.maat('tank-ja') === 1);
+  toets('de grootste sprong die vroeg: 78', T.maat('tank-sprong-max') === 78, String(T.maat('tank-sprong-max')));
+  toets('een onbekende maat: null', T.maat('tank-iets') === null);
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
 process.exit(fout ? 1 : 0);
