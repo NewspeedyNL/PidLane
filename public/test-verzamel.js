@@ -285,10 +285,16 @@ console.log('\nG. Het scherm zelf: bron, de rit van zojuist, terugkeer na een ri
   await wacht(); await wacht();
   toets('TEGENPROEF: te weinig gereden voor dit niveau — de rit telt niet', !/de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
   klik('annuleer'); await wacht();
+  // #650: na 12 min stilstand en een herverbinding telt de rit nog (half uur).
   s.ritBron.rijSec = 400; s.ritBron.eind = Date.now() - 20 * 60 * 1000;
   V.meet({ niveau: 'rit', profiel: false }).then(x => { u = x; });
   await wacht(); await wacht();
-  toets('TEGENPROEF: een rit van twintig minuten geleden telt niet', !/de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
+  toets('een rit van twintig minuten geleden telt nog (#650: half uur)', /de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
+  klik('annuleer'); await wacht();
+  s.ritBron.eind = Date.now() - 31 * 60 * 1000;
+  V.meet({ niveau: 'rit', profiel: false }).then(x => { u = x; });
+  await wacht(); await wacht();
+  toets('TEGENPROEF: een rit van 31 minuten geleden telt niet', !/de rit van zojuist/.test(g('plVzSub').innerHTML), g('plVzSub').innerHTML.slice(0, 120));
   klik('annuleer'); await wacht();
   s.ritBron = null;
 

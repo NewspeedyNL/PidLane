@@ -67,6 +67,8 @@
     if (v.pid === '010C' && v.tussen && v.tussen[0] >= 1500)
       return { soort: 'toeren', sit: 'snelweg', actief: true, tekst: '↗ Trek één keer door tot boven ' + v.tussen[0] + ' tpm' };
     if (v.app && /^onderzoek/.test(v.app)) return { soort: 'onderzoek', sit: 'stilstaan', actief: true, tekst: '🔧 Na de rit, stilstaand: Er is iets mis → onderzoek' };
+    // #650: de restregel '• ' + v.wat zei op 30-10 niet wát je moet doen (1 uitslag, nodig 4).
+    if (v.app && /^verzamel-/.test(v.app)) return { soort: 'verzamel', sit: 'stilstaan', actief: true, tekst: '📋 Na de rit, binnen een half uur: open ' + (v.app === 'verzamel-uitslagen' && v.tussen && v.tussen[0] > 1 ? v.tussen[0] + '× ' : '') + 'een analyse (Slim, AI-rapport of Er is iets mis)' };
     if (v.app && /^wiel-/.test(v.app)) return { soort: 'wielen', sit: null, actief: false, tekst: '🛞 Gewoon rijden met de vier wielsnelheden aan' };
     return { soort: 'anders:' + (v.wat || ''), sit: null, actief: true, tekst: '• ' + (v.wat || 'onbekende voorwaarde') };
   }

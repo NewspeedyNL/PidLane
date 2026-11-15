@@ -169,6 +169,12 @@ Q = rit({ '010C': [2500, 50], '010D': [80, 100], '0110': [2, 50], '0162': [60, 3
 ok(Q.stats().pids.CA10 && Q.stats().pids.CA10.n === 1, 'TEGENPROEF: dezelfde bronnen binnen 1 s: CA10 wordt wel gerekend', Q.stats().pids);
 ok(Q.maat('berekend-buiten') >= 1 && Q.maat('berekend-rendement-max') > 45,
    'en dan meldt de app-maat het onmogelijke rendement (buiten ' + Q.maat('berekend-buiten') + ', max ' + Q.maat('berekend-rendement-max') + ')');
+// #650: rit 30-10 gaf berekend-buiten = 26 zonder te zeggen welke code. Het bewijs krijgt het per code.
+const per = Q.buitenPerCode();
+ok(per.CA10 && per.CA10.buiten === Q.maat('berekend-buiten') && per.CA10.boven >= 1 && typeof per.CA10.tegel[1] === 'number',
+   'buitenPerCode noemt CA10 met zijn eigen telling, kant en tegel (#650)', per);
+ok(per.CA10 && per.CA10.bij && per.CA10.bij.bronnen && per.CA10.bij.bronnen['0110'] === 2, 'en de bronwaarden van het verste punt', per.CA10);
+ok(!per.CA03 && Object.keys(per).every(k => per[k].buiten > 0), 'codes zonder overschrijding staan er niet in', Object.keys(per));
 ok(Q.samen([0, 1000]) && !Q.samen([0, 1001]) && Q.samen([5]) && Q.samen([]), 'samen(): grens op precies ' + Q.SAMEN_MS + ' ms');
 ok(rit({}, true).maat('berekend-buiten') === null && rit({}, true).maat('berekend-n') === null && rit({}, true).maat('berekend-rendement-max') === null,
    'vóór de eerste berekening: de app-maten zijn null (niet gemeten), niet 0');

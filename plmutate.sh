@@ -1084,6 +1084,7 @@ MUTATIES=(
 "public/pidlane-toeschouwer.js@@    if (typeof w.kmh !== 'number' || !isFinite(w.kmh)) return 'onbekend';@@    if (typeof w.kmh !== 'number' || !isFinite(w.kmh)) return 'stil';@@test-toeschouwer.js@@een meetgat telt als stilstand: de voorwaarde stilgestaan raakt vervuld midden op de snelweg (#594)"
 "public/pidlane-toeschouwer.js@@        var wacht = (t === 'contact-uit' || k.toestand === null) ? 0 : CFG.minS * 1000;@@        var wacht = 0;@@test-toeschouwer.js@@twee seconden 0 km/h telt als stop: elke dip in de file wordt een gebeurtenis (#594)"
 "public/pidlane-toeschouwer.js@@Math.min(nu - k.laatst, CFG.dtMaxMs)@@(nu - k.laatst)@@test-toeschouwer.js@@een bevroren timer in de achtergrond boekt een uur rijden (#594)"
+"public/pidlane-toeschouwer.js@@      if (k.toestand !== null) k.gat += dt;@@      k.gat += dt;@@test-toeschouwer.js@@de opstart vóór de eerste verse snelheid telt weer als meetgat: toestand-gat-s 20 op een rit zonder gat (#650)"
 "public/pidlane-toeschouwer.js@@    if (_beheerder()) {@@    if (true) {@@test-toeschouwer.js@@een klant krijgt markeringen van een testmiddel in zijn log (#594)"
 "public/pidlane-opdracht.js@@    if (typeof s !== 'number') return Object.assign(basis, { vervuld: null,@@    if (typeof s !== 'number') return Object.assign(basis, { vervuld: false,@@test-toeschouwer.js@@niets gezien heet weer niet gedaan in plaats van niet na te gaan (#227, #594)"
 "public/pidlane-testrun.js@@  const telt = opst === 'groen' || opst === 'auto';@@  const telt = opst !== 'ongekeurd';@@test-verzendoordeel.js@@een rode opstelling telt weer als antwoord in de logtabel (#594, herzien 24-10)"
@@ -2294,6 +2295,7 @@ MUTATIES=(
 "public/pidlane-meetcoach.js@@    if (sp.act.length) S.huidig = sp.act[(sp.i + 1) % sp.act.length].soort;@@    if (sp.act.length) S.huidig = sp.act[sp.i % sp.act.length].soort;@@test-meetcoach.js@@Volgende blijft op dezelfde stap staan (meetcoach)"
 "public/pidlane-meetcoach.js@@    if (!S.ritStart) S.ritStart = Date.now();@@    S.ritStart = Date.now();@@test-meetcoach.js@@rit aanpassen onderweg zet de ritklok op nul (meetcoach)"
 "public/pidlane-meetcoach.js@@' data-soort=\"' + esc(soort) + '\"'@@' data-soort=\"' + (soort) + '\"'@@test-meetcoach.js@@een soort uit een opdrachttekst komt ongeëscaped in een knop (meetcoach)"
+"public/pidlane-meetcoach.js@@    if (v.app && /^verzamel-/.test(v.app)) return@@    if (false) return@@test-meetcoach.js@@een verzamel-voorwaarde krijgt weer de restregel en zegt niet wat je moet doen (#650)"
 "public/pidlane-sppproef.js@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!(patch.patch && patch.aan !== false),@@      _volle.push({ t: Date.now(), patch: !!patch.patch, aan: !!patch.patch,@@test-sppproef.js@@een volle proef met de patch uit telt als proef met de patch aan: de tegenproef verdwijnt uit de meetopdracht"
 "public/pidlane-archief.js@@display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:11px 2px@@display:flex;gap:6px 10px;align-items:center;padding:11px 2px@@bproef-regelruimte.js@@de knoppen van een rapport staan weer naast de titel, en op een telefoon met grote tekst valt alles over elkaar"
 "public/pidlane-garage.js@@    h += tekenMeekijk();\n@@@@bproef-meekijk.js@@de klant kan nergens een meekijkcode maken of intrekken"
@@ -2539,6 +2541,8 @@ MUTATIES=(
 "public/pidlane-berekend.js@@      return namen.length ? namen.reduce((a,k)=>a+p[k].buiten, 0) : null;@@      return namen.length ? 0 : null;@@test-berekend.js@@de app-maat berekend-buiten ziet een waarde buiten bereik niet"
 "public/pidlane-berekend.js@@l<0.5 || k<REND_MIN_KW) return null;@@l<0.5 || k<=0) return null;@@test-berekend.js@@rendement stationair en bij gas los weer gerekend: 99 % uit frictie en lucht zonder brandstof (#457)"
 "public/pidlane-berekend.js@@    (s.pids.CA10.buitenBij ? ' (hoogste bij '+bronTekst(s.pids.CA10.buitenBij.bronnen)+')' : ''));@@    '');@@test-berekend.js@@het rendementsoordeel zegt weer niet bij welke bronwaarden het misging (#457)"
+"public/pidlane-berekend.js@@    const p=_s.pids[k]; if (!p.buiten) return;@@    const p=_s.pids[k]; if (!p.buiten || k==='CA10') return;@@test-berekend.js@@het bewijs zegt weer alleen de som van berekend-buiten, niet welke CA-code (#650)"
+"public/pidlane-opdracht.js@@      antwoorden: o ? antwoordTekst(o) : '',\n      berekend: berekend@@      antwoorden: o ? antwoordTekst(o) : ''@@test-toeschouwer.js@@berekend-buiten per CA-code gaat niet meer mee in het bewijs naar de worker (#650)"
 # ── Slim visueel: tempo alleen rijdend, herbouw met reden (#338, 01-10-2026) ──
 "public/pidlane-visueel.js@@  if(!rijdtNu() || !inBeeld()) return;\n  const t=gemetenTempo(pid,@@  if(!inBeeld()) return;\n  const t=gemetenTempo(pid,@@test-visueel.js@@een stilstand haalt het pedaal weer voor de hele rit van de meter"
 "public/pidlane-visueel.js@@  const gat=_staat.laatsteTik>0 && nu-_staat.laatsteTik>3*VIS_TIK_MS;@@  const gat=false;@@test-visueel.js@@157 s op de achtergrond telt weer mee in het tempo van het pedaal"
@@ -2864,6 +2868,7 @@ MUTATIES=(
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
 "public/pidlane-verzamel.js@@    if (!bron && o.ritBron !== false) { bron = ritVanZojuist(eis); ritBron = !!bron; }@@@@test-verzamel.js@@na een rijtest meet het scherm opnieuw over de laatste minuten in plaats van de rit te nemen"
 "public/pidlane-verzamel.js@@    if (!b || !getal(b.eind) || Date.now() - b.eind > RIT_GELDIG_MS) return null;@@    if (!b) return null;@@test-verzamel.js@@een rit van een uur geleden telt nog als de meting van nu"
+"public/pidlane-verzamel.js@@  const RIT_GELDIG_MS = 30 * 60 * 1000;@@  const RIT_GELDIG_MS = 15 * 60 * 1000;@@test-verzamel.js@@de rit van zojuist vervalt weer na een kwartier: na stilstand en herverbinding ziet het verzamelscherm hem niet (#650)"
 "public/pidlane-verzamel.js@@    if (eis && eis.rij && !(getal(b.rijSec) && b.rijSec >= eis.rij)) return null;\n@@@@test-verzamel.js@@een rit met een halve minuut rijden haalt de rij-eis van een verbruiksanalyse"
 "public/pidlane-verzamel.js@@(Date.now() - window._plVerzameld.ts) < MEET_BEVESTIGD_MS;@@true;@@test-verzamel.js@@een meting van een kwartier geleden wordt hergebruikt zonder opnieuw te meten"
 "public/pidlane-verzamel.js@@          naRitVervolg = (typeof o.naRit === 'function') ? o.naRit : null;@@          naRitVervolg = null;@@test-verzamel.js@@na de rijtest uit het scherm komt de analyse niet terug"

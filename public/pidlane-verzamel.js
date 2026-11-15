@@ -365,8 +365,11 @@
      Een rit bewaart elke fase volledig (ritFaseData); pidHist houdt maar 120
      monsters per sensor, op een rit een paar minuten. Is er net gereden, dan
      ís die rit de meting: de uitslag komt uit de rit, en de poort hoeft niet
-     nog eens over de laatste paar minuten. Hoe vers is vers: een kwartier. */
-  const RIT_GELDIG_MS = 15 * 60 * 1000;
+     nog eens over de laatste paar minuten. Hoe vers is vers: een half uur
+     (#650, besluit 15-11-2026). Op 30-10 zat er na de rit 12 min stilstand en
+     een herverbinding vóór het rapport; een kwartier was daarvoor te krap. Een
+     herverbinding raakt de rit niet: alleen een nieuwe ritanalyse wist hem. */
+  const RIT_GELDIG_MS = 30 * 60 * 1000;
   function ritVanZojuist(eis) {
     let b = null;
     try { b = plRitBron(); } catch (e) { console.warn('PLVerzamel: de rit van zojuist is niet leesbaar', e); return null; }
