@@ -9,6 +9,14 @@
 > Nieuwste boven, zoals het al was. Bijwerken hoort nog steeds bij elke
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
+ ═════════════════════════════════════════════════════
+ 15-11-2026 — Bevinding vuile MAF niet meer op een hybride
+ ═════════════════════════════════════════════════════
+
+ - "Mogelijk vuile MAF / verstopt luchtfilter" ging af tijdens elektrisch
+   rijden: toerental en belasting van vlak ervoor, luchtmassa al op nul. De
+   regel krijgt de hybride-poort van de thermostaatregel (_bevPoort).
+
  ═══════════════════════════════════════════════════════════
  14-11-2026 (avond) — Deelvoet onder rapporten, review-vraag
  ═══════════════════════════════════════════════════════════
