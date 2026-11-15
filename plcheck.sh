@@ -105,12 +105,14 @@ done
 # Op verzoek geladen (#690, 08-11-2026): staat bewust niet in index.html,
 # maar dan moet een module hem zelf laden (s.src = '<naam>'), anders is
 # het weer een module die stil ontbreekt.
-OP_VERZOEK="pidlane-proeven.js"
+# Sinds 15-11-2026 ook de testrun, de meetkamer en de meetcoach: die staan in
+# BESTANDEN van pidlane-testrunlader.js (#690).
+OP_VERZOEK="pidlane-proeven.js pidlane-testrun.js pidlane-meetkamer.js pidlane-meetcoach.js"
 ontbreekt=""
 for f in pidlane-*.js; do
   case " $OP_VERZOEK " in
     *" $f "*)
-      if grep -q "src = '$f'" pidlane-*.js; then echo "${GROEN}  ok${UIT}  $f laadt op verzoek"
+      if grep -q "src = '$f'" pidlane-*.js || grep -q "BESTANDEN = \[.*'$f'" pidlane-testrunlader.js; then echo "${GROEN}  ok${UIT}  $f laadt op verzoek"
       else echo "${ROOD}  NIET GELADEN${UIT}  $f staat niet in index.html en geen module laadt hem"; fout=$((fout+1)); fi
       continue ;;
   esac
