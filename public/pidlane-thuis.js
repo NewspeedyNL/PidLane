@@ -123,7 +123,8 @@
     var kw = c.pidVals ? Number(c.pidVals['0105']) : NaN;
     if ((c.verbonden || c.demo) && c.pidVals && c.pidVals['0105'] != null && isFinite(kw) && kw < 60)
       u.push({ id: 'koud', soort: 'live', titel: 'Motor nog koud (' + Math.round(kw) + ' °C)', tekst: 'Rustig optrekken tot het koelwater rond 70 °C is', gewicht: GEWICHT.live });
-    if (c.herinner && !c.herinner.aan)
+    // "Niet nodig" verbergt hem blijvend voor dit account (#715).
+    if (c.herinner && !c.herinner.aan && !c.herinnerWeg)
       u.push({ id: 'herinner', soort: 'herinner', titel: 'Herinner me aan de APK', tekst: 'Ook onderhoud en terugroepacties, 30 en 7 dagen vooraf', actie: 'herinner', gewicht: GEWICHT.herinner });
     return u.map(function (x, i) { x._i = i; return x; })
       .sort(function (a, b) { return b.gewicht - a.gewicht || a._i - b._i; });
@@ -177,6 +178,19 @@
   function garageModus() { try { return document.body.classList.contains('pl-garage'); } catch (e) { return false; } }
 
   var LOKAAL = 'pl_thuis';
+  // Kaarten in "Voor jou nu" die je met "Niet nodig" wegzette (#715), per
+  // account op dit toestel: { u: <account>, ids: [...] }.
+  var WEG = 'pl_thuis_weg';
+  function wegLijst() {
+    try { var k = JSON.parse(localStorage.getItem(WEG) || 'null'); return k && k.u === wie() && Array.isArray(k.ids) ? k.ids : []; }
+    catch (e) { console.warn('PLThuis: weggezette kaarten onleesbaar', e); return []; }
+  }
+  function wegGezet(id) { return wegLijst().indexOf(id) >= 0; }
+  function zetWeg(id) {
+    var l = wegLijst(); if (l.indexOf(id) < 0) l.push(id);
+    try { localStorage.setItem(WEG, JSON.stringify({ u: wie(), ids: l })); }
+    catch (e) { console.warn('PLThuis: kaart niet blijvend verborgen', e); melding('Verborgen tot de app sluit — niet bewaard op dit toestel'); }
+  }
   function opgeslagen() {
     try { var p = window.PLVoorkeur && PLVoorkeur.huidig && PLVoorkeur.huidig(); if (isKlant() && p && Array.isArray(p.thuis)) return p.thuis; }
     catch (e) { console.warn('PLThuis: voorkeur onleesbaar', e); }
@@ -192,7 +206,7 @@
     return isFinite(d) ? Math.round((d - Date.now()) / 864e5) : null;
   }
   function context() {
-    var c = { verbonden: isVerbonden(), demo: isDemo(), pidVals: null, foutcodes: null, punten: [], open: null, apkDagen: null, gezienDagen: null, naam: '', sub: '', foto: null, winter: false, herinner: null };
+    var c = { verbonden: isVerbonden(), demo: isDemo(), pidVals: null, foutcodes: null, punten: [], open: null, apkDagen: null, gezienDagen: null, naam: '', sub: '', foto: null, winter: false, herinner: null, herinnerWeg: false };
     try { c.pidVals = typeof pidVals !== 'undefined' ? pidVals : null; } catch (e) { c.pidVals = null; }
     try { c.checkVandaag = !!(c.verbonden && window.PLOpstart && PLOpstart.checkVandaag()); } catch (e) { console.warn('PLThuis: dagcheck onleesbaar', e); }
     try {
@@ -223,6 +237,7 @@
     try { var img = el('welcomeAuto'); if (img && !img.hidden && img.getAttribute('src')) c.foto = img.getAttribute('src'); } catch (e) { c.foto = null; }
     try { var w = el('plWinterKaart'); c.winter = !!(w && w.innerHTML.trim()); } catch (e) { c.winter = false; }
     try { c.herinner = window.PLHerinner ? PLHerinner.regel() : null; } catch (e) { console.warn('PLThuis: herinnering onleesbaar', e); }
+    c.herinnerWeg = wegGezet('herinner');
     return c;
   }
 
@@ -260,6 +275,8 @@
     '.th-nu[data-s="rood"]{border-color:rgba(255,84,112,.5);background:rgba(255,84,112,.08)} .th-nu[data-s="oranje"],.th-nu[data-s="live"]{border-color:rgba(255,176,32,.45);background:rgba(255,176,32,.07)}' +
     '.th-nu-dot{flex:0 0 9px;height:9px;border-radius:50%;background:var(--th-a);box-shadow:0 0 9px var(--th-a)} .th-nu[data-s="rood"] .th-nu-dot{background:var(--th-r);box-shadow:0 0 9px var(--th-r)} .th-nu[data-s="info"] .th-nu-dot,.th-nu[data-s="herinner"] .th-nu-dot{background:var(--th-c);box-shadow:0 0 9px var(--th-c)}' +
     '.th-nu-tx{flex:1;min-width:0} .th-nu-tx b{display:block;font-size:14.5px} .th-nu-tx small{display:block;color:var(--tx3);font-size:12.5px;margin-top:1px}' +
+    '.th-nu .th-info{border:0;background:transparent;color:var(--th-dim);font:600 13px var(--f);padding:2px 6px;margin-left:2px;cursor:pointer;vertical-align:middle}' +
+    '.th-keus{display:flex;gap:8px;margin-top:8px} .th-keus button{flex:1;min-height:40px;border-radius:10px;border:1px solid var(--th-rand);background:transparent;color:var(--tx);font:600 13px var(--f);cursor:pointer} .th-keus .th-k-ja{background:var(--th-c);border-color:var(--th-c);color:#06121a}' +
     '.th-volgende{border:1px solid var(--th-rand);background:transparent;color:var(--th-dim);font:600 12px var(--m);border-radius:9px;padding:6px 9px;cursor:pointer}' +
     '.th-tegels{display:grid;grid-template-columns:1fr 1fr;gap:8px}' +
     '.th-tegel{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-height:64px;padding:11px 12px;border-radius:14px;border:1px solid var(--th-rand);background:var(--th-glas);color:var(--tx);cursor:pointer;text-align:left;font-family:var(--f)}' +
@@ -366,6 +383,10 @@
     var volg = nu.length > 1 ? '<button type="button" class="th-volgende" onclick="event.stopPropagation();PLThuis.volgende()" aria-label="Volgende melding">' + (_nuI + 1) + '/' + nu.length + ' ›</button>' : '';
     if (w) w.hidden = !(k && k.soort === 'winter');
     if (!k || k.soort === 'winter') kaart.innerHTML = k && nu.length > 1 ? '<div style="display:flex;justify-content:flex-end">' + volg + '</div>' : '';
+    // De herinnering vraagt een keuze (#715): Aanzetten of Niet nodig, de uitleg achter ⓘ.
+    else if (k.soort === 'herinner') kaart.innerHTML = '<div class="th-nu" data-s="herinner" data-nu="' + esc(k.id) + '"><span class="th-nu-dot"></span><span class="th-nu-tx"><b>' + esc(k.titel) +
+      ' <button type="button" class="th-info" aria-label="Uitleg" aria-expanded="false" onclick="PLThuis._info(this)">ⓘ</button></b><small hidden>' + esc(k.tekst) + '</small>' +
+      '<span class="th-keus"><button type="button" class="th-k-ja" onclick="PLThuis.nuActie()">Aanzetten</button><button type="button" class="th-k-nee" onclick="PLThuis.nietNodig()">Niet nodig</button></span></span>' + volg + '</div>';
     else kaart.innerHTML = '<button type="button" class="th-nu" data-s="' + k.soort + '" data-nu="' + esc(k.id) + '" onclick="PLThuis.nuActie()"><span class="th-nu-dot"></span><span class="th-nu-tx"><b>' + esc(k.titel) + '</b><small>' + esc(k.tekst) + '</small></span>' + volg + '</button>';
     // Laag 3: de blokken in hun volgorde.
     var bl = el('plThuisBlokken');
@@ -477,6 +498,15 @@
     },
     pil: function () { if (isVerbonden() || isDemo()) { try { obdChipTap(); } catch (e) { console.warn('PLThuis: verbindingspaneel', e); } } else verbind(); },
     favorieten: function () { var b = el('favBtn'); if (b) b.click(); },
+    nietNodig: function () {
+      var k = _nuLijst[_nuI]; if (!k) return;
+      try { if (typeof logUsage === 'function') logUsage('thuis_nu_weg', k.id); } catch (e) { console.warn('PLThuis: logUsage', e); }
+      zetWeg(k.id); _nuI = 0; _sleutel = ''; teken();
+    },
+    _info: function (b) {
+      var sm = b && b.closest('.th-nu-tx') && b.closest('.th-nu-tx').querySelector('small'); if (!sm) return;
+      sm.hidden = !sm.hidden; b.setAttribute('aria-expanded', String(!sm.hidden));
+    },
     volgende: function () { _nuI = _nuLijst.length ? (_nuI + 1) % _nuLijst.length : 0; _sleutel = ''; teken(); },
     nuActie: nuActie,
     _sluit: sluit,

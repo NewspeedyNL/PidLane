@@ -120,6 +120,40 @@ function toets(naam, waar, uitleg) {
     toets('de hoofdknop staat boven de vouw (in de duimzone, boven de onderbalk)',
       await app.ev(`(function(){ const b=[...document.querySelectorAll('#plThuisHeld .th-cta')].find(x=>!x.hidden); if(!b) return false; const r=b.getBoundingClientRect(); return r.bottom < innerHeight - 60; })()`),
       await app.ev(`JSON.stringify([...document.querySelectorAll('#plThuisHeld .th-cta')].filter(x=>!x.hidden).map(x=>x.getBoundingClientRect().bottom))`));
+
+    console.log('\n── 6. herinnerkaart: Aanzetten of Niet nodig, uitleg achter ⓘ (#715) ──');
+    const her = await app.ev(`(function(){
+      const echt = PLHerinner.regel, echtZet = PLHerinner.zet; let gezet = null;
+      localStorage.removeItem('pl_thuis_weg');
+      PLHerinner.regel = () => ({ aan: false, aantal: 1, plugin: false });
+      PLHerinner.zet = v => { gezet = v; };
+      try {
+        PLThuis.teken();
+        const kaart = () => document.querySelector('#plThuisNuKaart [data-nu="herinner"]');
+        // Hij staat onderaan "Voor jou nu": blader er met › naartoe.
+        for (let i = 0; i < 6 && !kaart(); i++) PLThuis.volgende();
+        const k = kaart(); const r = { kaart: !!k };
+        if (!k) return r;
+        r.knoppen = [...k.querySelectorAll('.th-keus button')].map(b => b.textContent);
+        r.uitlegVerborgen = k.querySelector('small').hidden;
+        k.querySelector('.th-info').click(); r.uitlegOpen = !k.querySelector('small').hidden;
+        k.querySelector('.th-k-ja').click(); r.gezet = gezet;
+        kaart().querySelector('.th-k-nee').click();
+        r.wegNaNee = !kaart();
+        PLThuis.teken(); let weg = !kaart();
+        for (let i = 0; i < 6; i++) { PLThuis.volgende(); weg = weg && !kaart(); }
+        r.blijftWeg = weg;
+        localStorage.removeItem('pl_thuis_weg'); PLThuis.teken();
+        for (let i = 0; i < 6 && !kaart(); i++) PLThuis.volgende();
+        r.tegenproef = !!kaart();
+        return r;
+      } finally { PLHerinner.regel = echt; PLHerinner.zet = echtZet; localStorage.removeItem('pl_thuis_weg'); PLThuis.teken(); }
+    })()`);
+    toets('de kaart heeft twee keuzes: Aanzetten en Niet nodig', her.kaart && JSON.stringify(her.knoppen) === '["Aanzetten","Niet nodig"]', JSON.stringify(her));
+    toets('de uitleg staat achter ⓘ: dicht, en een tik opent hem', her.uitlegVerborgen && her.uitlegOpen, JSON.stringify(her));
+    toets('Aanzetten zet de herinneringen aan', her.gezet === true, JSON.stringify(her));
+    toets('Niet nodig verbergt de kaart, ook na opnieuw tekenen', her.wegNaNee && her.blijftWeg, JSON.stringify(her));
+    toets('tegenproef: zonder de bewaarde keuze staat hij er weer', her.tegenproef, JSON.stringify(her));
     toets('de app draait nog zonder fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
     await app.stop();
