@@ -1372,6 +1372,9 @@ MUTATIES=(
 "public/pidlane-waarneming.js@@      if (oud.status === 'gezien') return;@@      if (false) return;@@test-waarneming.js@@elke volgende waarneming schuift het moment op, en dan is een valse positief achteraf niet meer te herkennen"
 "public/pidlane-waarneming.js@@    _sleutel = k;\n    _bewaard = false;\n    _reg = k ? _laad(k) : {};@@    _sleutel = k;\n    _bewaard = false;@@test-waarneming.js@@de volgende auto begint met de waarnemingen van de vorige — in een werkplaats is dat de normale gang van zaken"
 "public/pidlane-aandrijving.js@@    if (_stand.startStopGezien && !gezienWas) _promoveer(_stand, nu);@@    if (false) _promoveer(_stand, nu);@@test-waarneming.js@@de waarneming wordt niet meer naar de auto gepromoveerd: alles blijft groen en de vraag komt volgende rit gewoon terug"
+"public/pidlane-aandrijving.js@@    houdMs: 1500,   // zo lang moet een nieuw beeld aanhouden@@    houdMs: 0,   // zo lang moet een nieuw beeld aanhouden@@test-aandrijving.js@@het rijbeeld springt weer per monster: een losse snelheidsdip zegt meteen Laden (#717)"
+"public/pidlane-aandrijving.js@@    if (laad !== null && los && laad >= (wasLaden ? B.ladenUit : B.ladenIn)) return 'laden';@@    if (laad !== null && los && laad >= B.ladenIn) return 'laden';@@test-aandrijving.js@@laden zonder hysterese: een zwakkere vertraging midden in het remmen breekt Laden af (#717)"
+"public/pidlane-visprofiel.js@@  if(beeld && BEELD_TEKST[beeld]) return BEELD_TEKST[beeld];@@  if(false) return BEELD_TEKST[beeld];@@test-visprofiel.js@@de energieweergave negeert het rijbeeld en volgt weer de losse laadstand (#717)"
 "public/pidlane-archief.js@@    if(w && w.status==='weerlegd')@@    if(w && w.status!=='gezien')@@test-meetcontext.js@@een register dat niets weet levert 'nee' op, en dan leest de AI een normale start/stop-stop als afslaan"
 
 # ── De meetkamer (#246, 18-09-2026). Het scherm dat de vraag van de rit

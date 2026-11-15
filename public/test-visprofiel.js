@@ -408,6 +408,7 @@ console.log('\nH. De energieweergave voor hybride en EV (#435)');
   waar('motor draait: Motor (niet "Hybride": dat ziet OBD niet)', T({ toestand: 'DRAAIT_RIJDT' }, { laden: false }) === 'Motor');
   waar('laden wint van de toestand', T({ toestand: 'DRAAIT_RIJDT' }, { laden: true }) === 'Laden');
   waar('start/stop: Stil', T({ toestand: 'STARTSTOP' }, null) === 'Stil');
+  waar('met een rijbeeld (#717) beslist het rijbeeld, niet een losse laadstand', T({ toestand: 'ACCU_RIJDT' }, { laden: true }, 'ev') === 'EV' && T({ toestand: 'ACCU_RIJDT' }, { laden: false }, 'laden') === 'Laden');
   waar('onbekend: een streepje', T({ toestand: 'ONBEKEND' }, null) === '—' && T(null, null) === '—');
 
   // De tegels (#437).

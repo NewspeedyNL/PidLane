@@ -801,7 +801,7 @@ function leegSessie(){
 let _sessie = leegSessie(), _sessieT = 0, _snelheden = [], _laatsteAlarm = 0;
 const _staat = { aan:false, start:0, traag:new Set(), turboVast:false, handtekening:'', gebruik:new Set(), ind:null, timer:null,
                  meldSleutel:'', lampSleutel:'', rijdtSinds:0, laatsteTik:0, pauze:null, gebouwd:false, selectie:'', profiel:'basis',
-                 vraagLeer:{ min:null, max:null }, aandeel:null, accuLeer:null };
+                 vraagLeer:{ min:null, max:null }, aandeel:null, accuLeer:null, beeld:null };
 
 // ── DE VIJF WEERGAVEN (02-10-2026) ────────────────────────────────
 // Basis is de meter hieronder; temperatuur, emissie, verbruik en motor zijn
@@ -1990,6 +1990,14 @@ function energieProfielBij(){
   const soc=(typeof pv['015B']==='number') ? pv['015B'] : null;
   const extra={ aandeel:aandeelUit(_staat.aandeel), versnelling:versn,
                 bereik:bereikUit(pv['CA09'], elektrischBereik(_staat.accuLeer, soc)) };
+  // Eén gestabiliseerd rijbeeld (#717): de groene laadring alleen als het
+  // beeld zelf "laden" zegt, niet bij elk vertragend monster.
+  try{ if(window.PLAandrijving && typeof PLAandrijving.beweging==='function')
+    _staat.beeld=PLAandrijving.beweging({ t:nu, toestand:res && res.toestand, vraag:vraag, laad:laad }, _staat.beeld); }
+  catch(e){ console.warn('PLVisueel: rijbeeld niet bepaald — woord uit de toestand', e); _staat.beeld=null; }
+  const beeld=_staat.beeld ? _staat.beeld.beeld : null;
+  extra.beeld=beeld;
+  if(beeld && beeld!=='laden' && laad) laad=0;
   try{ PF().energie(pr.id, pr, vermogenStand(vraag, laad), res, extra); }
   catch(e){ console.warn('PLVisueel: energiering bijwerken mislukt', e); }
 }
@@ -2090,7 +2098,7 @@ function lichaam(aan){
 function start(){
   if(_staat.aan) return;
   lichaam(true);
-  _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening=''; _staat.vraagLeer={ min:null, max:null }; _staat.aandeel=null; _staat.accuLeer=null;
+  _staat.aan=true; _staat.start=Date.now(); _staat.traag=new Set(); _staat.handtekening=''; _staat.vraagLeer={ min:null, max:null }; _staat.aandeel=null; _staat.accuLeer=null; _staat.beeld=null;
   try{ _staat.profiel=PF() ? PF().lees(leesMotor()) : 'basis'; }catch(e){ console.warn('PLVisueel: profielkeuze onleesbaar', e); _staat.profiel='basis'; }
   _staat.rijdtSinds=0; _staat.laatsteTik=0; _staat.pauze=null; _staat.gebouwd=false;
   // Meteen de indeling kennen: remt() leest hem, en een lege set zou in de

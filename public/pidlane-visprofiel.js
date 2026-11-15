@@ -899,7 +899,11 @@ function telBij(x, val){
    niet, en een woord dat iets beweert wat niet gemeten is hoort hier niet. */
 const TOESTAND_TEKST = { ACCU_RIJDT:'EV', ZEILEN:'Zeilt', DRAAIT_RIJDT:'Motor', DRAAIT_STIL:'Motor', START:'Start',
                          STARTSTOP:'Stil', UIT_VOOR_START:'Stil' };
-function toestandTekst(res, stand){
+/* Met een rijbeeld (PLAandrijving.beweging, #717) beslist dat: één
+   gestabiliseerd oordeel. Zonder rijbeeld het oude gedrag. */
+const BEELD_TEKST = { ev:'EV', motor:'Motor', zeilen:'Zeilt', laden:'Laden', start:'Start', stil:'Stil', onbekend:'—' };
+function toestandTekst(res, stand, beeld){
+  if(beeld && BEELD_TEKST[beeld]) return BEELD_TEKST[beeld];
   if(stand && stand.laden) return 'Laden';
   const t=res && res.toestand;
   return (t && TOESTAND_TEKST[t]) || '—';
@@ -927,7 +931,7 @@ function energie(id, ind, stand, res, extra){
   if(f) f.setAttribute('stroke-dasharray', (Math.max(0, Math.min(100, v))*0.75).toFixed(1)+' 100');
   if(g){ g.classList.toggle('laden', !!(stand && stand.laden)); g.classList.toggle('leeg', !stand || stand.leeg); }
   zetTekst('vpf-w-energie', stand ? stand.tekst : '—');
-  const t=toestandTekst(res, stand), m=el('vpf-w-toestand');
+  const t=toestandTekst(res, stand, extra && extra.beeld), m=el('vpf-w-toestand');
   zetTekst('vpf-w-toestand', t);
   if(m) m.setAttribute('data-t', t);
   ['aandeel','versn','bereik'].forEach(function(r){ zetTekst('vpf-w-'+r, tegelTekst(r, extra)); });
