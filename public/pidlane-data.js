@@ -746,8 +746,12 @@ window.CORRELATION_RULES =[
   _bevRegel({
     id:'maf',
     naam:'Mogelijk vuile MAF / verstopt luchtfilter',
+    // Een hybride rijdt elektrisch met toerental en belasting van vlak ervoor
+    // nog in pidVals, en de luchtmassa al op nul (15-11-2026, Hyundai-demo):
+    // dan ging dit af tijdens het rijden op de accu. Zonder bewijs het gewone geval.
     oordeel:()=>{ const maf=pidVals['0110'], rpm=pidVals['010C'], load=pidVals['0104'];
-      return (maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3) ? {niveau:'fout'} : null; },
+      if(!(maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3)) return null;
+      const n=_bevPoort({ hybride:{ is:false, gangbaar:true } }); return n ? {niveau:n} : null; },
     uitleg:'Luchtmassa blijft laag bij hoog toerental en belasting — mogelijk vervuilde MAF of luchtfilter.'
   }),
   _bevRegel({
