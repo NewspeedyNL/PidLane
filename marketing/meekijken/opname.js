@@ -118,7 +118,10 @@ async function neem(a, naam, sec, elkeFrame) {
 }
 async function still(a, naam) { return neem(a, naam, 0.1); }
 
-(async () => {
+// Los te gebruiken door andere opnames (marketing/samen/opname.js); de film
+// zelf draait alleen als dit bestand rechtstreeks gestart wordt.
+module.exports = { ecu, NEP_SERVER, app, haal, geef, relay, zetRelay: v => { relayAan = v; } };
+if (require.main === module) (async () => {
   fs.rmSync(UIT, { recursive: true, force: true });
   fs.mkdirSync(UIT, { recursive: true });
   let s = { rpm: 0, accu: 12.4, koel: 86 };
