@@ -24,7 +24,7 @@ const KORT = ['opstart', 'launch', 'remmen', 'bocht', 'sport', 'cruise'];
 
 if (!fs.existsSync(IN)) { console.log('Geen opname in ' + IN + ' — draai eerst opname.js'); process.exit(1); }
 fs.mkdirSync(UIT, { recursive: true });
-const kader = `scale=${BREED}:-2,crop=${BREED}:${HOOG}`;   // liggend bijsnijden tot de verhouding van de site
+const kader = `scale=${BREED}:-2:flags=lanczos,crop=${BREED}:${HOOG}`;   // liggend bijsnijden tot de verhouding van de site
 
 function ff(args) {
   const r = spawnSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', ...args], { stdio: 'inherit' });
@@ -36,7 +36,7 @@ function beelden(scene) {
   if (!fs.existsSync(path.join(map, 'tijden.json'))) return null;
   const t = JSON.parse(fs.readFileSync(path.join(map, 'tijden.json'), 'utf8'));
   const ms = Array.isArray(t) ? t : t.ms;
-  const png = fs.readdirSync(map).filter(f => /^\d+\.png$/.test(f)).sort();
+  const png = fs.readdirSync(map).filter(f => /^\d+\.(png|jpg)$/.test(f)).sort();
   // een beeld staat in beeld tot het volgende; het laatste zo lang als het vorige (of 50 ms)
   return png.map((f, i) => ({ pad: path.join(map, f),
     duur: Math.max(.01, (i + 1 < ms.length ? ms[i + 1] - ms[i] : (i ? ms[i] - ms[i - 1] : 50)) / 1000) }));

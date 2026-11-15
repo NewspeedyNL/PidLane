@@ -31,7 +31,7 @@ function beelden(map) {
   const f = path.join(map, 'tijden.json');
   if (!fs.existsSync(f)) return null;
   const t = JSON.parse(fs.readFileSync(f, 'utf8')), ms = Array.isArray(t) ? t : t.ms;
-  const png = fs.readdirSync(map).filter(x => /^\d+\.png$/.test(x)).sort();
+  const png = fs.readdirSync(map).filter(x => /^\d+\.(png|jpg)$/.test(x)).sort();
   // een beeld staat in beeld tot het volgende; het laatste zo lang als het vorige (of 50 ms)
   return png.map((x, i) => ({ pad: path.resolve(map, x),
     duur: Math.max(.01, (i + 1 < ms.length ? ms[i + 1] - ms[i] : (i ? ms[i] - ms[i - 1] : 50)) / 1000) }));

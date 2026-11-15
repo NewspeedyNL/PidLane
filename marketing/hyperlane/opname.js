@@ -31,7 +31,8 @@ const arg = (n, std) => { const i = process.argv.indexOf('--' + n); return i < 0
 const PROEF = process.argv.includes('--proef');
 const FPS = Number(arg('fps', 20));
 const ALLEEN = arg('alleen', '') ? arg('alleen', '').split(',') : null;
-const TOESTELLEN = { telefoon: { b: 915, h: 412 }, tablet: { b: 1280, h: 800 } };
+// dichtheid: 915×1,4 ≈ 1280 pixels breed, precies de maat van de site; 2 kost per beeld bijna het dubbele
+const TOESTELLEN = { telefoon: { b: 915, h: 412, dichtheid: 1.4 }, tablet: { b: 1280, h: 800, dichtheid: 1 } };
 const WELKE = arg('toestel', 'beide') === 'beide' ? Object.keys(TOESTELLEN) : [arg('toestel')];
 
 /* ── HET DRAAIBOEK ──
@@ -132,8 +133,8 @@ const TEMPO = `new Promise(function(r){ var n=0, t0=performance.now();
 const SCENE = `(function(){ var e=[].slice.call(document.querySelectorAll('[data-scene]')).filter(function(x){ return x.getClientRects().length; });
   return e.length ? e.map(function(x){ return x.getAttribute('data-scene'); }).join('+') : null; })()`;
 
+let toestelNu = null;
 async function speel(a, sc, map, tempo) {
-  const n = PROEF ? 1 : Math.round(sc.sec * FPS);
   const t0 = Date.now() + (sc.voor || 0) / tempo * 1000, tijden = [];
   const klok = () => (Date.now() - t0) / 1000;
   // aanloop: waarden lopen, er wordt niets bewaard
@@ -142,17 +143,23 @@ async function speel(a, sc, map, tempo) {
     const eind = Date.now() + sc.sec * 600;
     while (Date.now() < eind) { await a.ev(zetWaarden(Object.assign({}, RIJ, sc.waarden(klok())))); await z(100); }
   }
-  // De controle leest de scène halverwege de opname, vóór de schermafdruk: een
-  // afdruk op de tablet duurt ± 0,3 s, en remmen is dan al voorbij.
+  // Opnemen met de beeldstroom van Chromium: elk getekend beeld, met zijn
+  // eigen tijd. Schermafdrukken in een lus haalden hier ± 5 per seconde en
+  // rekten een scène van 8 s eerst tot 78 s (15-11-2026). De controle leest de
+  // scène halverwege.
   let gezien = null;
-  for (let i = 0; i < n; i++) {
-    const t = klok();
-    await a.ev(zetWaarden(Object.assign({}, RIJ, sc.waarden(t))));
-    if (i === Math.floor(n / 2)) gezien = await a.ev(SCENE);
-    await a.schermafdruk(path.join(map, String(i).padStart(4, '0') + '.png'));
-    tijden.push(Date.now() - t0);
-    const rest = 1000 / FPS - (Date.now() - t0 - t * 1000);
-    if (rest > 0) await z(rest);
+  if (PROEF) {
+    await a.ev(zetWaarden(Object.assign({}, RIJ, sc.waarden(klok())))); gezien = await a.ev(SCENE);
+    await a.schermafdruk(path.join(map, '0000.jpg')); tijden.push(0);
+  } else {
+    await a.stroomStart(map, Math.round(TOESTELLEN[toestelNu].b * TOESTELLEN[toestelNu].dichtheid), Math.round(TOESTELLEN[toestelNu].h * TOESTELLEN[toestelNu].dichtheid));
+    while (klok() < sc.sec) {
+      const t = klok();
+      await a.ev(zetWaarden(Object.assign({}, RIJ, sc.waarden(t))));
+      if (gezien === null && t >= sc.sec / 2) gezien = await a.ev(SCENE);
+      await z(80);
+    }
+    tijden.push(...await a.stroomStop());
   }
   fs.writeFileSync(path.join(map, 'tijden.json'), JSON.stringify({ tempo, ms: tijden }));
   return gezien;
@@ -161,11 +168,13 @@ async function speel(a, sc, map, tempo) {
 (async () => {
   let mis = 0;
   for (const toestel of WELKE) {
+    toestelNu = toestel;
     const m = TOESTELLEN[toestel];
     if (!m) { console.log('Onbekend toestel: ' + toestel + ' (bekend: ' + Object.keys(TOESTELLEN).join(', ') + ')'); process.exit(2); }
     const basis = path.join(UIT, toestel);
     fs.rmSync(basis, { recursive: true, force: true });
     const a = await startApp({ root: path.join(__dirname, '..', '..', 'public'), breedte: m.b, hoogte: m.h });
+    await a.venster(m.b, m.h, m.dichtheid);
     try {
       console.log(toestel + ' (' + m.b + '×' + m.h + ')');
       await a.ev(KAAL);
@@ -196,7 +205,9 @@ async function speel(a, sc, map, tempo) {
           await a.ev(OPEN);
           const eind = Date.now() + 5000 / tempo;  // na het showmoment, gewoon rijden
           while (Date.now() < eind) { await a.ev(zetWaarden(Object.assign({}, RIJ, { rpm: 2600, kmh: 72, gas: 30 }))); await z(100); }
+          await a.venster(m.b, m.h, 2); await z(800);    // de losse beelden scherp
           await a.schermafdruk(path.join(map, k.naam + '.png'));
+          await a.venster(m.b, m.h, m.dichtheid);
           console.log('  ' + groep + '/' + k.naam);
         }
       }
