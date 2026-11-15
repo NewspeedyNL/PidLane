@@ -16,6 +16,15 @@
  - "Mogelijk vuile MAF / verstopt luchtfilter" ging af tijdens elektrisch
    rijden: toerental en belasting van vlak ervoor, luchtmassa al op nul. De
    regel krijgt de hybride-poort van de thermostaatregel (_bevPoort).
+ 15-11-2026 — Rijbeeld op de energieweergave (#717)
+ ═════════════════════════════════════════════════════
+
+ - Het woord in het midden (EV, Motor, Laden, Zeilt, Stil) komt uit
+   PLAandrijving.beweging(): één oordeel uit de aandrijftoestand, het pedaal
+   en de vertraging, dat pas na 1,5 s omgaat. Laden alleen bij aanhoudend
+   remmen met het pedaal los (aan vanaf 20 %, uit onder 6 %). Tot nu toe won
+   één vertragend snelheidsmonster van de toestand, en sprong het woord na
+   het wegrijden alle kanten op.
 
  ═══════════════════════════════════════════════════════════
  14-11-2026 (avond) — Deelvoet onder rapporten, review-vraag
