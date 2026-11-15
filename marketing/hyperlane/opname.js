@@ -42,6 +42,8 @@ const WELKE = arg('toestel', 'beide') === 'beide' ? Object.keys(TOESTELLEN) : [a
    alarm ≥118 °C · begrenzer ≥98% van de rode streep · remmen ≥8 km/h per s ·
    launch 0–100 loopt · koud <60 °C · stil >3 s stilstand · cruise 8 s >70 km/h.
    `voor` (s) draait eerst zonder op te nemen: om in een scène te komen.
+   Een andere stand speelt de openingszwaai opnieuw af (± 4 s): sport heeft
+   daarom ook een lange aanloop.
    Koelwater pollt traag (een nieuwe waarde na ± 5 s, nagemeten 15-11-2026),
    en koud gaat vóór stil: koud, stil en hitte hebben daarom een lange aanloop. */
 const lin = (a, b, t, d) => a + (b - a) * Math.max(0, Math.min(1, t / d));
@@ -61,8 +63,8 @@ const DRAAIBOEK = [
   { naam: 'remmen', sec: 5, voor: 0, waarden: t => ({ rpm: lin(3800, 1400, t, 4.5), kmh: lin(118, 20, t, 4.5), koel: 92, gas: 0 }), verwacht: 'remmen' },
   { naam: 'cruise', sec: 8, voor: 13, waarden: t => ({ rpm: 2150 + golf(t, 6) * 20, kmh: 100 + golf(t, 7) * .4, koel: 89, gas: 16 }), verwacht: 'cruise' },
   { naam: 'zen', sec: 7, voor: 9, stand: 'cruise', vorm: 'stil', waarden: t => ({ rpm: 1900, kmh: 88 + golf(t, 9) * .3, koel: 88, gas: 12 }), verwacht: 'cruise' },
-  { naam: 'bocht', sec: 7, voor: 1, waarden: t => ({ rpm: 3200 + golf(t, 3.5) * 300, kmh: 62, koel: 90, gas: 35, g: golf(t, 3.5) * .65 }), verwacht: 'rijden' },
-  { naam: 'sport', sec: 7, voor: 1, stand: 'sport', waarden: t => ({ rpm: 4800 + golf(t, 2.5) * 900, kmh: 95 + golf(t, 4) * 15, koel: 93, gas: 55 + golf(t, 2.5) * 30 }), verwacht: null },
+  { naam: 'bocht', sec: 7, voor: 1, waarden: t => ({ rpm: 2700 + golf(t, 3.5) * 250, kmh: 62, koel: 90, gas: 35, g: golf(t, 3.5) * .65 }), verwacht: 'rijden' },
+  { naam: 'sport', sec: 7, voor: 6, stand: 'sport', waarden: t => ({ rpm: 4800 + golf(t, 2.5) * 900, kmh: 95 + golf(t, 9) * 6, koel: 93, gas: 55 + golf(t, 2.5) * 30 }), verwacht: null },
   { naam: 'hitte', sec: 6, voor: 8, waarden: t => ({ rpm: 1300 + golf(t, 3) * 100, kmh: 20, koel: 121, gas: 10 }), verwacht: 'alarm' },
 ];
 // Losse beelden van de keuzes: elke stand, elke vorm, elk midden.
@@ -172,7 +174,7 @@ async function speel(a, sc, map, tempo) {
     const m = TOESTELLEN[toestel];
     if (!m) { console.log('Onbekend toestel: ' + toestel + ' (bekend: ' + Object.keys(TOESTELLEN).join(', ') + ')'); process.exit(2); }
     const basis = path.join(UIT, toestel);
-    fs.rmSync(basis, { recursive: true, force: true });
+    if (!ALLEEN) fs.rmSync(basis, { recursive: true, force: true });   // met --alleen blijven de andere scènes staan
     const a = await startApp({ root: path.join(__dirname, '..', '..', 'public'), breedte: m.b, hoogte: m.h });
     await a.venster(m.b, m.h, m.dichtheid);
     try {
@@ -188,7 +190,7 @@ async function speel(a, sc, map, tempo) {
       let open = 'aurora/slim';
       for (const sc of DRAAIBOEK) {
         if (ALLEEN && !ALLEEN.includes(sc.naam)) continue;
-        const map = path.join(basis, sc.naam); fs.mkdirSync(map, { recursive: true });
+        const map = path.join(basis, sc.naam); fs.rmSync(map, { recursive: true, force: true }); fs.mkdirSync(map, { recursive: true });
         const k = { stand: sc.stand || 'auto', vorm: sc.vorm || 'aurora', midden: sc.midden || 'slim' };
         await a.ev(keuze(k));
         // Een andere vorm of midden neemt Hyperlane pas mee als hij opnieuw opent.
