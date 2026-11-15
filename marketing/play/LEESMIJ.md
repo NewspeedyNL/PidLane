@@ -5,7 +5,8 @@ plek). Dit is alleen hoe de beelden gemaakt worden.
 
 ```
 node marketing/meekijken/opname.js   # meekijkschermen (twee toestellen, nep-server)
-cp marketing/meekijken/opname/{delen,check}/0000.png marketing/play/rauw/
+cp marketing/meekijken/opname/delen/0000.png marketing/play/rauw/delen.png
+cp marketing/meekijken/opname/check/0000.png marketing/play/rauw/check.png
 cp marketing/meekijken/opname/meekijken/0050.png marketing/play/rauw/meekijken.png
 node marketing/play/opname.js        # de rest, in demomodus → rauw/
 node marketing/play/render.js        # kop en lijst eromheen → uit/
