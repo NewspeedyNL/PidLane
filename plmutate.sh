@@ -1708,12 +1708,12 @@ MUTATIES=(
 "public/pidlane-tank.js@@    if (ka !== null && kb !== null && kb > ka && kb - ka <= CFG.kmMax) {@@    if (false) {@@test-tank.js@@de afgelezen km-standen worden genegeerd en de ritten tellen"
 "public/pidlane-tank.js@@        c.opgemaakt = c.restBekend ? bel - c.rest : bel;@@        c.opgemaakt = bel;@@test-tank.js@@gehaald vergeet wat er bij het tanken nog in de tank zat"
 "public/pidlane-tank.js@@          if (l === null) { heel = false; break; }@@          if (l === null) continue;@@test-tank.js@@een beurt zonder liters maakt het volle-tankverbruik te laag"
-"public/pidlane-tank.js@@    if (tankSprong(anker, nuPeil, drempel)) st.kand@@    if (tankSprong(anker, nuPeil)) st.kand@@test-tank.js@@een Nee op de tankvraag leert niets: dezelfde scheve sprong vraagt na elke contact uit/aan opnieuw — #667"
+"public/pidlane-tank.js@@    var d = leer && typeof leer.drempel === 'number' && isFinite(leer.drempel) ? leer.drempel : CFG.sprongMin;@@    var d = CFG.sprongMin;@@test-tank.js@@een Nee op de tankvraag leert niets: dezelfde scheve sprong vraagt na elke contact uit/aan opnieuw — #667"
 "public/pidlane-tank.js@@Math.max(oud, Math.round((sp + CFG.leerMarge) * 10) / 10)@@Math.round((sp + CFG.leerMarge) * 10) / 10@@test-tank.js@@een kleine onterechte sprong verlaagt de geleerde drempel weer — #667"
 "public/pidlane-tank.js@@        for (var j = start + 1; j <= i; j++) {@@        for (var j = i; j <= i; j++) {@@test-tank.js@@de halve beurt tussen twee volle tanken telt niet mee"
 "public/pidlane-tank.js@@      if (isNaN(s) || s < van || s >= tot || typeof r.km !== 'number') return;@@      if (isNaN(s) || typeof r.km !== 'number') return;@@test-tank.js@@ritten buiten de tankcyclus tellen mee"
 "public/pidlane-tank.js@@'<div class=\"gr-klein\">📝 ' + esc(t.notitie)@@'<div class=\"gr-klein\">📝 ' + t.notitie@@test-tank.js@@een notitie komt als HTML op het scherm"
-"public/pidlane-tank.js@@    if (d < CFG.sprongMin) return null;@@    if (d < 0) return null;@@test-tank.js@@een paar procent klotsen heet weer tanken (#469)"
+"public/pidlane-tank.js@@    if (d < (typeof drempel === 'number' && isFinite(drempel) ? drempel : CFG.sprongMin)) return null;@@    if (d < 0) return null;@@test-tank.js@@een paar procent klotsen heet weer tanken (#469)"
 # De conditiescore (#475, 13-10-2026): meet onder de juiste omstandigheden,
 # vergelijkt de auto eerlijk met zichzelf en meldt een daling één keer.
 "public/pidlane-conditie.js@@    var warm = k !== null && k >= CFG.warm;@@    var warm = k !== null;@@test-conditie.js@@de trim telt ook met een koude motor, als de regeling nog in open lus staat"
@@ -1742,7 +1742,7 @@ MUTATIES=(
 "public/pidlane-tank.js@@      if (a.vol && b.vol && c.rit && c.rit.litersVolledig && c.rit.liters > 0@@      if (a.vol && b.vol && c.rit && c.rit.liters > 0@@test-tank.js@@tankcyclus: een rit zonder liters maakt de app-meting stil te laag tegenover getankt"
 "public/pidlane-tank.js@@      if (isNaN(s) || s < van || s >= tot) return;\n      n++;@@      if (isNaN(s) || s < van || s > tot) return;\n      n++;@@test-tank.js@@tankcyclus: de rit op het tankmoment zelf telt in twee cycli"
 "public/pidlane-tank.js@@      l100: kmL >= CFG.ritL100MinKm ?@@      l100: kmL > 0 ?@@test-tank.js@@tankcyclus: een paar korte ritten geven toch een verbruik"
-"public/pidlane-tank.js@@    if (tankSprong(anker, nuPeil)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };@@    var s0 = tankSprong(anker, nuPeil); if (s0) { st.gevraagd = true; uit.sprong = s0; }@@test-tank.js@@helling of drempel: een scheef peil in stilstand is meteen een tankvraag"
+"public/pidlane-tank.js@@    if (tankSprong(anker, nuPeil, drempel)) st.kand = { m: [], rij: 0, sinds: nu, op: nu };@@    var s0 = tankSprong(anker, nuPeil, drempel); if (s0) { st.gevraagd = true; uit.sprong = s0; }@@test-tank.js@@helling of drempel: een scheef peil in stilstand is meteen een tankvraag"
 "public/pidlane-tank.js@@    if (st.gevraagd || nu < st.pauzeTot) return uit;@@    if (st.gevraagd) return uit;@@test-tank.js@@na een tankvraag komt er binnen drie kwartier alweer een"
 "public/pidlane-tank.js@@    if (!st.buf.length && st.rij.length >= CFG.peilN) {@@    if (false) {@@test-tank.js@@het anker komt weer uit een (scheve) stilstand in plaats van het rijden ervoor"
 "public/pidlane-contact.js@@      if (!pids.some(function (p) { return omg.kortOk(p); })) return false;@@@@test-contact.js@@NO DATA van een PID die de auto niet heeft maakt na zes rondes contact uit (#487)"
