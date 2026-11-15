@@ -2655,6 +2655,7 @@ MUTATIES=(
 "public/pidlane-visprofiel.js@@  if(kz) k.push(kz);@@@@test-visprofiel.js@@de eigen keuze voor een plek wordt bewaard maar nooit getekend"
 "public/pidlane-visprofiel.js@@function html(id, ind){\n  const p=voorInd(id, ind);@@function html(id, ind){\n  const p=voor(id, ind && ind.motor);@@test-visprofiel.js@@een gekozen accuspanning staat op BUITEN met het label Buiten en de schaal in graden"
 "public/pidlane-visueel.js@@      if(t) kiesPlek(t.id.slice(6));@@      if(t) void 0;@@bproef-visplek.js@@tikken op een plek van Slim visueel doet niets: de keuzelijst opent nooit"
+"public/pidlane-visprofiel.js@@((!w && typeof standTekst==='function' && standTekst(val, pid)) || tekst(vx, x.dec))@@(tekst(vx, x.dec))@@bproef-visplek.js@@een versnelling op een plek van Visueel staat er als 2 in plaats van Second gear — #683"
 "public/pidlane-visprofiel.js@@        diesel:{ hi:6000 } },@@        diesel:{} },@@test-visprofiel.js@@de neonring van een diesel loopt tot 8000 tpm: 3000 staat er als bijna stationair — #393"
 "public/pidlane-visueel.js@@  if(Math.abs(dx)<VEEG_MIN || Math.abs(dx)<1.5*Math.abs(dy)) return 0;@@  if(Math.abs(dx)<VEEG_MIN) return 0;@@test-visueel.js@@een schuine scroll over de meter wisselt de weergave"
 "public/pidlane-visueel.js@@  return dx<0 ? 1 : -1;@@  return dx<0 ? -1 : 1;@@test-visueel.js@@naar links vegen gaat terug in plaats van verder"
