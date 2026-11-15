@@ -2855,6 +2855,7 @@ MUTATIES=(
 "public/pidlane-theme.js@@      try{ if(window.PLZonderUit && PLZonderUit.poortKaart(id,@@      try{ if(false && PLZonderUit.poortKaart(id,@@bproef-zonderadapter.js@@een kaart onder Alle functies opent zonder adapter weer een dashboard dat niets meet"
 "public/pidlane-thuis.js@@    document.body.classList.toggle('pl-zonder-auto', t === 'geen');\n@@@@bproef-zonderadapter.js@@zonder adapter staat er geen 🔌 meer bij de meetkaarten"
 "public/pidlane-thuis.js@@    if (c.herinner && !c.herinner.aan && !c.herinnerWeg)@@    if (c.herinner && !c.herinner.aan)@@test-thuis.js@@Niet nodig bij de APK-herinnering helpt niet: de kaart komt bij elke start terug — #715"
+"public/pidlane-foutcodes.js@@    teken();\n    nietBedekt(ov);@@    teken();@@bproef-thuis.js@@ligt er op de telefoon iets over het checkvenster, dan doet Check mijn auto zichtbaar niets — #714"
 "public/pidlane-wijzer.js@@    if (_w.gekozen.length) { verder(); if (_w.st) return; }\n@@@@bproef-zonderadapter.js@@de klachtenwijzer vraagt opnieuw wat je merkt terwijl je dat in de wizard al koos"
 "public/pidlane-wizard.js@@    (uitSoort ? '<div class=\"wz-plan-item\" id=\"wzZonderUit\"@@    (false ? '<div class=\"wz-plan-item\" id=\"wzZonderUit\"@@bproef-zonderadapter.js@@de adapterkaart in de wizard biedt het papierenrapport niet meer aan"
 # ── #443 ronde 2: alle analyses via het scherm, de rit en de datalog als bron.
