@@ -155,6 +155,29 @@ function toets(naam, waar, uitleg) {
     toets('Niet nodig verbergt de kaart, ook na opnieuw tekenen', her.wegNaNee && her.blijftWeg, JSON.stringify(her));
     toets('tegenproef: zonder de bewaarde keuze staat hij er weer', her.tegenproef, JSON.stringify(her));
 
+    console.log('\n── 6b. de vormvraag: Ja of Nee, het antwoord blijft bij de auto (#695) ──');
+    const vv = await app.ev(`(function(){
+      const echtVraag = PLKenmerk.vormVraagLive, echtAntw = PLKenmerk.antwoord; let gegeven = null, open = true;
+      PLKenmerk.vormVraagLive = () => open ? ({ id: 'elektrischweg', vraag: 'Kan deze auto elektrisch wegrijden, zonder dat de motor aanslaat?', naam: 'volhybride' }) : null;
+      PLKenmerk.antwoord = (id, ja) => { gegeven = { id: id, ja: ja }; open = false; return true; };
+      try {
+        PLThuis.teken();
+        const kaart = () => document.querySelector('#plThuisNuKaart [data-nu="vorm"]');
+        for (let i = 0; i < 6 && !kaart(); i++) PLThuis.volgende();
+        const k = kaart(); const r = { kaart: !!k };
+        if (!k) return r;
+        r.knoppen = [...k.querySelectorAll('.th-keus button')].map(b => b.textContent);
+        r.uitlegVerborgen = k.querySelector('small').hidden;
+        k.querySelector('.th-k-nee').click(); r.gegeven = gegeven;
+        let weg = !kaart(); for (let i = 0; i < 6; i++) { PLThuis.volgende(); weg = weg && !kaart(); }
+        r.weg = weg;
+        return r;
+      } finally { PLKenmerk.vormVraagLive = echtVraag; PLKenmerk.antwoord = echtAntw; PLThuis.teken(); }
+    })()`);
+    toets('de vormvraag staat als kaart met Ja en Nee', vv.kaart && JSON.stringify(vv.knoppen) === '["Ja","Nee"]' && vv.uitlegVerborgen, JSON.stringify(vv));
+    toets('Nee gaat als antwoord naar PLKenmerk (elektrischweg, false)', vv.gegeven && vv.gegeven.id === 'elektrischweg' && vv.gegeven.ja === false, JSON.stringify(vv));
+    toets('na het antwoord is de kaart weg', vv.weg, JSON.stringify(vv));
+
     console.log('\n── 7. demo via Probeer demo → autokeuze, dan een échte tik op Check mijn auto (#714) ──');
     await app.venster(390, 844);
     // Op de telefoon is de klant ingelogd; hier staat het inlogscherm nog.

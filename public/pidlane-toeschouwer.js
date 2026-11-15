@@ -86,7 +86,10 @@
 
     if (t === 'onbekend') {
       k.duur.onbekend += dt;
-      k.gat += dt;
+      // De opstart is geen gat (#650): tussen de SPP-verbinding en de eerste
+      // verse snelheid zitten de protocoldetectie, de VIN en de survey. Een gat
+      // telt pas als er al eens een toestand bekend was.
+      if (k.toestand !== null) k.gat += dt;
       if (k.gat > k.gatMax) k.gatMax = k.gat;
       k.kand = null;
     } else {

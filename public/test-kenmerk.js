@@ -178,5 +178,25 @@ console.log('\n5. Een mens beantwoordt de vraag');
   t('een onbekend kenmerk wordt geweigerd', s.PLKenmerk.antwoord('vliegende_auto', true), false);
 }
 
+console.log('\n6. De aandrijfvorm bevestigd door een mens (#695)');
+{
+  const ad = (vorm) => ({ vorm: vorm, bron: 'RDW NOVC-HEV' });
+  t('vol uit een vermogensgrens: waarschijnlijk, en er is een vraag', [K.profiel({ brandstof: 'hybride', aandrijving: ad('vol') }).vorm.zeker, K.vormVraag(K.profiel({ brandstof: 'hybride', aandrijving: ad('vol') })).id], ['waarschijnlijk', 'elektrischweg']);
+  t('plug-in staat vast: geen vraag', K.vormVraag(K.profiel({ brandstof: 'hybride', aandrijving: ad('plugin') })), null);
+  t('zonder vorm: geen vraag', K.vormVraag(K.profiel({ brandstof: 'benzine' })), null);
+  let p = K.profiel({ brandstof: 'hybride', aandrijving: ad('vol'), mens: { elektrischweg: true } });
+  t('vol + ja: bewezen vol, geen vraag meer', [p.vorm.waarde, p.vorm.zeker, K.vormVraag(p)], ['vol', 'bewezen', null]);
+  p = K.profiel({ brandstof: 'benzine', aandrijving: ad('mild'), mens: { elektrischweg: true } });
+  t('mild + ja: het is een volhybride, en dus hybride', [p.vorm.waarde, p.vorm.zeker, p.hybride.waarde, p.mild_hybride.waarde], ['vol', 'bewezen', true, false]);
+  p = K.profiel({ brandstof: 'hybride', aandrijving: ad('serieel'), mens: { elektrischweg: false } });
+  t('serieel + nee: mild, geen hybride in de zin van elektrisch rijden', [p.vorm.waarde, p.vorm.zeker, p.hybride.waarde, p.mild_hybride.waarde, p.serieel.waarde], ['mild', 'bewezen', false, true, false]);
+  p = K.profiel({ brandstof: 'hybride', aandrijving: ad('plugin'), mens: { elektrischweg: false } });
+  t('een antwoord verandert een plug-in (stekker uit RDW) niet', [p.vorm.waarde, p.vorm.zeker], ['plugin', 'bewezen']);
+  const s = bouw({ vehicleInfo: { merk: 'Kia', year: '2021', vin: 'KNACC81CGM5000000', brandstof: 'hybride', aandrijving: ad('vol') } });
+  t('live: er staat een vraag', (s.PLKenmerk.vormVraagLive() || {}).id, 'elektrischweg');
+  t('het antwoord wordt bewaard via PLWaarneming', [s.PLKenmerk.antwoord('elektrischweg', true), s.PLWaarneming.lees('elektrischweg').status], [true, 'gezien']);
+  t('daarna is de vraag weg en de vorm bewezen', [s.PLKenmerk.vormVraagLive(), s.PLKenmerk.live().vorm.zeker], [null, 'bewezen']);
+}
+
 console.log('\n' + ok + ' goed, ' + fout + ' fout');
 process.exit(fout ? 1 : 0);

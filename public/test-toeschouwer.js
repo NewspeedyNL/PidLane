@@ -95,6 +95,12 @@ console.log('\n3. wat niet als toestand mag tellen');
   toets('het gat staat als toestand-gat-s (± 30)', Math.abs(T.maat('toestand-gat-s') - 30) <= 2, String(T.maat('toestand-gat-s')));
   toets('en rijden is één keer begonnen', T.stand().aantal.rijden === 1, JSON.stringify(T.stand().aantal));
 
+  // #650: rit 30-10 gaf toestand-gat-s = 20 voor de opstart (0100 duurde 5 s, dan VIN en survey).
+  const s0 = laad();
+  rij(s0, 1e6, [].concat(herhaal([null], 20), herhaal([50], 30)));
+  toets('de opstart vóór de eerste verse snelheid is geen gat (#650)', s0.PLToeschouwer.maat('toestand-gat-s') === 0, String(s0.PLToeschouwer.maat('toestand-gat-s')));
+  toets('maar wel onbekende tijd', s0.PLToeschouwer.stand().duur.onbekend >= 15000, JSON.stringify(s0.PLToeschouwer.stand().duur));
+
   const s2 = laad();
   rij(s2, 1e6, [].concat(herhaal([50], 20), herhaal([0], 2), herhaal([50], 20)));
   toets('twee seconden 0 km/h is nog geen stop', (s2.PLToeschouwer.stand().aantal.stil || 0) === 0, JSON.stringify(s2.PLToeschouwer.stand().aantal));
@@ -219,6 +225,11 @@ console.log('\n8. het bewijs voor de second opinion (#599)');
   const p = b.toeschouwer && b.toeschouwer.perioden.filter(function (x) { return x.toestand === 'contact-uit'; })[0];
   toets('de perioden van de toeschouwer, in seconden', !!p && p.s >= 95 && p.s <= 99, JSON.stringify(b.toeschouwer));
   toets('en de gebeurtenissen', b.toeschouwer.gebeurtenissen.some(function (e) { return e.soort === 'contact-uit'; }));
+  toets('zonder overschrijding geen berekend-blok in het bewijs', b.berekend === null || b.berekend === undefined, JSON.stringify(b.berekend));
+  s.PLBerekend = { buitenPerCode: function () { return { CA10: { n: 30, buiten: 3, onder: 0, boven: 3 } }; } };
+  const bb = O.bewijs(k.opdracht, v);
+  toets('berekend-buiten per CA-code gaat mee in het bewijs (#650)', bb.berekend && bb.berekend.CA10 && bb.berekend.CA10.buiten === 3, JSON.stringify(bb.berekend));
+  delete s.PLBerekend;
   for (let i = 0; i < 400; i++) rij(s, 2e6 + i * 20000, [].concat(herhaal([40], 5), herhaal([0], 5)));
   const groot = O.bewijs(k.opdracht, O.oordeel(k.opdracht));
   toets('een lange rit blijft onder de grens van de worker', JSON.stringify(groot).length <= 15000 && groot.voorwaarden.length === 1, String(JSON.stringify(groot).length));

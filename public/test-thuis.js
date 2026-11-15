@@ -60,6 +60,8 @@ eis('rood › oranje › winter; "nooit uitgelezen" staat al als chip', J(k.map(
 k = K.kandidaten({ punten: [{ ernst: 'info', tekst: '2 zelftests nog niet klaar' }], winter: true, herinner: { aan: false } });
 eis('winter boven een info-punt, herinnering onderaan', J(k.map(x => x.id)) === J(['winter', 'punt0', 'herinner']), J(k.map(x => x.id)));
 eis('herinnering die al aan staat: geen kaart', !K.kandidaten({ herinner: { aan: true } }).length);
+eis('#695: een vormvraag wordt een kaart van soort vraag, met het kenmerk', (function () { var x = K.kandidaten({ vormVraag: { id: 'elektrischweg', vraag: 'Kan deze auto elektrisch wegrijden?', naam: 'volhybride' } }); return x.length === 1 && x[0].soort === 'vraag' && x[0].kenmerk === 'elektrischweg' && /volhybride/.test(x[0].tekst); })());
+eis('#695: een rood punt gaat voor de vormvraag, de vraag voor de herinnering', J(K.kandidaten({ vormVraag: { id: 'elektrischweg', vraag: 'v' }, herinner: { aan: false }, punten: [{ ernst: 'rood', tekst: 'x' }] }).map(x => x.id)) === J(['punt0', 'vorm', 'herinner']));
 eis('#715: "Niet nodig" gekozen: geen kaart meer', !K.kandidaten({ herinner: { aan: false }, herinnerWeg: true }).length);
 k = K.kandidaten({ verbonden: true, pidVals: { '0105': 41 } });
 eis('verbonden met koude motor: een kaart "Motor nog koud"', k.length === 1 && /koud/.test(k[0].titel), J(k));

@@ -966,8 +966,28 @@ let _elmPas      = false; // eenmalig doorlaatbewijs voor de init-reeks zelf
 // vóór en na een verzoek te lezen: verschilt hij, dan ging het verzoek nooit de
 // bus op en zegt het lege antwoord niets over de auto.
 let _elmWeigeringen = 0;
+// Waaróm de poort dicht stond toen hij weigerde (#509): op 14-10 waren het er
+// 27, en de vraag "opstarten of herverbinden na Maps?" was niet te beantwoorden.
+// Per weigering de reden van de sluiting en of de app net uit de achtergrond kwam.
+let _elmPoortReden = '';
+const _elmWeigerLog = [];
+const ELM_WEIGER_LOG_MAX = 40;
+function _elmWeiger(cmd){
+  _elmWeigeringen++;
+  let acht = null;
+  try{
+    const A = window.PLAchtergrond;
+    if(A){
+      const lp = typeof A.laatste === 'function' ? A.laatste() : null;
+      acht = (typeof A.weg === 'function' && A.weg()) ? 0 : (lp && lp.tot ? Math.round((Date.now() - lp.tot) / 1000) : null);
+    }
+  }catch(e){ console.warn('PLAchtergrond niet leesbaar bij een weigering (#509)', e); }
+  _elmWeigerLog.push({ t: Date.now(), cmd: String(cmd || '').slice(0, 12), reden: _elmPoortReden, achtergrondSindsS: acht });
+  if(_elmWeigerLog.length > ELM_WEIGER_LOG_MAX) _elmWeigerLog.shift();
+}
 
 function _elmPoortDicht(reden){
+  _elmPoortReden = String(reden || '');
   _elmPoortTot = Date.now() + ELM_POORT_MAX_MS;
   btDiag('ELM-poort dicht ('+reden+') — overig busverkeer wordt geweigerd','warn');
 }
@@ -991,6 +1011,7 @@ function _elmPoortDicht_(){    // interne lezer: regelt ook het vanzelf opengaan
 window.PLElm = {
   poortDicht: function(){ try{ return _elmPoortDicht_(); }catch(e){ return null; } },
   weigeringen: function(){ return _elmWeigeringen; },
+  weigerLog: function(){ return _elmWeigerLog.slice(); },
   heeftPoort: true
 };
 
@@ -1112,7 +1133,7 @@ async function sendBT(cmd, timeoutMs){
   // check ziet alleen nog écht ongelokt verkeer.
   const _pas = _elmPas; _elmPas = false;
   if(!_pas && _elmPoortDicht_()){
-    _elmWeigeringen++;
+    _elmWeiger(cmd);
     btDiag(`sendBT "${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
     return '';
   }
@@ -1588,7 +1609,7 @@ async function sendCmd(cmd, timeoutMs){
   // Doorlaatbewijs synchroon lezen én wissen: één aanroep, geen await ertussen.
   const _pas = _elmPas; _elmPas = false;
   if(!_pas && _elmPoortDicht_()){
-    _elmWeigeringen++;
+    _elmWeiger(cmd);
     btDiag(`"${cmd}" geweigerd: ELM-herinitialisatie bezig`,'warn');
     // BEWUST vóór PLBus.note() en trackBtQuality(): een geweigerd commando is
     // geen busfout en al helemaal geen lege respons. Zou het wél meetellen,
@@ -2224,6 +2245,7 @@ const PLVerbind={
   // ── bijsturen tijdens de rit ──
   _venster:[], _laatsteStap:0, _stappen:0, _stapLog:[], _inStil:false, _stilEind:0,
   stappen(){ return this._stappen; },
+  stapLog(){ return (this._stapLog||[]).slice(); },
   // Eén verzoek uit de pollronde: ontbrak er een PID die kort geleden nog
   // antwoordde? Synchroon en goedkoop; de ATST-wissel gaat erachteraan.
   noteAntwoord(mist){
@@ -2248,7 +2270,10 @@ const PLVerbind={
     if(!nieuw){ btDiag('🔧 ATST staat al op de top (0x'+_plSt.hex+') en toch ontbreken antwoorden ('+n+' van '+ST_VENSTER+') — dit is geen timing meer','warn'); return; }
     const oud=_plSt.hex;
     this._stappen++;
-    (this._stapLog||(this._stapLog=[])).push({ t:this._laatsteStap, oud, nieuw, bron:_plSt.bron });
+    let _achtS=null;
+    try{ const lp0=window.PLAchtergrond && PLAchtergrond.laatste ? PLAchtergrond.laatste() : null; _achtS=lp0&&lp0.tot ? Math.round((Date.now()-lp0.tot)/1000) : null; }
+    catch(e){ console.warn('PLAchtergrond niet leesbaar bij een ATST-stap (#509)', e); }
+    (this._stapLog||(this._stapLog=[])).push({ t:this._laatsteStap, oud, nieuw, bron:_plSt.bron, achtergrondSindsS:_achtS });
     _plSt={ hex:nieuw, ms:parseInt(nieuw,16)*4, bron:'bijgestuurd', traagstMs:_plSt.traagstMs, refMs:_plSt.refMs, n:_plSt.n };
     this.profiel.st=Object.assign({}, _plSt);
     btDiag(`🔧 ATST bijgestuurd 0x${oud} → 0x${nieuw} (${_plSt.ms} ms): ${n} van de laatste ${ST_VENSTER} verzoeken misten een PID die kort geleden nog antwoordde`,'warn');

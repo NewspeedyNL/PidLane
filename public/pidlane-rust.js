@@ -113,6 +113,15 @@
     }
   });
 
+  /* CSS-animaties (#691 punt 3): pidlane.css heeft er ruim dertig die eindeloos
+     lopen (pulsen, spinners, gloed). Uit beeld zet de klasse `pl-rust` op
+     <html> ze stil; terug in beeld lopen ze verder waar ze waren. */
+  function cssRust() {
+    try { document.documentElement.classList.toggle('pl-rust', verborgen()); }
+    catch (e) { console.warn('PLRust: animaties niet stilgezet', e); }
+  }
+  var _zicht = app.zicht;
+  app.zicht = function () { cssRust(); return _zicht.apply(this, arguments); };
   try { document.addEventListener('visibilitychange', app.zicht); }
   catch (e) { console.warn('PLRust: geen visibilitychange — timers blijven lopen', e); }
   try {

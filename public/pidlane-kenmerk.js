@@ -77,7 +77,8 @@
     lpg: 'Rijdt deze auto (ook) op LPG?',
     cvt: 'Heeft deze auto een traploze automaat (CVT)?',
     kenveldthermostaat: 'Draait de motor normaal rond 105–110 °C (fabrieksopgave)?',
-    slimladen: 'Heeft deze auto een slimme laadregeling (accusensor op de minpool, start/stop)?'
+    slimladen: 'Heeft deze auto een slimme laadregeling (accusensor op de minpool, start/stop)?',
+    elektrischweg: 'Kan deze auto elektrisch wegrijden, zonder dat de motor aanslaat?'
   };
 
   function k(waarde, zeker, bron) { return { waarde: waarde, zeker: zeker, bron: bron }; }
@@ -124,6 +125,17 @@
     p.serieel = vorm && vorm !== 'vol' && vorm !== 'plugin' ? k(vorm === 'serieel', vorm === 'serieel' ? 'waarschijnlijk' : 'bewezen', vb) :
       vorm ? k(false, 'waarschijnlijk', vb) : ONBEKEND;
     p.vorm = vorm ? { waarde: vorm, zeker: (vorm === 'mild' || vorm === 'serieel' || vorm === 'vol') ? 'waarschijnlijk' : 'bewezen', bron: vb } : ONBEKEND;
+    // Een mens bevestigt of weerlegt de vorm (#695). Alleen waar de vorm uit een
+    // vermogensgrens kwam (mild/vol/serieel); stekker en elektrisch staan vast.
+    // Ja bij mild: dan is het een volhybride. Nee bij vol of serieel: dan mild.
+    if (p.vorm.zeker === 'waarschijnlijk' && typeof mens.elektrischweg === 'boolean') {
+      var mb = mens.elektrischweg ? 'opgegeven: rijdt elektrisch weg' : 'opgegeven: rijdt niet elektrisch weg';
+      var nv = mens.elektrischweg ? (vorm === 'mild' ? 'vol' : vorm) : 'mild';
+      p.vorm = { waarde: nv, zeker: 'bewezen', bron: mb };
+      p.mild_hybride = k(nv === 'mild', 'bewezen', mb);
+      p.hybride = k(nv !== 'mild', 'bewezen', mb);
+      p.serieel = k(nv === 'serieel', nv === 'serieel' ? 'waarschijnlijk' : 'bewezen', nv === 'serieel' ? vb : mb);
+    }
     p.lpg = uitMens('lpg') || (/lpg|cng/.test(bs) ? k(true, 'bewezen', 'brandstof ' + bs) : ONBEKEND);
     // Hybride ≠ e-CVT (#589). Het planetaire stelsel van Toyota (en Lexus, en
     // Ford, en de Suzuki's die een Toyota zijn) wél; Kia en Hyundai rijden
@@ -273,7 +285,14 @@
   }
 
   // ── LIVE ────────────────────────────────────────────────────────
-  var MENS_IDS = ['slimladen', 'kenveldthermostaat', 'turbo', 'lpg', 'cvt'];
+  var MENS_IDS = ['slimladen', 'kenveldthermostaat', 'turbo', 'lpg', 'cvt', 'elektrischweg'];
+  /* De vraag die de aandrijfvorm beslist (#695), of null. Alleen als de vorm
+     uit een vermogensgrens komt én nog niemand hem beantwoordde. Puur. */
+  function vormVraag(prof) {
+    var v = (prof || {}).vorm;
+    if (!v || v.zeker !== 'waarschijnlijk') return null;
+    return { id: 'elektrischweg', vraag: VRAAG.elektrischweg, vorm: v.waarde, naam: VORM_NAAM[v.waarde] || v.waarde };
+  }
   function mensLive() {
     var uit = {};
     if (!window.PLWaarneming) return uit;
@@ -361,7 +380,8 @@
     NAAM: NAAM, VORM_NAAM: VORM_NAAM, VRAAG: VRAAG, KOEL_HARD: KOEL_HARD, KOEL_KLASSIEK: KOEL_KLASSIEK, LAAD_HARD_LAAG: LAAD_HARD_LAAG, laadHoog: laadHoog, LAAD_KLASSIEK: LAAD_KLASSIEK,
     profiel: profiel, geldt: geldt, toepassen: toepassen, laadspanning: laadspanning, laadBand: laadBand, koelwater: koelwater,
     noteer: noteer, wisNotitie: wisNotitie, onbeslist: onbeslist, vragen: vragen, promptBlok: promptBlok,
-    bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp,
+    bronLive: bronLive, bronVoertuig: bronVoertuig, live: live, vergeet: vergeet, antwoord: antwoord, letOp: letOp, vormVraag: vormVraag,
+    vormVraagLive: function () { try { return vormVraag(live()); } catch (e) { console.warn('PLKenmerk: vormvraag', e); return null; } },
     letOpLive: function (pid) {
       var t = (typeof PID_LET_OP !== 'undefined') ? PID_LET_OP : null;
       try { return letOp(pid, t, live()); } catch (e) { console.warn('PLKenmerk: let-op-bereik ' + pid, e); return t ? t[pid] || null : null; }

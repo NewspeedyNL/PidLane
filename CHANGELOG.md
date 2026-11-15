@@ -10,6 +10,17 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 16-11-2026 — Issueronde na #722: één rit sluit drie issues
+ ═════════════════════════════════════════════════════
+   • Toeschouwer: de opstart vóór de eerste verse snelheid telt niet meer als meetgat (#650)
+   • Berekend: het bewijs van een meetopdracht noemt per CA-code hoe vaak, aan welke kant en bij welke bronwaarden hij buiten de tegel viel (#650)
+   • Verzamelscherm: de rit van zojuist telt een half uur, ook na stilstand en een herverbinding; de meetcoach zegt "open 4× een analyse" (#650)
+   • Verbinding: elke ELM-weigering met de reden van de sluiting en de tijd sinds de achtergrond; samen met de ATST-stappen in het bewijs (#509)
+   • Home: bij een geschatte aandrijfvorm eenmalig "Kan deze auto elektrisch wegrijden?"; Ja of Nee maakt de vorm bewezen (#695)
+   • Zuiniger: uit beeld staan de CSS-animaties stil (#691)
+   • Blok 5: vier nieuwe proeven; CAMPAGNE heeft het meetplan voor de rit van 16-11
+
+ ═════════════════════════════════════════════════════
  15-11-2026 — Issueronde zonder rit
  ═════════════════════════════════════════════════════
    • Tankvraag leert van "Nee, niet getankt": per voertuig een drempel net boven de onterechte sprong (#667)

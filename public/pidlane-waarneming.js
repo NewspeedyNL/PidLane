@@ -84,7 +84,10 @@
     lpg: 'LPG-installatie',
     cvt: 'traploze automaat (CVT)',
     // Meeluisteren op het OBD-contact hoort uitzendingen (PLMeeluister, #560).
-    canopen: 'open CAN-bus op het OBD-contact'
+    canopen: 'open CAN-bus op het OBD-contact',
+    // Een mens bevestigt de aandrijfvorm (#695): RDW geeft alleen vermogens,
+    // en een grens van 15 kW of 1,05× is een schatting.
+    elektrischweg: 'kan elektrisch wegrijden'
   };
 
   var _reg = {};          // wat, → { status, bron, wanneer, bewijs, weerlegdOp }

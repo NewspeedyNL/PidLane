@@ -107,7 +107,7 @@
   }
 
   // Wat de auto nú zegt (koude motor) gaat voor seizoensadvies.
-  var GEWICHT = { rood: 30, oranje: 20, live: 16, winter: 15, info: 5, herinner: 3 };
+  var GEWICHT = { rood: 30, oranje: 20, live: 16, winter: 15, info: 5, vraag: 4, herinner: 3 };
   /* Wat er nu speelt, urgentste eerst. `punten` komt uit PLGarage.status():
      "Nog nooit uitgelezen" en "N dagen niet uitgelezen" staan al als chip en
      tellen hier niet. Gelijke urgentie houdt de volgorde van de bron. */
@@ -123,6 +123,9 @@
     var kw = c.pidVals ? Number(c.pidVals['0105']) : NaN;
     if ((c.verbonden || c.demo) && c.pidVals && c.pidVals['0105'] != null && isFinite(kw) && kw < 60)
       u.push({ id: 'koud', soort: 'live', titel: 'Motor nog koud (' + Math.round(kw) + ' °C)', tekst: 'Rustig optrekken tot het koelwater rond 70 °C is', gewicht: GEWICHT.live });
+    // De aandrijfvorm is een schatting uit RDW (#695): één vraag per auto.
+    if (c.vormVraag && c.vormVraag.id)
+      u.push({ id: 'vorm', soort: 'vraag', titel: c.vormVraag.vraag, tekst: 'RDW noemt alleen vermogens; daaruit schatten we ' + (c.vormVraag.naam || 'de aandrijving') + '. Jouw antwoord maakt het zeker, en bepaalt welke metingen en bevindingen gelden.', kenmerk: c.vormVraag.id, gewicht: GEWICHT.vraag });
     // "Niet nodig" verbergt hem blijvend voor dit account (#715).
     if (c.herinner && !c.herinner.aan && !c.herinnerWeg)
       u.push({ id: 'herinner', soort: 'herinner', titel: 'Herinner me aan de APK', tekst: 'Ook onderhoud en terugroepacties, 30 en 7 dagen vooraf', actie: 'herinner', gewicht: GEWICHT.herinner });
@@ -206,7 +209,7 @@
     return isFinite(d) ? Math.round((d - Date.now()) / 864e5) : null;
   }
   function context() {
-    var c = { verbonden: isVerbonden(), demo: isDemo(), pidVals: null, foutcodes: null, punten: [], open: null, apkDagen: null, gezienDagen: null, naam: '', sub: '', foto: null, winter: false, herinner: null, herinnerWeg: false };
+    var c = { verbonden: isVerbonden(), demo: isDemo(), pidVals: null, foutcodes: null, punten: [], open: null, apkDagen: null, gezienDagen: null, naam: '', sub: '', foto: null, winter: false, herinner: null, herinnerWeg: false, vormVraag: null };
     try { c.pidVals = typeof pidVals !== 'undefined' ? pidVals : null; } catch (e) { c.pidVals = null; }
     try { c.checkVandaag = !!(c.verbonden && window.PLOpstart && PLOpstart.checkVandaag()); } catch (e) { console.warn('PLThuis: dagcheck onleesbaar', e); }
     try {
@@ -238,6 +241,7 @@
     try { var w = el('plWinterKaart'); c.winter = !!(w && w.innerHTML.trim()); } catch (e) { c.winter = false; }
     try { c.herinner = window.PLHerinner ? PLHerinner.regel() : null; } catch (e) { console.warn('PLThuis: herinnering onleesbaar', e); }
     c.herinnerWeg = wegGezet('herinner');
+    try { c.vormVraag = window.PLKenmerk && PLKenmerk.vormVraagLive ? PLKenmerk.vormVraagLive() : null; } catch (e) { console.warn('PLThuis: vormvraag onleesbaar', e); }
     return c;
   }
 
@@ -387,6 +391,10 @@
     else if (k.soort === 'herinner') kaart.innerHTML = '<div class="th-nu" data-s="herinner" data-nu="' + esc(k.id) + '"><span class="th-nu-dot"></span><span class="th-nu-tx"><b>' + esc(k.titel) +
       ' <button type="button" class="th-info" aria-label="Uitleg" aria-expanded="false" onclick="PLThuis._info(this)">ⓘ</button></b><small hidden>' + esc(k.tekst) + '</small>' +
       '<span class="th-keus"><button type="button" class="th-k-ja" onclick="PLThuis.nuActie()">Aanzetten</button><button type="button" class="th-k-nee" onclick="PLThuis.nietNodig()">Niet nodig</button></span></span>' + volg + '</div>';
+    // De vormvraag (#695): Ja of Nee, de uitleg achter ⓘ. Het antwoord blijft per auto (PLWaarneming).
+    else if (k.soort === 'vraag') kaart.innerHTML = '<div class="th-nu" data-s="info" data-nu="' + esc(k.id) + '"><span class="th-nu-dot"></span><span class="th-nu-tx"><b>' + esc(k.titel) +
+      ' <button type="button" class="th-info" aria-label="Uitleg" aria-expanded="false" onclick="PLThuis._info(this)">ⓘ</button></b><small hidden>' + esc(k.tekst) + '</small>' +
+      '<span class="th-keus"><button type="button" class="th-k-ja" onclick="PLThuis.antwoord(true)">Ja</button><button type="button" class="th-k-nee" onclick="PLThuis.antwoord(false)">Nee</button></span></span>' + volg + '</div>';
     else kaart.innerHTML = '<button type="button" class="th-nu" data-s="' + k.soort + '" data-nu="' + esc(k.id) + '" onclick="PLThuis.nuActie()"><span class="th-nu-dot"></span><span class="th-nu-tx"><b>' + esc(k.titel) + '</b><small>' + esc(k.tekst) + '</small></span>' + volg + '</button>';
     // Laag 3: de blokken in hun volgorde.
     var bl = el('plThuisBlokken');
@@ -502,6 +510,14 @@
       var k = _nuLijst[_nuI]; if (!k) return;
       try { if (typeof logUsage === 'function') logUsage('thuis_nu_weg', k.id); } catch (e) { console.warn('PLThuis: logUsage', e); }
       zetWeg(k.id); _nuI = 0; _sleutel = ''; teken();
+    },
+    antwoord: function (ja) {
+      var k = _nuLijst[_nuI]; if (!k || !k.kenmerk) return;
+      try { if (typeof logUsage === 'function') logUsage('thuis_vraag', k.kenmerk + ':' + (ja ? 'ja' : 'nee')); } catch (e) { console.warn('PLThuis: logUsage', e); }
+      var ok = false;
+      try { ok = !!(window.PLKenmerk && PLKenmerk.antwoord(k.kenmerk, !!ja)); } catch (e) { console.warn('PLThuis: antwoord niet bewaard', e); }
+      melding(ok ? 'Bewaard voor deze auto' : 'Niet bewaard — probeer het opnieuw');
+      _nuI = 0; _sleutel = ''; teken();
     },
     _info: function (b) {
       var sm = b && b.closest('.th-nu-tx') && b.closest('.th-nu-tx').querySelector('small'); if (!sm) return;

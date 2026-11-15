@@ -38,6 +38,78 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Meetopdrachten: de opstart is geen gat (16-11-2026) ──
+  {
+    issue: '#650',
+    naam: 'De toeschouwer telt de opstart vóór de eerste verse snelheid niet als meetgat; een gat onderweg wel',
+    waarom: 'Rit 30-10: toestand-gat-s = 20 was de protocoldetectie, de VIN en de survey, geen gat onderweg.',
+    proef: async function () {
+      var K = window.PLToeschouwer && PLToeschouwer._kern;
+      if (!K) return { staat: 'FOUT', detail: 'PLToeschouwer._kern ontbreekt — herladen?' };
+      var k = K.maak(), t = 1e6, i;
+      for (i = 0; i < 20; i++) K.stap(k, { verbonden: true, kmh: null }, t += 1000);
+      var opstart = k.gatMax;
+      for (i = 0; i < 10; i++) K.stap(k, { verbonden: true, kmh: 50 }, t += 1000);
+      for (i = 0; i < 10; i++) K.stap(k, { verbonden: true, kmh: null }, t += 1000);
+      if (opstart !== 0 || k.gatMax < 9000) return { staat: 'FOUT', detail: 'opstart ' + opstart + ' ms, gat onderweg ' + k.gatMax + ' ms' };
+      return { staat: 'OK', detail: 'opstart 0 s, gat onderweg ' + Math.round(k.gatMax / 1000) + ' s' };
+    }
+  },
+
+  // ── Verbinding: waarom de ELM-poort weigerde (16-11-2026) ──
+  {
+    issue: '#509',
+    naam: 'Elke ELM-weigering draagt de reden van de sluiting en de tijd sinds de achtergrond; ze gaan met de ATST-stappen mee in het bewijs',
+    waarom: 'Rit 14-10: 27 weigeringen en 2 ATST-stappen, en niemand kon zeggen of het opstarten was of de terugkeer uit Maps.',
+    proef: async function () {
+      if (!window.PLElm || typeof PLElm.weigerLog !== 'function' || !window.PLVerbind || typeof PLVerbind.stapLog !== 'function')
+        return { staat: 'FOUT', detail: 'PLElm.weigerLog of PLVerbind.stapLog ontbreekt — herladen?' };
+      var w = PLElm.weigerLog(), st = PLVerbind.stapLog();
+      var zonder = w.filter(function (x) { return !x.reden; }).length;
+      if (zonder) return { staat: 'FOUT', detail: zonder + ' van ' + w.length + ' weigeringen zonder reden' };
+      var acht = w.filter(function (x) { return typeof x.achtergrondSindsS === 'number' && x.achtergrondSindsS < 30; }).length;
+      return { staat: 'OK', detail: w.length + ' weigering(en) deze sessie, ' + acht + ' binnen 30 s na de achtergrond; ' + st.length + ' ATST-stap(pen)' +
+        (st.length ? ' (achtergrond ' + st.map(function (x) { return x.achtergrondSindsS === null ? '?' : x.achtergrondSindsS + ' s'; }).join(', ') + ' ervoor)' : '') };
+    }
+  },
+
+  // ── Aandrijfvorm bevestigd door een mens (16-11-2026) ──
+  {
+    issue: '#695',
+    naam: 'Een geschatte aandrijfvorm geeft één vraag; Ja of Nee maakt hem bewezen en de vraag verdwijnt',
+    waarom: 'RDW geeft alleen vermogens; mild/vol/serieel komt uit een grens van 15 kW of 1,05× en bleef altijd "waarschijnlijk".',
+    proef: async function () {
+      if (!window.PLKenmerk || typeof PLKenmerk.vormVraag !== 'function') return { staat: 'FOUT', detail: 'PLKenmerk.vormVraag ontbreekt — herladen?' };
+      var ad = { vorm: 'vol', bron: 'RDW NOVC-HEV' };
+      var voor = PLKenmerk.vormVraag(PLKenmerk.profiel({ brandstof: 'hybride', aandrijving: ad }));
+      var na = PLKenmerk.profiel({ brandstof: 'hybride', aandrijving: ad, mens: { elektrischweg: false } });
+      if (!voor || na.vorm.waarde !== 'mild' || na.vorm.zeker !== 'bewezen' || PLKenmerk.vormVraag(na))
+        return { staat: 'FOUT', detail: 'vraag ' + JSON.stringify(voor) + ', na Nee ' + JSON.stringify(na.vorm) };
+      var live = PLKenmerk.vormVraagLive ? PLKenmerk.vormVraagLive() : null;
+      return { staat: 'OK', detail: 'vol + Nee = bewezen mild; deze auto: ' + (live ? 'de vraag staat open (' + live.naam + ')' : 'geen vraag (vorm vast of beantwoord)') };
+    }
+  },
+
+  // ── Zuiniger: animaties stil uit beeld (16-11-2026) ──
+  {
+    issue: '#691',
+    naam: 'Uit beeld zet PLRust de eindeloze CSS-animaties stil, en terug in beeld lopen ze weer',
+    waarom: 'pidlane.css heeft ruim dertig animaties met infinite; ze liepen door met het scherm uit.',
+    proef: async function () {
+      if (!window.PLRust || typeof PLRust.zicht !== 'function') return { staat: 'FOUT', detail: 'PLRust ontbreekt' };
+      var html = document.documentElement;
+      if (html.classList.contains('pl-rust')) return { staat: 'LET OP', detail: 'de app staat nu uit beeld; draai de proef in beeld' };
+      try {
+        Object.defineProperty(document, 'visibilityState', { configurable: true, get: function () { return 'hidden'; } });
+        PLRust.zicht();
+        var stil = html.classList.contains('pl-rust');
+        delete document.visibilityState; PLRust.zicht();
+        var terug = !html.classList.contains('pl-rust');
+        return stil && terug ? { staat: 'OK', detail: 'uit beeld stil, in beeld weer aan' } : { staat: 'FOUT', detail: 'uit beeld ' + stil + ', terug ' + terug };
+      } finally { delete document.visibilityState; PLRust.zicht(); }
+    }
+  },
+
   // ── Tankvraag leert van Nee (15-11-2026) ──
   {
     issue: '#667',

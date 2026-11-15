@@ -454,7 +454,10 @@ function boek(pid, v, bronnen){
   p.max=p.max===null ? v : Math.max(p.max, v);
   if (d && (v<d.min-1e-9 || v>d.max+1e-9)){
     p.buiten++;
-    if (bronnen && (!p.buitenBij || v>p.buitenBij.v)) p.buitenBij={ v:v, bronnen:Object.assign({}, bronnen) };
+    // Het verst buiten de tegel, aan welke kant ook (#650): alleen "hoogste" miste een waarde onder min.
+    const ver=v<d.min ? d.min-v : v-d.max;
+    p.buitenN=p.buitenN||{ onder:0, boven:0 }; p.buitenN[v<d.min ? 'onder' : 'boven']++;
+    if (bronnen && (!p.buitenBij || ver>p.buitenBij.ver)) p.buitenBij={ v:v, ver:ver, bronnen:Object.assign({}, bronnen) };
   }
 }
 function bronTekst(b){
@@ -617,6 +620,21 @@ function maat(naam){
   }
 }
 
+/* Per CA-code wat er buiten de tegel viel (#650): de som `berekend-buiten`
+   zei op 30-10 "26" maar niet welke code. Dit gaat mee in het bewijs van een
+   meetopdracht. Alleen codes met minstens één overschrijding. */
+function buitenPerCode(){
+  const uit={};
+  Object.keys(_s.pids).forEach(k=>{
+    const p=_s.pids[k]; if (!p.buiten) return;
+    const d=DEFS[k]||{};
+    uit[k]={ n:p.n, buiten:p.buiten, onder:(p.buitenN||{}).onder||0, boven:(p.buitenN||{}).boven||0,
+             min:p.min, max:p.max, tegel:[d.min, d.max],
+             bij:p.buitenBij ? { v:p.buitenBij.v, bronnen:p.buitenBij.bronnen } : null };
+  });
+  return uit;
+}
+
 /* Wat blok 5 leest. Een kopie: wie hem leest kan de teller niet veranderen. */
 function stats(){
   const s=JSON.parse(JSON.stringify(_s));
@@ -634,7 +652,7 @@ try{
 }catch(e){ console.warn('PLBerekend: ALL_PID_DEFS aanvullen mislukt', e); }
 
 window.PLBerekend = { vermogensvraag, DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, schakelPunt, schakelBron, dpfTik, defs, isBerekend,
-  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, _nieuweSessie:function(){ _s=leegSessie(); } };
+  tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, buitenPerCode, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
 // Meettimer (PLRust.meet, #691): alleen in beeld of met een verbinding.

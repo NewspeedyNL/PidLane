@@ -61,6 +61,8 @@ const flush = () => new Promise((r) => setImmediate(r));
   toets('stilstaan is een actie bij stilstaan', M.actieVoor({ toestand: 'stil', minS: 30 }).sit === 'stilstaan');
   toets('rijden doet zichzelf (geen actie)', M.actieVoor({ toestand: 'rijden', minS: 600 }).actief === false);
   toets('toeren boven 1800 is een actie', M.actieVoor({ pid: '010C', meet: 'max', tussen: [1800, 8000] }).actief === true);
+  const vz = M.actieVoor({ app: 'verzamel-uitslagen', wat: 'Minstens vier uitslagen op het scherm', tussen: [4, 99] });
+  toets('verzamel-*: een eigen actie met wat je moet doen, niet de restregel (#650)', vz.soort === 'verzamel' && /4× een analyse/.test(vz.tekst) && /half uur/.test(vz.tekst), vz.tekst);
   toets('onbekende voorwaarde: de tekst van de opdracht', /fietsenrek/.test(M.actieVoor({ wat: 'fietsenrek erop' }).tekst));
 
   console.log('\n2. Het plan');
