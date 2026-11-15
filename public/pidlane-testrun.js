@@ -4584,8 +4584,11 @@ const CAMPAGNE = {
   // en die wordt pas geladen als de testrun opent.
   get vragen() { return this._vragen.concat([_dekkingRegel()]); },
   _vragen: [
-    '── RIT 16-11: ÉÉN RIT, DRIE ISSUES DICHT ────────',
-    'VOORAF. Haal de meetopdrachten op (meetcoach doet het vanzelf bij verbinden). Kies bij "wat kan deze rit": stoplicht, snelweg en stilstaan. Zet Tankbeurten bijhouden aan (Mijn voertuigen → Profiel).',
+    '── RIT 16-11: ÉÉN RIT, VIER ISSUES DICHT ────────',
+    'VOORAF. Haal de meetopdrachten op (meetcoach doet het vanzelf bij verbinden). Kies bij "wat kan deze rit": stoplicht, snelweg en stilstaan. Zet Tankbeurten bijhouden aan (Mijn voertuigen → Profiel) en zet de vier wheel speed-sensoren aan (Sensoren → zoek in OBDb).',
+    '#669 WIELSLIP. Opdracht 44 staat sinds 15-11 in D1 met de nulstand: wiel-rest-pct ≤ 2 en wiel-schaal-pct binnen ±8. Gewoon rijden, 6 min of meer, een stuk constante snelheid. Gesloten = #669 dicht.',
+    '#667 IS NU OOK EEN OPDRACHT. "Tankvraag na contact uit en aan" telt de vragen zelf (tank-nee ≤ 1, geen sprong boven 30 die toch vroeg). Twee keer contact uit en aan; de vragen na de rit beantwoorden.',
+    '#691 LOOPT VANZELF. Als beheerder meet de app tot 13-12 mee hoeveel accu hij gebruikt. Na een sessie van 20 min of meer vraagt hij bij de volgende start het percentage uit Android (Instellingen → Batterij → PidLane); een schermafdruk mag erbij.',
     '#650 DE OPSTART. Verbind met de motor uit, start daarna. Opdracht "Gaten in de snelheid" hoort gesloten te eindigen: toestand-gat-s onder 5 (was 20 door de opstart). Staat er toch een gat, dan zegt het bewijs in Second opinion waar (tS).',
     '#650 BEREKEND. Zet Slim visueel aan met Verbruik nu en Bereik met deze tank. Komt berekend-buiten boven 0, dan staat in het bewijs nu per CA-code hoe vaak, aan welke kant en bij welke bronwaarden. Plak dat blok in #650; dan is de oorzaak bekend en kan hij dicht na de reparatie.',
     '#650 NA DE RIT. Na het parkeren toont de meetcoach "📋 Na de rit, binnen een half uur: open 4× een analyse". Doe dat (Slim, AI-rapport of Er is iets mis), ook na een herverbinding. verzamel-na-rit hoort dan ≥ 1 te zijn.',

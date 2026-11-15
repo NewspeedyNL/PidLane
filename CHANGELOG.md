@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 16-11-2026 — Besluiten na #723: testrun uitgesteld, batterijmeting, D1 klaar voor de rit
+ ═════════════════════════════════════════════════════
+   • Opstart: testrun, meetkamer en meetcoach (± 380 KB) laden pas bij gebruik of vanzelf voor de beheerder; PLRit, PLBudget en de gat-duidingen staan los in pidlane-ritwaarnemer.js (#690)
+   • Batterij: bij een beheerderslogin meet de app tot 13-12 het accuverbruik per toestand en vraagt hij bij de volgende start het Android-percentage, met een schermafdruk als je wilt (#691)
+   • Aandrijfvorm: elk model en elk antwoord op de vormvraag gaat als logregel naar D1, om de grenzen 15 kW en 1,05× na te meten (#695)
+   • Tankvraag: telt zijn vragen en antwoorden als app-maat; nieuwe meetopdracht in meetproeven/667-tank.* (#667)
+   • D1: wielslip (opdracht 44) met de nulstand, contactopdracht (41) dicht bij 0 ATST-stappen (#669, #509)
+   • Blok 5: drie nieuwe proeven; CAMPAGNE: de rit van 16-11 sluit nu ook #669
+
+ ═════════════════════════════════════════════════════
  16-11-2026 — Issueronde na #722: één rit sluit drie issues
  ═════════════════════════════════════════════════════
    • Toeschouwer: de opstart vóór de eerste verse snelheid telt niet meer als meetgat (#650)

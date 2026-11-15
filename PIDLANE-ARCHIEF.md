@@ -16,6 +16,29 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 16-11-2026 — Besluiten na #723: wat er bij het uitgesteld laden opdook
+
+- **#690, de testrun.** Het issue noemde 832 KB; het bestand was sinds 08-11
+  al gesplitst (`pidlane-proeven.js`, 569 KB, laadde al uitgesteld). Over
+  bleef 300 KB testrun plus meetkamer en meetcoach. Eerst mechanisch
+  `PLBudget`, `PLRit` en de duidingen eruit (regels 533–1139, ongewijzigd),
+  daarna de lader. Twaalf node-tests lazen de testrun als bron van `PLRit`;
+  die laden nu eerst de ritwaarnemer, net als `index.html`.
+- **De browserproeven draaien als de beheerder.** `plbrowser.js` laadt na de
+  boot de testrun via de lader. Zonder dat braken zeven proeven die
+  `PLBlok5`, `PLBegeleid` of `PLMeetcoach` direct aanspreken. Dat is geen
+  verlies van dekking: de klantkant staat apart in `bproef-testrunlader.js`
+  (`zonderTestrun`).
+- **Twee nieuwe pollers moesten via PLRust.** `bproef-rust.js` ving ze meteen:
+  een `setInterval` die naar `isAdmin()` kijkt, loopt anders ook uit beeld door.
+- **#691 "vraag bij sluiten".** Bij het sluiten kan een webview geen venster
+  meer tonen. Daarom wordt het bij de volgende start gevraagd, als de vorige
+  sessie 20 min of meer in beeld was.
+- **Ruis onder belasting.** `bproef-wizard.js` (pollaantal) en
+  `bproef-merken.js` (cijfer 5,9 tegen ≥ 6) werden één keer rood in de volle
+  reeks en waren los twee keer groen. Ze zijn gevoelig voor CPU-druk; een
+  vaste oorzaak is niet gevonden.
+
 ## 16-11-2026 — Issueronde na #722: drie issues waren al grotendeels gebouwd
 
 - **#705 stond open met zes lege vinkjes, en alle zes zaten in #706** (`f3bd7dd`,
