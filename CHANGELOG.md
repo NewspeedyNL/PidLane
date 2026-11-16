@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 16-11-2026 — Log inlezen: basisoordeel van de app, toets van wat de AI ziet
+ ═════════════════════════════════════════════════════
+   • Adminmenu: 📂 Log inlezen (PLLogImport). Leest een eigen export, Torque (breed) en Car Scanner (lang, komma-decimalen); rekent °F, mph, psi, inHg, bar en lb/min om; een onbekende eenheid valt weg met een waarschuwing; een VIN-kolom wordt niet gelezen. Daarna het verzamelscherm (basisoordeel) en op verzoek de AI
+   • scenariolog/: zes verzonnen logs (gezond, thermostaat open, arm mengsel, sensorglitch, niet gemeten, dynamo laadt niet) met BASIS en SIGNAAL in de kop; maak.js maakt ze opnieuw. AI MOET / AI MAG NIET staan klaar voor laag B (nog niet gekeurd)
+   • test-scenariolog.js: basisoordeel per scenario, elk signaal zichtbaar in de prompt, de kop nooit in de prompt; zeven mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  16-11-2026 — Hyperlane staand: grote ringen naast elkaar
  ═════════════════════════════════════════════════════
    • Volledig scherm staand: toeren- en snelheidsring naast elkaar bovenaan (± 46% van de breedte, was op een telefoon 70 px), het midden eronder over de volle breedte met een groter hoofdgetal. bproef-hyperlane.js meet de maat; drie mutaties
