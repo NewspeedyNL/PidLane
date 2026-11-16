@@ -2229,7 +2229,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
      de ringen wat het midden overliet (flex) en waren ze op een telefoon met
      een hoge lampjesbalk nog maar 70 px. Nu is hun maat vast: bijna de halve
      breedte, en op een kort scherm een deel van de hoogte. */
-  body.pl-vis-vol .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"l r" "m m"; align-content:space-evenly; justify-items:center; column-gap:2cqw; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); padding-inline:2cqw; }
+  body.pl-vis-vol .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"l r" "m m"; grid-template-rows:auto 1fr; align-content:stretch; justify-items:center; column-gap:2cqw; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); padding-inline:2cqw; }
   body.pl-vis-vol .vhl-pod { width:min(46cqw, 27cqh); }
   body.pl-vis-vol .vhl-pod.l { grid-area:l; } body.pl-vis-vol .vhl-pod.r { grid-area:r; } body.pl-vis-vol .vhl-mid { grid-area:m; }
   /* #716: een bevinding lag midden over het hoofdgetal en de cijfers. Staand
@@ -2244,7 +2244,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-pod.l { transform:rotateY(calc(14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
   body.pl-vis-vol .vhl-pod.r { transform:rotateY(calc(-14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
   /* Het midden onder de ringen: lampjes, stand, het hoofdgetal groot en de strook. */
-  body.pl-vis-vol .vhl-mid { flex:none; width:100%; gap:1.6cqh; padding:2cqh 4cqw; transform:none; }
+  body.pl-vis-vol .vhl-mid { flex:none; width:100%; align-self:center; gap:1.6cqh; padding:2cqh 4cqw; transform:none; }
   body.pl-vis-vol .vhl-held-w { font-size:min(11cqh, 26cqw); } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:2cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.4cqh; }
   body.pl-vis-vol .vhl-modus { font-size:1.9cqh; } body.pl-vis-vol .vhl-strook { font-size:min(2.2cqh, 4.6cqw); gap:7cqw; }
   body.pl-vis-vol .vhl-leds { gap:min(2.5cqw, 3%); max-width:70cqw; }
