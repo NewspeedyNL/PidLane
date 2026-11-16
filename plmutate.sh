@@ -2974,7 +2974,7 @@ MUTATIES=(
 "public/pidlane-aankooprapport.js@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0 && o.kmMetMil < CFG.tellerMax) {@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0) {@@test-aankooprapport.js@@een vastgelopen teller (65535) leest als gereden met het storingslampje aan"
 "public/pidlane-aankooprapport.js@@    if ((sig || []).some(x => x.kleur === 'rood')) return 'rood';@@    // (rood wacht op volledigheid)@@test-aankooprapport.js@@een gevonden rode vlag verdwijnt achter grijs zodra één onderdeel niet gelezen is"
 "public/pidlane-fuel.js@@    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);@@    const text=await apiFetch(prompt,4000,null,null,aanlevering);@@test-rapport.js@@de gedeelde AI-trechter vraagt het rapportblok niet meer: het PDF-rapport valt terug op de koppen"
-"public/pidlane-fuel.js@@  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@  try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
+"public/pidlane-fuel.js@@if(!_ext) try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@if(!_ext) try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
 "public/pidlane-verzamel.js@@                                hist: histVoorRapport(sam), watVoor@@                                hist: null, watVoor@@bproef-rapport.js@@het verzamelscherm geeft zijn reeksen niet mee: het analyserapport heeft geen grafieken"
 )
 
