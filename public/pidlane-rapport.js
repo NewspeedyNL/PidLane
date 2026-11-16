@@ -461,6 +461,10 @@
   function uitApp(r) {
     const rep = r || {};
     const ts = rep.ts ? new Date(rep.ts).getTime() : Date.now();
+    const meting = rep.meting || versMeting(ts);
+    // Een ingelezen log (PLLogImport): het voertuig uit de log, en niets van
+    // de verbonden auto — geen kenteken, dossier, terugroepacties of foutcodes.
+    const ext = meting && meting.extern;
     const v = (typeof vehicleInfo !== 'undefined' && vehicleInfo) || {};
     let garage = null, kenteken = '';
     try { garage = (window.PLGarage && PLGarage.actief) ? PLGarage.actief() : null; } catch (e) { console.warn('PLRapport: actief voertuig onbekend', e); }
@@ -494,13 +498,15 @@
     // Het stoplicht dat renderAIText() al toonde (aiVerdict). Opnieuw
     // berekenen zou de telemetrie van dat oordeel dubbel tellen.
     const verdict = { green: 'groen', amber: 'oranje', red: 'rood' }[rep.oordeel] || null;
-    return {
+    const ctx = {
       ts, voertuig: v, garage: garage || {}, kenteken, recall, dtc, readiness,
-      meting: rep.meting || versMeting(ts),
+      meting,
       def: pid => (typeof getPidDef === 'function' ? getPidDef(pid) : null),
       S: window.PLSamenhang || null, grens, ai: { text: rep.text || '' }, verdict,
       disclaimer: typeof RAPPORT_DISCLAIMER !== 'undefined' ? RAPPORT_DISCLAIMER : ''
     };
+    if (ext) Object.assign(ctx, { voertuig: ext.voertuig || {}, garage: {}, kenteken: '', recall: null, dtc: null, readiness: null });
+    return ctx;
   }
 
   /* Het logo als dataURL voor jsPDF. Via een <img> en een canvas, niet met

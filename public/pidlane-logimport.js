@@ -301,6 +301,21 @@ window.PLLogImport = (function () {
     return Math.round(ms / 1000);
   }
 
+  /* Het voertuig van de log, uit de AUTO-regel ("Ford Focus 2.0 benzine
+     2008"). Nooit dat van de app: een ingelezen log gaat niet over de auto
+     die nu verbonden is. Puur. */
+  function voertuig(auto) {
+    let t = String(auto || '').replace(/,?\s*VIN\s*\[VIN verwijderd\]|\[VIN verwijderd\]/gi, '').trim();
+    const v = {};
+    const j = /\b(19[5-9]\d|20\d{2})\b/.exec(t);
+    if (j) { v.year = j[1]; t = t.replace(j[0], ' '); }
+    const b = /\b(benzine|diesel|lpg|hybride|elektrisch)\b/i.exec(t);
+    if (b) { v.brandstof = b[1].toLowerCase(); t = t.replace(b[0], ' '); }
+    const w = t.replace(/[,;]/g, ' ').split(/\s+/).filter(Boolean);
+    if (w.length) { v.merk = w[0]; if (w.length > 1) v.model = w.slice(1).join(' '); }
+    return v;
+  }
+
   /* Klopt het basisoordeel met de kop? null = de kop zegt niets. */
   function vergelijk(o, k) {
     const b = k && k.basis;
@@ -355,7 +370,7 @@ window.PLLogImport = (function () {
     return { ok: ok && zichtbaar, uitleg: t + ' (gemeten ' + (getal(w) ? Math.round(w * 100) / 100 : w) + (zichtbaar ? '' : '; staat niet in de prompt') + ')' };
   }
 
-  return { RANG, NAMEN, eenheid, omrekening, kolom, scheiding, velden, tijd, kop, lees, oordeel, vergelijk, prompt, signaal };
+  return { RANG, NAMEN, eenheid, omrekening, kolom, scheiding, velden, tijd, kop, lees, oordeel, vergelijk, prompt, signaal, voertuig };
 })();
 // ── PLLogImport kern eind ──
 
@@ -420,9 +435,15 @@ window.PLLogImport = (function () {
       watVoor: 'de analyse van de ingelezen log', ritBron: false, profiel: false
     });
     if (!uit || !uit.ai) return;
+    // De log gaat niet over de verbonden auto. `extern` gaat mee naar
+    // apiFetch (geen voertuig, dossier, live toestand of eerdere rapporten
+    // van die auto), naar het rapport (PLRapport.uitApp) en naar het archief
+    // (niet in het dossier van het actieve voertuig).
+    const extern = { naam, voertuig: L.voertuig(imp.kop.auto) };
+    if (window._plVerzameld) window._plVerzameld.extern = extern;
     activateAIPane();
     await callAI(L.prompt(imp, o, deps), document.getElementById('aiContent'),
-      PLVerzamel.aanlevering(uit, 'Ingelezen log: wat laat deze reeks zien over de staat van het voertuig?', null));
+      Object.assign(PLVerzamel.aanlevering(uit, 'Ingelezen log: wat laat deze reeks zien over de staat van het voertuig?', null), { extern }));
   }
 
   L.open = open;

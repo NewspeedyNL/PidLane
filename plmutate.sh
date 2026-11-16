@@ -2853,6 +2853,10 @@ MUTATIES=(
 "public/pidlane-logimport.js@@const x = d.T.deelHist(hist, k, d.kmh, d.gat);@@const x = { hist, zonderSnelheid: true };@@test-scenariolog.js@@stilstand en rijden krijgen dezelfde monsters: een trim die alleen stationair afwijkt is niet meer te zien"
 "public/pidlane-logimport.js@@const okCat = !b.cat ||@@const okCat = true ||@@test-scenariolog.js@@het basisoordeel klopt ook bij de verkeerde categorie"
 "public/pidlane-logimport.js@@return { ok: ok && zichtbaar,@@return { ok: ok,@@test-scenariolog.js@@een signaal telt als gezien, ook als het niet in de prompt staat"
+"public/pidlane-logimport.js@@if (b) { v.brandstof = b[1].toLowerCase(); t = t.replace(b[0], ' '); }@@if (b) { v.brandstof = b[1].toLowerCase(); }@@test-scenariolog.js@@de brandstof blijft in de modelnaam staan: Golf 1.4 TSI benzine"
+"public/pidlane-fuel.js@@const _ext=(aanlevering&&aanlevering.extern)||null;@@const _ext=null;@@bproef-logimport.js@@een ingelezen log krijgt weer het voertuig, dossier en de live toestand van de verbonden auto mee"
+"public/pidlane-archief.js@@if(!rec.extern) try{ if(window.PLGarage && PLGarage.rapport)@@try{ if(window.PLGarage && PLGarage.rapport)@@bproef-logimport.js@@het rapport over een ingelezen log gaat het dossier van het actieve voertuig in"
+"public/pidlane-rapport.js@@if (ext) Object.assign(ctx, {@@if (false) Object.assign(ctx, {@@bproef-logimport.js@@het PDF-rapport over een ingelezen log staat op naam en kenteken van de verbonden auto"
 "public/pidlane-totalcheck.js@@[dtc.licht.kleur] || 'nodata';@@[dtc.licht.kleur] || 'ok';@@test-totaalcheck.js@@foutcodes die niet uitgelezen zijn heten weer goed"
 "public/pidlane-totalcheck.js@@      rijden: afw.length > 0 && afw.every(p => !afStil(p) && p.rij)@@      rijden: false@@test-totaalcheck.js@@een afwijking die alleen rijdend zat krijgt een focusmeting stilstaand, waar er niets te zien is"
 "public/pidlane-totalcheck.js@@ + titel + ': NIET GEMETEN. ' + uitleg; return; }@@ + ''; return; }@@test-totaalcheck.js@@de AI hoort niet meer dat rijden niet gemeten is en mag er dus over oordelen"
@@ -2970,7 +2974,7 @@ MUTATIES=(
 "public/pidlane-aankooprapport.js@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0 && o.kmMetMil < CFG.tellerMax) {@@    } else if (o.kmMetMil !== null && o.kmMetMil > 0) {@@test-aankooprapport.js@@een vastgelopen teller (65535) leest als gereden met het storingslampje aan"
 "public/pidlane-aankooprapport.js@@    if ((sig || []).some(x => x.kleur === 'rood')) return 'rood';@@    // (rood wacht op volledigheid)@@test-aankooprapport.js@@een gevonden rode vlag verdwijnt achter grijs zodra één onderdeel niet gelezen is"
 "public/pidlane-fuel.js@@    const text=await apiFetch(prompt+PLRapport.instructie(),4000,null,null,aanlevering);@@    const text=await apiFetch(prompt,4000,null,null,aanlevering);@@test-rapport.js@@de gedeelde AI-trechter vraagt het rapportblok niet meer: het PDF-rapport valt terug op de koppen"
-"public/pidlane-fuel.js@@  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@  try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
+"public/pidlane-fuel.js@@if(!_ext) try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }@@if(!_ext) try{ if(false) sys += PLKenmerk.blok(); }@@bproef-kenmerk.js@@de AI hoort niet welke regels voor deze auto niet te beoordelen zijn"
 "public/pidlane-verzamel.js@@                                hist: histVoorRapport(sam), watVoor@@                                hist: null, watVoor@@bproef-rapport.js@@het verzamelscherm geeft zijn reeksen niet mee: het analyserapport heeft geen grafieken"
 )
 

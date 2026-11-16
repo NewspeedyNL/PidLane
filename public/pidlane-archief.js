@@ -63,7 +63,9 @@ function registerSessionReport(entry){
       id:'sr'+(++_srSeq)+'_'+Date.now(),
       type:entry.type||'ai',
       demo:_demo,
-      title:(_demo?'🧪 DEMO · ':'')+(entry.title||_srAutoTitle(entry)),
+      // Een ingelezen log draagt zijn eigen voertuig, niet dat van de app.
+      title:(_demo?'🧪 DEMO · ':'')+(entry.extern?'📂 Ingelezen log · ':'')+(entry.title||(entry.extern?String(entry.extern.naam||'log'):_srAutoTitle(entry))),
+      extern:entry.extern||null,
       text:txt,
       bron:(entry.text && String(entry.text).trim()!==txt)?String(entry.text):null,
       html:entry.html||null,
@@ -74,7 +76,8 @@ function registerSessionReport(entry){
     list.push(rec);
     _srUpdateBadge();
     // Mijn voertuigen: het rapport ook bij het actieve voertuig bewaren.
-    try{ if(window.PLGarage && PLGarage.rapport) PLGarage.rapport(rec); }catch(e){ console.warn('PLGarage: rapport niet doorgegeven', e); }
+    // Niet in het dossier van het actieve voertuig: de log gaat over een andere auto.
+    if(!rec.extern) try{ if(window.PLGarage && PLGarage.rapport) PLGarage.rapport(rec); }catch(e){ console.warn('PLGarage: rapport niet doorgegeven', e); }
     try{ logUsage?.('sessie_rapport','type='+rec.type+';n='+list.length); }catch(e){ console.warn('logUsage mislukt:', e); }
     return rec;
   }catch(e){ return null; }
@@ -99,7 +102,7 @@ function _srUpdateBadge(){
         _val=v;
         try{
           if(v && v.text && !window._srSilent){
-            registerSessionReport({type:'ai', text:v.text, html:v.html||null, ts:v.ts});
+            registerSessionReport({type:'ai', text:v.text, html:v.html||null, ts:v.ts, extern:(v.meting&&v.meting.extern)||null});
           }
         }catch(e){ console.warn('registerSessionReport mislukt:', e); }
       }
