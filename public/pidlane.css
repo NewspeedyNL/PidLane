@@ -2224,11 +2224,14 @@ body.pl-vis-vol .vpf-hyper { position:fixed; inset:0; margin:0; border:0; border
 body.pl-vis-vol .vis:has(.vpf-hyper) { overflow:hidden; }
 body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.vpf-hyper) .vis-trek { position:relative; z-index:2; }
 @media (orientation:portrait) {
-  /* Staand: de ringen delen wat er over is (flex) in plaats van een vaste
-     maat. Met 29cqh per ring paste het niet op elke telefoon: de snelheids-
-     ring liep onder de tanklichtbalk door en van het scherm af (28-10-2026). */
-  body.pl-vis-vol .vhl-podium { flex-direction:column; justify-content:center; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); }
-  body.pl-vis-vol .vhl-pod { flex:1 1 0; min-height:0; width:auto; max-width:74cqw; aspect-ratio:1; }
+  /* Staand (16-11-2026, uit de auto): de ringen naast elkaar bovenaan, zoals
+     liggend, en het midden eronder over de volle breedte. Boven elkaar kregen
+     de ringen wat het midden overliet (flex) en waren ze op een telefoon met
+     een hoge lampjesbalk nog maar 70 px. Nu is hun maat vast: bijna de halve
+     breedte, en op een kort scherm een deel van de hoogte. */
+  body.pl-vis-vol .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"l r" "m m"; grid-template-rows:auto 1fr; align-content:stretch; justify-items:center; column-gap:2cqw; gap:1.5cqh; padding:calc(var(--pl-sat, 0px) + 132px) 0 calc(var(--pl-sab, 0px) + 11cqh); padding-inline:2cqw; }
+  body.pl-vis-vol .vhl-pod { width:min(46cqw, 27cqh); }
+  body.pl-vis-vol .vhl-pod.l { grid-area:l; } body.pl-vis-vol .vhl-pod.r { grid-area:r; } body.pl-vis-vol .vhl-mid { grid-area:m; }
   /* #716: een bevinding lag midden over het hoofdgetal en de cijfers. Staand
      krijgt hij een eigen strook boven de tanklichtbalk; zolang er een staat,
      schuiven de ringen op (flex) in plaats van eronder te verdwijnen. */
@@ -2238,11 +2241,13 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-tank { left:16cqw; right:16cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }   /* niet onder 🏁 door */
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
   body.pl-vis-vol .vhl-tank-balk { height:.6cqh; }
-  body.pl-vis-vol .vhl-pod.l, body.pl-vis-vol .vhl-pod.r { transform:rotateX(calc(-1 * var(--vhl-tx))) rotateY(var(--vhl-ty)); }
-  body.pl-vis-vol .vhl-mid { flex:none; gap:1.5cqh; padding:2cqh 8cqw; }
-  body.pl-vis-vol .vhl-held-w { font-size:8cqh; } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:1.8cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.3cqh; }
-  body.pl-vis-vol .vhl-modus, body.pl-vis-vol .vhl-strook { font-size:1.8cqh; }
-  body.pl-vis-vol .vhl-leds { gap:min(2.5cqw, 3%); max-width:58cqw; }
+  body.pl-vis-vol .vhl-pod.l { transform:rotateY(calc(14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
+  body.pl-vis-vol .vhl-pod.r { transform:rotateY(calc(-14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
+  /* Het midden onder de ringen: lampjes, stand, het hoofdgetal groot en de strook. */
+  body.pl-vis-vol .vhl-mid { flex:none; width:100%; align-self:center; gap:1.6cqh; padding:2cqh 4cqw; transform:none; }
+  body.pl-vis-vol .vhl-held-w { font-size:min(11cqh, 26cqw); } body.pl-vis-vol .vhl-held-e, body.pl-vis-vol .vhl-gear { font-size:2cqh; } body.pl-vis-vol .vhl-held-l, body.pl-vis-vol .vhl-merk { font-size:1.4cqh; }
+  body.pl-vis-vol .vhl-modus { font-size:1.9cqh; } body.pl-vis-vol .vhl-strook { font-size:min(2.2cqh, 4.6cqw); gap:7cqw; }
+  body.pl-vis-vol .vhl-leds { gap:min(2.5cqw, 3%); max-width:70cqw; }
   body.pl-vis-vol .vhl-leds i { flex-basis:3.6cqw; }
   body.pl-vis-vol .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
   body.pl-vis-vol .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }

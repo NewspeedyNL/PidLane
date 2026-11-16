@@ -141,12 +141,18 @@ function toets(naam, waar, uitleg) {
         const t = v.querySelector('[data-ring="toeren"]').getBoundingClientRect(), s = v.querySelector('[data-ring="snel"]').getBoundingClientRect();
         const tank = v.querySelector('.vhl-tank'), tk = tank.getBoundingClientRect(), tz = getComputedStyle(tank).display !== 'none';
         const m = v.querySelector('.vhl-mid').getBoundingClientRect();
-        const r = { binnen: t.top >= 0 && s.bottom <= innerHeight + 1, vrij: !tz || s.bottom <= tk.top + 1,
-                    geenOverlap: t.bottom <= m.top + 1 && m.bottom <= s.top + 1, maat: [Math.round(t.top), Math.round(t.bottom), Math.round(m.top), Math.round(m.bottom), Math.round(s.top), Math.round(s.bottom), Math.round(tk.top), innerHeight].join('/') };
+        // Sinds 16-11-2026 naast elkaar boven het midden, en groot: boven elkaar
+        // kregen ze de rest van de hoogte en waren ze op een telefoon 70 px.
+        const r = { binnen: t.top >= 0 && t.left >= 0 && s.right <= innerWidth + 1 && Math.max(t.bottom, s.bottom) <= innerHeight + 1,
+                    vrij: !tz || Math.max(m.bottom, s.bottom) <= tk.top + 1,
+                    geenOverlap: t.right <= s.left + 1 && Math.max(t.bottom, s.bottom) <= m.top + 1,
+                    groot: Math.min(t.width, s.width) >= innerWidth * 0.4,
+                    maat: [Math.round(t.left), Math.round(t.right), Math.round(s.left), Math.round(s.right), Math.round(t.top), Math.round(t.bottom), Math.round(m.top), Math.round(m.bottom), Math.round(tk.top), innerWidth, innerHeight].join('/') };
         appBack(); await wacht(200);
         return r;
       })()`);
-      toets('staand ' + bw + '×' + bh + ': ringen binnen het scherm, niet onder de tanklichtbalk, niet over het midden', p.binnen && p.vrij && p.geenOverlap, p.maat);
+      toets('staand ' + bw + '×' + bh + ': ringen naast elkaar binnen het scherm, boven het midden, niet onder de tanklichtbalk', p.binnen && p.vrij && p.geenOverlap, p.maat);
+      toets('staand ' + bw + '×' + bh + ': elke ring minstens 40% van de breedte', p.groot, p.maat);
     }
     // Liggend met de statusbalk van de telefoon erboven (06-11-2026, uit de auto:
     // de schakellampjes schoven half onder de lampjesbalk). 762×352 is de

@@ -10,6 +10,11 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 16-11-2026 — Hyperlane staand: grote ringen naast elkaar
+ ═════════════════════════════════════════════════════
+   • Volledig scherm staand: toeren- en snelheidsring naast elkaar bovenaan (± 46% van de breedte, was op een telefoon 70 px), het midden eronder over de volle breedte met een groter hoofdgetal. bproef-hyperlane.js meet de maat; drie mutaties
+
+ ═════════════════════════════════════════════════════
  15-11-2026 — Demo-Mazda met het echte CX-5-pakket
  ═════════════════════════════════════════════════════
    • Demo: de Mazda CX-5 rijdt met de 52 mode 01-PIDs die een CX-5 2018 meldt (nepauto-profiel cx5), elk met een gezonde waarde; status-PIDs vast (MIL uit). test-demopakket.js + vier mutaties
