@@ -2849,7 +2849,7 @@ MUTATIES=(
 "public/pidlane-logimport.js@@'Voertuig: ' + (imp.kop.auto || 'onbekend')@@'Voertuig: ' + JSON.stringify(imp.kop)@@test-scenariolog.js@@de verwachting uit de kop gaat mee de prompt in: de AI krijgt het antwoord voorgezegd"
 "public/pidlane-logimport.js@@'f>c': v => (v - 32) * 5 / 9,@@'f>c': v => v,@@test-scenariolog.js@@een Amerikaanse log: 194 °F leest als 194 °C koelwater"
 "public/pidlane-logimport.js@@return NAAR[van + '>' + doel] || null;@@return NAAR[van + '>' + doel] || (v => v);@@test-scenariolog.js@@een onbekende eenheid wordt stil als die van de app gelezen"
-"public/pidlane-logimport.js@@if (i === tk.i || /vin/i.test(k)) return null;@@if (i === tk.i) return null;@@test-scenariolog.js@@een VIN-kolom wordt weer gelezen (§7)"
+"public/pidlane-logimport.js@@schoon = w.replace(VIN_RE, '[VIN verwijderd]');@@schoon = w;@@test-scenariolog.js@@een VIN in de AUTO-regel van de kop gaat ruw mee de prompt in (§7)"
 "public/pidlane-logimport.js@@const x = d.T.deelHist(hist, k, d.kmh, d.gat);@@const x = { hist, zonderSnelheid: true };@@test-scenariolog.js@@stilstand en rijden krijgen dezelfde monsters: een trim die alleen stationair afwijkt is niet meer te zien"
 "public/pidlane-logimport.js@@const okCat = !b.cat ||@@const okCat = true ||@@test-scenariolog.js@@het basisoordeel klopt ook bij de verkeerde categorie"
 "public/pidlane-logimport.js@@return { ok: ok && zichtbaar,@@return { ok: ok,@@test-scenariolog.js@@een signaal telt als gezien, ook als het niet in de prompt staat"
