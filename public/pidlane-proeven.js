@@ -38,6 +38,28 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Log inlezen in het adminmenu (16-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Een ingelezen log krijgt het basisoordeel van de app, en de verwachting uit de kop gaat niet naar de AI',
+    waarom: 'Nieuw: 📂 Log inlezen (Torque, Car Scanner, eigen export, scenariolog). Proef met een kleine Torque-log door de echte keten.',
+    proef: async function () {
+      if (!window.PLLogImport || typeof PLLogImport.open !== 'function') return { staat: 'FOUT', detail: 'PLLogImport ontbreekt — herladen?' };
+      if (!document.getElementById('kbLogImport')) return { staat: 'FOUT', detail: 'de knop 📂 Log inlezen staat niet in het adminmenu' };
+      var r = ['# BASIS: let op / Brandstof', '# AI MOET: geheim-antwoord', 'Device Time,Engine RPM(rpm),Speed (OBD)(mph),Fuel Trim Bank 1 Long Term(%),Engine Coolant Temperature(°F)'];
+      for (var t = 0; t < 120; t++) r.push('12-Nov-2026 14:' + String(5 + Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0') + '.000,' + (t < 60 ? 800 : 2200) + ',' + (t < 60 ? 0 : 40) + ',' + (t < 60 ? 19 : 5) + ',194');
+      var imp = PLLogImport.lees(r.join('\n'), function (p) { return !!getPidDef(p); }, getPidDef);
+      if (imp.pids.length !== 4) return { staat: 'FOUT', detail: 'gelezen: ' + imp.pids.join(' ') + ' ' + imp.waarschuwingen.join('; ') };
+      var deps = { V: PLVerzamel, T: PLTotaal, def: getPidDef, letOp: window.PID_LET_OP || {}, toestandRegels: window.PID_TOESTAND || {}, kwal: assessPidQuality,
+        catVan: function (p) { return (getPidDef(p) || {}).cat; }, volgorde: window.CHK_CAT_ORDER, kmh: MEET_RIJ_KMH, gat: MEET_RIJ_GAT_MS };
+      var o = PLLogImport.oordeel(imp.hist, deps), vg = PLLogImport.vergelijk(o, imp.kop);
+      if (!vg || !vg.klopt) return { staat: 'FOUT', detail: 'basisoordeel: ' + o.regel };
+      var p = PLLogImport.prompt(imp, o, deps);
+      if (p.indexOf('geheim-antwoord') >= 0 || p.indexOf('BASIS:') >= 0) return { staat: 'FOUT', detail: 'de kop staat in de prompt' };
+      return { staat: 'OK', detail: o.regel + '; ' + p.length + ' tekens prompt, zonder de kop' };
+    }
+  },
+
   // ── Demo-Mazda met het echte CX-5-pakket (15-11-2026) ──
   {
     issue: '—',

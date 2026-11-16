@@ -911,6 +911,7 @@ function closeConnOv(){
           <button class="kebab-item" id="kbMeekijk" onclick="closeKebab();PLMeekijk.open()">🔑 Voertuigen van een klant</button>
           <button class="kebab-item" id="scenarioBtn" onclick="closeKebab();openScenarioModal()">🧪 Test-scenario</button>
           <button class="kebab-item" id="testrunBtn" onclick="closeKebab();openTestrun()">🔬 Testrun</button>
+          <button class="kebab-item" id="kbLogImport" onclick="closeKebab();PLLogImport.open()">📂 Log inlezen</button>
           <button class="kebab-item" id="kbSessie" onclick="closeKebab();showTokenDetail()">🪙 AI-kosten deze sessie</button>
           <button class="kebab-item" id="kbMeeluister" onclick="closeKebab();PLMeeluister.knop()">📻 Meeluisteren op CAN</button>
           <button class="kebab-item adminOnly" id="surveyBtn" onclick="closeKebab();vlFullSurvey()">🧪 Full function test</button>
@@ -1914,6 +1915,7 @@ function closeConnOv(){
 <script src="pidlane-expertwerk.js"></script><!-- PLExpertWerk: de werkplek van de expert op een laptop — ná PLVoorkennis, vóór pidlane-remote.js, geen bus-I/O --><!-- voorkennis voor de expert (PLVoorkennis) — ná PLOnderzoek (CODEREGELS, kennisNaarVerdenking), vóór pidlane-remote.js -->
 <script src="pidlane-samenhang.js"></script><!-- samenhang (PLSamenhang, #446) — toestanden + de stappen van PLOnderzoek op een meting die er al is -->
 <script src="pidlane-verzamel.js"></script><!-- verzamelscherm vóór een AI-rapport (PLVerzamel) — vereist plMeetTekort + plKernStatus uit pidlane-fuel.js, pas bij aanroep -->
+<script src="pidlane-logimport.js"></script><!-- PLLogImport: een log van buiten (Torque, Car Scanner, eigen export, scenariolog) inlezen → basisoordeel + AI; vereist PLVerzamel, PLTotaal, PLSamenhang en MEET_RIJ_KMH, pas bij aanroep -->
 <script src="pidlane-rapport.js"></script><!-- analyserapport (PLRapport) — vaste secties, AI-velden, grafieken; jsPDF via loadJsPDF, pas bij aanroep -->
 <script src="pidlane-aankooprapport.js"></script><!-- aankooprapport (PLAankoop) — oordeel uit regels, PDF via PLRapport.pdf; leest de adapter pas bij aanroep -->
 <script src="pidlane-tank.js"></script><!-- tankbeurten (PLTank) — puur; het tabblad in PLGarage roept hem aan -->
