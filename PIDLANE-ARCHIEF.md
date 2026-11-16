@@ -16,6 +16,13 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+
+## 16-11-2026 — Een ingelezen log stond op naam van de verbonden auto
+
+Eerste rit van 📂 Log inlezen met `scenariolog/thermostaat-open.csv` (een Golf 1.4 TSI) terwijl er een Mazda CX-5 actief was. De AI vond de thermostaat, zoals het scenario verwachtte. Maar het PDF-rapport stond op naam van de Mazda: kenteken, VIN, kilometerstand, APK en terugroepacties. De AI schreef er zelf boven: "deze log betreft een Volkswagen Golf, niet de Mazda uit het ingestelde dossier". De oorzaak: drie plekken lezen het voertuig uit de globale staat in plaats van uit de meting. `apiFetch` zette voertuig, dossier, live toestand (`pidVals`: "motor DRAAIT"), eerdere rapporten, aanlevering en kenmerken van de Mazda in de systeemprompt. `PLRapport.uitApp` nam `vehicleInfo` en het kenteken. `registerSessionReport` stuurde het rapport via `PLGarage.rapport` het dossier van de Mazda in. Hersteld met één markering, `aanlevering.extern`, die via `_plVerzameld.extern` ook het rapport en het archief bereikt; `bproef-logimport.js` toetst alle drie met een tegenproef.
+
+Nog open bij laag B (AI-antwoord keuren op trefwoorden): in hetzelfde rapport staat "pomp" in een oorzaak die de AI juist *onwaarschijnlijk* noemt. Een trefwoordtoets op AI MAG NIET kan uitsluiten en beweren niet uit elkaar houden.
+
 ## 16-11-2026 — Besluiten na #723: wat er bij het uitgesteld laden opdook
 
 - **#690, de testrun.** Het issue noemde 832 KB; het bestand was sinds 08-11

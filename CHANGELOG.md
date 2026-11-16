@@ -14,6 +14,7 @@
  ═════════════════════════════════════════════════════
    • Adminmenu: 📂 Log inlezen (PLLogImport). Leest een eigen export, Torque (breed) en Car Scanner (lang, komma-decimalen); rekent °F, mph, psi, inHg, bar en lb/min om; een onbekende eenheid valt weg met een waarschuwing; een VIN-kolom wordt niet gelezen. Daarna het verzamelscherm (basisoordeel) en op verzoek de AI
    • scenariolog/: zes verzonnen logs (gezond, thermostaat open, arm mengsel, sensorglitch, niet gemeten, dynamo laadt niet) met BASIS en SIGNAAL in de kop; maak.js maakt ze opnieuw. AI MOET / AI MAG NIET staan klaar voor laag B (nog niet gekeurd)
+   • Een ingelezen log gaat niet over de verbonden auto (aanlevering.extern): apiFetch stuurt het voertuig uit de log mee, zonder dossier, live toestand, rijsituatie, eerdere rapporten, aanlevering of kenmerken van de actieve auto; het PDF-rapport draagt geen kenteken of foutcodes van die auto; het archief noemt het "Ingelezen log" en stuurt het niet naar het dossier. bproef-logimport.js + vier mutaties
    • test-scenariolog.js: basisoordeel per scenario, elk signaal zichtbaar in de prompt, de kop nooit in de prompt; zeven mutaties. Blok 5: één nieuwe proef
 
  ═════════════════════════════════════════════════════

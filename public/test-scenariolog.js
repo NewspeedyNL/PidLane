@@ -100,6 +100,10 @@ const leeg = lees('Device Time,Horsepower(hp)\n12-Nov-2026 14:05:00,90');
 toets('geen herkende sensor = geen pids, wel de onbekende kolom genoemd', leeg.pids.length === 0 && leeg.onbekend.indexOf('Horsepower(hp)') >= 0, JSON.stringify(leeg));
 toets('zonder tijdkolom: niets, met de reden', lees('Engine RPM(rpm)\n800').waarschuwingen.some(w => /tijdkolom/.test(w)));
 
+const vt = L.voertuig(L.kop(['# AUTO: Volkswagen Golf 1.4 TSI benzine 2010, VIN WVWZZZ1KZAW000002']).auto);
+toets('het voertuig van de log komt uit de AUTO-regel, zonder VIN', vt.merk === 'Volkswagen' && vt.model === 'Golf 1.4 TSI' && vt.year === '2010' && vt.brandstof === 'benzine', JSON.stringify(vt));
+toets('zonder AUTO-regel: een leeg voertuig, niet dat van de app', JSON.stringify(L.voertuig(null)) === '{}');
+
 console.log('\nB. de scenariologs');
 const bestanden = fs.readdirSync(SCEN).filter(f => f.endsWith('.csv')).sort();
 toets('er staan scenariologs in scenariolog/', bestanden.length >= 6, bestanden.join(', '));

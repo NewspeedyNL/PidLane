@@ -433,7 +433,11 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // Sterke, dynamische monteur-instructie. Injecteert het bevestigde brandstoftype
   // zodat de AI geen diesel/AdBlue/turbo verzint op een benzineauto, en dwingt
   // onderbouwing met gemeten waarden + onderscheid koud/warm af.
-  let _vi={}; try{ if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de AI-prompt', e); }
+  // Een ingelezen log (PLLogImport) gaat niet over de verbonden auto: dan
+  // geen voertuig, dossier, live toestand, rijsituatie, eerdere rapporten,
+  // meetcontext, aanlevering of kenmerken van die auto in de systeemprompt.
+  const _ext=(aanlevering&&aanlevering.extern)||null;
+  let _vi={}; try{ if(_ext) _vi=_ext.voertuig||{}; else if(typeof vehicleInfo!=='undefined'&&vehicleInfo) _vi=vehicleInfo; }catch(e){ console.warn('vehicleInfo niet leesbaar voor de AI-prompt', e); }
   const _vTxt=[_vi.merk,_vi.model,_vi.year,_vi.motor].filter(Boolean).join(' ')||'onbekend voertuig';
   const _bf=(_vi.brandstof||'').toString().toLowerCase();
   // Live toestand meegeven zodat referenties VOORWAARDELIJK beoordeeld worden.
@@ -441,7 +445,8 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // "normaal" tegen 12,6-14,4 V terwijl de motor draaide — dan hoort er
   // laadspanning 13,5-14,8 V te staan en is 13,0 V juist verdacht).
   let _stTxt='onbekend';
-  try{
+  if(_ext) _stTxt='geen live meting: dit is een ingelezen log van buiten de app; de toestand staat per deel in de vraag';
+  else try{
     const _st=(window.PLMon&&window.PLMon._state)?window.PLMon._state():null;
     const _rpm=(typeof pidVals!=='undefined')?pidVals['010C']:undefined;
     const _spd=(typeof pidVals!=='undefined')?pidVals['010D']:undefined;
@@ -452,7 +457,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   }catch(e){ console.warn('Live toestand niet uit te lezen voor de AI-prompt, valt terug op ONBEKEND (AI gaat dan voorzichtiger beoordelen)', e); }
   const _defaultSys =
     'Jij bent PidLane AI-Monteur: een ervaren, kritische autotechnicus die OBD2-sensordata interpreteert voor Nederlandse autobedrijven.\n'+
-    'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.'+_dossierPromptLine()+'\n'+
+    'VOERTUIG: '+_vTxt+(_bf?(' \u2014 brandstof: '+_bf):'')+'.'+(_ext?'':_dossierPromptLine())+'\n'+
     pidlaneBasisRegels()+'\n'+
     '6. Houd rekening met de toestand. Bij een KOUDE start zijn een hoge korte-termijn brandstoftrim, langzame opwarming, hoger stationair toerental en een rijker mengsel NORMAAL. Markeer dat alleen als probleem wanneer de data laat zien dat het bij bedrijfstemperatuur aanhoudt. Benoem expliciet wanneer iets normaal is voor deze situatie.\n'+
     '7. VOORWAARDELIJKE REFERENTIES \u2014 GEMETEN TOESTAND NU: '+_stTxt+'. Toets elke sensorwaarde tegen de referentie die bij deze toestand hoort, niet tegen een statische band. Concreet: accuspanning bij DRAAIENDE motor is laadspanning, referentie 13,5-14,8 V (12,6-14,4 V geldt alleen bij motor uit; 13,0 V bij draaiende motor duidt op een laadprobleem). Het stationair-toerentalbereik geldt alleen bij stilstand. Inlaatdruk 20-35 kPa geldt alleen stationair bij benzine. Uitlaatgastemperatuur beoordeel je naar belasting. Brandstoftrims beoordeel je alleen bedrijfswarm. Kun je de voor een oordeel benodigde toestand niet vaststellen, gebruik dan status "niet beoordeelbaar" \u2014 nooit "normaal" bij een niet-passende referentie.';
@@ -463,14 +468,14 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // Rijsituatie geldt voor ELKE AI-rol — ook bij een eigen systemPrompt of een
   // admin-override. Zonder dit beoordeelt de AI een caravanrit als een zieke
   // auto: hoog verbruik, hoge belasting en warm koelwater zijn dan juist normaal.
-  try{ sys += _situatiePromptLine(); }catch(e){ console.warn('Rijsituatie niet aan de AI-prompt toegevoegd — een caravanrit of hoge belasting kan dan onterecht als probleem beoordeeld worden', e); }
+  if(!_ext) try{ sys += _situatiePromptLine(); }catch(e){ console.warn('Rijsituatie niet aan de AI-prompt toegevoegd — een caravanrit of hoge belasting kan dan onterecht als probleem beoordeeld worden', e); }
   // Vóór de analyse: één venster met de meetcontext-vragen (start/stop, deed
   // de klacht zich voor, liep de meting door) en — als er eerdere rapporten
   // in deze sessie zijn — de vraag of die mee mogen. Valt er niets meer te
   // vragen omdat alles al beantwoord is, dan verschijnt er geen venster.
   // De keuze over rapporten staat in window._srUseContext en is aanpasbaar
   // via het 📄 Rapporten-overzicht; daar staat ook de meetcontext.
-  try{
+  if(!_ext) try{
     const _srBlok=_sessionReportsPromptBlock(String(prompt||''));
     // Mijn voertuigen: de laatste rapporten van het actieve voertuig uit
     // eerdere sessies tellen mee als "eerdere rapporten".
@@ -491,7 +496,7 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // Mijn voorkeuren: kort of uitgebreid rapport. Leeg zonder voorkeur.
   try{ if(window.PLVoorkeur) sys += PLVoorkeur.promptRegel(); }
   catch(e){ console.warn('Rapportvoorkeur niet aan de AI-prompt toegevoegd', e); }
-  try{ sys += plMeetcontextPromptLine(); }
+  if(!_ext) try{ sys += plMeetcontextPromptLine(); }
   catch(e){ console.warn('Meetcontext niet aan de AI-prompt toegevoegd — start/stop kan dan als afslaan gelezen worden', e); }
   // ── De aanlevering (#188) ────────────────────────────────────────
   // Wat de app zelf over de KWALITEIT van deze meting weet: welke sensoren de
@@ -502,12 +507,12 @@ async function apiFetch(prompt, maxTokens=4000, systemPrompt=null, model=null, a
   // uitvalt. Eén haak, net als de rijsituatie en de meetcontext hierboven —
   // zodat geen van de twintig aanroepplekken hem kan vergeten. De module
   // beslist zelf of er iets te melden valt en geeft anders een lege tekst.
-  try{ if(window.PLAanlevering) sys += PLAanlevering.blok(aanlevering); }
+  if(!_ext) try{ if(window.PLAanlevering) sys += PLAanlevering.blok(aanlevering); }
   catch(e){ console.warn('Aanlevering niet aan de AI-prompt toegevoegd — de AI weet dan niet welke sensoren ontbreken of waar de gaten in de meting zaten (#188)', e); }
   // De derde poort (#532): welke kenmerken van deze auto bekend zijn, en wat
   // NIET te beoordelen is omdat een regel uitgaat van een onbekend kenmerk.
   // Ná de aanlevering: die rekent de bevindingen door en noteert wat onbeslist is.
-  try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }
+  if(!_ext) try{ if(window.PLKenmerk) sys += PLKenmerk.blok(); }
   catch(e){ console.warn('Kenmerkenblok niet aan de AI-prompt toegevoegd — de AI weet dan niet welke regels voor deze auto niet gelden (#532)', e); }
 
   const mdl = model || 'claude-sonnet-5';
@@ -881,7 +886,7 @@ async function exportAIReportPDF(btn){
     window._lastPdf={blob:doc.output('blob'), fname};
     // PDF bewaren in het sessie-rapportarchief zodat hij later opnieuw
     // gedeeld/gedownload kan worden zonder opnieuw te genereren.
-    try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname}); }catch(e){ console.warn('PDF niet in het rapportarchief gezet — later opnieuw delen/downloaden zonder opnieuw te genereren lukt dan niet', e); }
+    try{ registerSessionReport({type:'pdf', title:fname, text:(window._lastAIReport&&window._lastAIReport.text)||'', blob:window._lastPdf.blob, fname, extern:(window._lastAIReport&&window._lastAIReport.meting&&window._lastAIReport.meting.extern)||null}); }catch(e){ console.warn('PDF niet in het rapportarchief gezet — later opnieuw delen/downloaden zonder opnieuw te genereren lukt dan niet', e); }
     await pdfBewaar();
   }catch(e){
     log('PDF export fout: '+e.message+' — TXT-fallback','err');
