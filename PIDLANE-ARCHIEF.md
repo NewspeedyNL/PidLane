@@ -23,7 +23,7 @@ Sessie `app-2026-11-17-1515` (OBDLink MX+, CAN 11/500, VIN niet leesbaar via mod
 
 Toch bleef de accutegel leeg, en dat wás de app: alles wat accuspanning toont las alleen 0142, terwijl de adapter de spanning op pin 16 zelf meet (`ATRV`). ATRV werd alleen in de accutest, functietest, het veldlab en de snelheidsproeven gebruikt. Sindsdien vult de pollus 0142 met ATRV zodra de ECU hem ontkent (`plAccuViaAdapter()` in `pidlane-plload.js`). Bewust níét bij "onbekend": dan gaat de ECU voor, want ATRV meet aan de stekker en ligt onder belasting een paar tienden lager.
 
-Het "weinig PIDs" had een tweede oorzaak die hier niet is opgelost: bij elke verbinding stond eerst een selectie van twaalf met 012F, 0149, 0142 en 015C — die de i20 alle vier niet meldt. "Data stabiel · pidCount=23 stabiel=13": tien tegels die nooit iets toonden. Zie het issue van deze datum.
+Het "weinig PIDs" had een tweede oorzaak die hier niet is opgelost: bij elke verbinding stond eerst een selectie van twaalf met 012F, 0149, 0142 en 015C — die de i20 alle vier niet meldt. "Data stabiel · pidCount=23 stabiel=13": tien tegels die nooit iets toonden. Zie #733.
 
 ## 16-11-2026 — Een ingelezen log stond op naam van de verbonden auto
 
