@@ -17,6 +17,12 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 17-11-2026 — #733: de twaalf kwamen van de meetcoach; #729: sprongen weglaten in plaats van de sensor afkeuren
+
+**#733.** De twaalf PIDs die bij elke verbinding van de i20 eerst aanstonden waren de sensoren van de meetopdrachten: `PLOpdracht.zetSensorenAlle(12)`, aangeroepen door de meetcoach zodra er verbinding was (alleen met de ontwikkelaarsrol). Die keek niet of de auto ze had, en draaide vóór de PID-lijst er was. Het vermoeden in het issue (een preset, `pl_selectie`, een profiel van de vorige auto) klopte dus niet; het getal 12 was het plafond `CFG.sensorMax`. Bevestigd met `verbindprofielen`: 29 ondersteund, en de vier ontbreken.
+
+**#729.** Gekozen (17-11, eigenaar): sprongen uit de reeks halen en de rest gewoon beoordelen, met minstens twijfel, in plaats van de hele sensor "meetfout" te noemen. Anders verdwijnt een echte oververhitting achter één verminkt antwoord. De drempels (5 °C/s, minstens 15 heen én terug) zijn een schatting; een thermostaat die opengaat haalt geen 5 °C/s in de gemeten waarde. `test-verzamelroutes.js` gebruikte toevallig 90 → 112 → 95 in twee seconden als gewone reeks; die staat nu op tien seconden per monster.
+
 ## 17-11-2026 — Hyundai i20 2011: geen accuspanning, en een selectie van een andere auto
 
 Sessie `app-2026-11-17-1515` (OBDLink MX+, CAN 11/500, VIN niet leesbaar via mode 09). Wat de ECU meldt, af te lezen uit de selectie bij "check: knop": 27 standaard-PIDs, waaronder 0141 en 0143–0146 — maar **geen 0142**. Dat is de ECU, niet de app: blok 0x40 is gelezen en het bit staat uit.
