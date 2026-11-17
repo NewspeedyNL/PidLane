@@ -701,6 +701,20 @@
     return JSON.parse(JSON.stringify(_gedaan));
   }
 
+  /* Kan deze auto de sensor leveren? (#733, 17-11-2026) Alleen wat de auto
+     meldt (supportedPIDs) of wat in de keuzelijst staat (berekend, eigen,
+     accuspanning via de adapter). Zonder PID-lijst — het verbinden is nog
+     bezig — niets: een Hyundai i20 kreeg zo bij elke verbinding 012F, 0149,
+     0142 en 015C van de opdrachten, en toonde tien tegels die nooit iets
+     leverden. */
+  function _kanMeten(p) {
+    try {
+      if (typeof supportedPIDs === 'undefined' || !supportedPIDs || !supportedPIDs.size) return false;
+      if (supportedPIDs.has(p)) return true;
+      return typeof discoveredPIDDefs !== 'undefined' && Array.isArray(discoveredPIDDefs) && discoveredPIDDefs.some(function (d) { return d.pid === p; });
+    } catch (e) { console.warn('Opdracht: PID-lijst onleesbaar — sensor niet aangezet (#733)', e); return false; }
+  }
+
   /* De sensoren van de opdracht aanzetten. Apart van haal(), want ophalen is
      iets anders dan ingrijpen in wat er gemeten wordt — en de testrun bepaalt
      zelf wanneer dat mag. Geeft terug wat er werkelijk bijkwam. */
@@ -710,7 +724,7 @@
     try {
       if (typeof activePIDs === 'undefined' || !activePIDs) return [];
       _actief.sensoren.forEach(function (p) {
-        if (!activePIDs.has(p)) { activePIDs.add(p); erbij.push(p); }
+        if (!activePIDs.has(p) && _kanMeten(p)) { activePIDs.add(p); erbij.push(p); }
       });
     } catch (e) {
       console.warn('Opdracht: sensoren niet aangezet (#241)', e);
@@ -728,7 +742,7 @@
       if (typeof activePIDs === 'undefined' || !activePIDs || !_opdrachten) return [];
       _opdrachten.forEach(function (r) {
         ((r.opdracht && r.opdracht.sensoren) || []).forEach(function (p) {
-          if (erbij.length < n && !activePIDs.has(p)) { activePIDs.add(p); erbij.push(p); }
+          if (erbij.length < n && !activePIDs.has(p) && _kanMeten(p)) { activePIDs.add(p); erbij.push(p); }
         });
       });
     } catch (e) {

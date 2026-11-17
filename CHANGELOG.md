@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Meetcoach zet alleen sensoren aan die deze auto heeft (#733)
+ ═════════════════════════════════════════════════════
+   • Hyundai i20 2011: bij elke verbinding stonden eerst 12 PIDs aan, waarvan 4 die de ECU niet meldt (012F, 0149, 0142, 015C) — 10 tegels nooit stabiel. Bron: PLOpdracht.zetSensorenAlle() (meetcoach, ontwikkelaarsrol) zette de sensoren van alle meetopdrachten aan zonder te kijken, vóór de PID-lijst er was
+   • zetSensoren/zetSensorenAlle: alleen wat de auto meldt of in de keuzelijst staat; zonder PID-lijst niets. De meetcoach laadt pas na "Verbinding compleet". Drie mutaties
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Accuspanning via de adapter (ATRV) als de ECU 0142 ontkent
  ═════════════════════════════════════════════════════
    • Hyundai i20 2011: steunbits melden 0141 en 0143–0146, niet 0142 — de accutegel bleef leeg. Ontkent de ECU 0142 (steunbit uit of NO DATA op blok 0x40), dan vraagt de pollus 0142 niet meer en zet elke 2 s de ATRV-waarde erop; de keuzelijst toont "Accuspanning (adapter)" en de standaardset neemt hem mee. Zegt de ECU ja of is het onbekend: ongewijzigd
