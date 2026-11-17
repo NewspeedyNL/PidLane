@@ -97,8 +97,17 @@ const GOED = {
       geladen.herkomst && geladen.herkomst.id === 'recTEST', JSON.stringify(geladen.herkomst));
 
     console.log('\n3. De sensoren landen in de ECHTE selectie');
+    // Zonder PID-lijst gaat er niets aan (#733): dat is de tegenproef. Daarna
+    // de lijst van een auto die beide sensoren meldt.
+    const leeg = JSON.parse(await app.ev(`(function(){
+      activePIDs.clear(); var oud = supportedPIDs; supportedPIDs = new Set();
+      var erbij = PLOpdracht.zetSensoren(); supportedPIDs = oud;
+      return JSON.stringify({ erbij: erbij, inSelectie: [...activePIDs] });
+    })()`));
+    toets('TEGENPROEF: zonder PID-lijst zet de opdracht niets aan (#733)', leeg.erbij.length === 0 && leeg.inSelectie.length === 0, JSON.stringify(leeg));
     const sel = JSON.parse(await app.ev(`(function(){
       activePIDs.clear();
+      supportedPIDs = new Set(['010C', '0142', '011F']);
       var erbij = PLOpdracht.zetSensoren();
       return JSON.stringify({ erbij: erbij, inSelectie: [...activePIDs], nogEens: PLOpdracht.zetSensoren() });
     })()`));

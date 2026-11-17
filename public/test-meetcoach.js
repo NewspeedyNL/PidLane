@@ -34,6 +34,7 @@ function maak() {
     console: { warn() {}, log() {} }, Promise, Date, JSON, Math, Object, String,
     setInterval: () => 1, clearInterval() {},
     connected: true, demoMode: false, magOntwikkelen: () => true, log() {},
+    _plVerbindingKlaar: 1,
     lijstN: 0, sensoren: null, verzonden: [], busRun: [], stand: { toestand: 'rijden', sinds: 0 }, alle: []
   };
   c.window = c;
@@ -131,6 +132,10 @@ const flush = () => new Promise((r) => setImmediate(r));
 
   console.log('\n4. De automatiek');
   c = maak();
+  c._plVerbindingKlaar = 0;
+  c.PLMeetcoach.tik(); await flush();
+  toets('verbinden nog bezig: geen lijst en geen sensoren (#733)', c.lijstN === 0 && c.sensoren === null, c.lijstN + ' ' + c.sensoren);
+  c._plVerbindingKlaar = Date.now();
   c.PLMeetcoach.tik(); await flush(); c.PLMeetcoach.tik(); await flush();
   toets('verbonden: de lijst één keer geladen, sensoren erbij met het plafond', c.lijstN === 1 && c.sensoren === 12, c.lijstN + ' ' + c.sensoren);
   c.connected = false; c.PLMeetcoach.tik(); c.PLMeetcoach.tik();

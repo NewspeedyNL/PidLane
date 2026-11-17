@@ -177,7 +177,8 @@ const ROUTES = [
      en de AI-Automonteur is een vraag-en-antwoordvenster. Ook die krijgen
      sindsdien de samenvatting over het venster en een aanlevering uit die
      samenvatting — dezelfde drie vragen als hierboven. */
-  const reeks = [85, 88, 90, 112, 95, 91, 89, 90].map((v, i) => ({ t: 1000 + i * 2000, v }));
+  // Tien seconden per monster: 90 → 112 → 95 in twee seconden is sinds #729 een sprong.
+  const reeks = [85, 88, 90, 112, 95, 91, 89, 90].map((v, i) => ({ t: 1000 + i * 10000, v }));
   w.getPidDef = () => ({ name: 'Koelwater temp', unit: '°C' }); w.isReportableSensor = () => true;
   const ZONDER = [
     { naam: 'pidRecAiText', bestand: 'pidlane-koopcheck.js', kop: 'async function pidRecAiText(prob){', args: ['trilt'],

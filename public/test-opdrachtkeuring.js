@@ -141,6 +141,13 @@ async function hoofd() {
     // Meetcoach (24-10-2026): ongekeurd telt als `auto`; rood blijft rood.
     toets('opstelling: ongekeurd telt als auto', O.opstelling('2') === 'auto', O.opstelling('2'));
     toets('opstelling: rood blijft rood (een mens zei nee)', O.opstelling('1') === 'rood', O.opstelling('1'));
+    s.activePIDs = new Set();
+    toets('zetSensorenAlle: zonder PID-lijst (verbinden bezig) niets (#733)', O.zetSensorenAlle(12).length === 0 && s.activePIDs.size === 0);
+    s.supportedPIDs = new Set(['010C']); s.discoveredPIDDefs = [];
+    toets('zetSensorenAlle: wat de auto niet meldt, gaat niet aan (#733)', O.zetSensorenAlle(12).length === 0 && s.activePIDs.size === 0);
+    s.discoveredPIDDefs = [{ pid: '010D' }];
+    toets('zetSensorenAlle: wat in de keuzelijst staat (berekend, adapter) wél', JSON.stringify(O.zetSensorenAlle(12)) === '["010D"]');
+    s.supportedPIDs = new Set(['010C', '010D']); s.discoveredPIDDefs = [];
     s.activePIDs = new Set(['010C']);
     toets('zetSensorenAlle: de sensoren van alle opdrachten, wat al aanstaat niet dubbel', JSON.stringify(O.zetSensorenAlle(12)) === '["010D"]' && s.activePIDs.has('010D'), JSON.stringify([...s.activePIDs]));
     s.activePIDs = new Set();

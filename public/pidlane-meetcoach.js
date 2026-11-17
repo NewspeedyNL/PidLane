@@ -216,6 +216,8 @@
 
   function laad() {
     if (S.geladen || S.laden || !window.PLOpdracht || typeof PLOpdracht.lijst !== 'function') return;
+    // Pas als het verbinden klaar is: dan staat de PID-lijst van déze auto (#733).
+    if (!(window._plVerbindingKlaar > 0)) return;
     S.laden = true;
     Promise.resolve(PLOpdracht.lijst()).then(function () {
       S.geladen = true;
