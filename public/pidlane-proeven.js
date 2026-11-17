@@ -38,6 +38,20 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Trimkaart-telling per vak en zonder terugval (17-11-2026) ──
+  {
+    issue: '#738',
+    naam: 'De trimkaart-telling van de meetopdracht neemt per vak de rijkste bron en zakt niet terug als de live-historie doorschuift',
+    waarom: 'In de meetrit van 17-11 werd "Trimkaart: 8+ monsters tussen 1800 en 3200 tpm" drie keer opnieuw vervuld: de bron met de meeste monsters samen won, ook als hij minder deelmonsters had.',
+    proef: async function () {
+      if (!window.PLOnderzoek || typeof PLOnderzoek.maat !== 'function') return { staat: 'LET OP', detail: 'PLOnderzoek.maat ontbreekt (herladen?)' };
+      var a = PLOnderzoek.maat('onderzoek-kaart-deel-n'), b = PLOnderzoek.maat('onderzoek-kaart-deel-n');
+      if (a !== null && typeof a !== 'number') return { staat: 'FOUT', detail: 'de telling geeft geen getal of null: ' + a };
+      if (a !== null && b < a) return { staat: 'FOUT', detail: 'de telling zakte tussen twee lezingen: ' + a + ' → ' + b };
+      return { staat: 'ok', detail: a === null ? 'nog geen trimmonsters deze sessie' : a + ' deelmonsters, stabiel' };
+    }
+  },
+
   // ── Meetcoach meldt het verloop van alle meetproeven in het logboek (17-11-2026) ──
   {
     issue: '—',
