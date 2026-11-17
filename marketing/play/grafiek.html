@@ -3,40 +3,91 @@
 <head>
 <meta charset="utf-8">
 <title>PidLane feature graphic</title>
-<!-- De feature graphic voor de Play Store: 1024×500 (02-11-2026). Render: node marketing/play/render.js
-     Belangrijk staat binnen het midden: Play legt soms een afspeelknop of verloop over de randen. -->
+<!-- Feature graphic voor de Play Store: 1024×500, PNG (eis Play: png/jpeg, max. 15 MB).
+     Render: node marketing/play/render.js → uit/feature-graphic.png
+     Alles wat telt staat minstens 40 px van de rand: Play legt soms een verloop of
+     afspeelknop over het beeld. Beide schermen zijn de echte app (rauw/, demomodus). -->
 <style>
 @font-face { font-family:"DM Sans"; src:url(../fonts/dmsans.woff2) format("woff2"); font-weight:100 1000; }
+@font-face { font-family:"DM Mono"; src:url(../fonts/dmmono-500.woff2) format("woff2"); font-weight:500; }
 * { box-sizing:border-box; margin:0; padding:0; }
-body { width:1024px; height:500px; overflow:hidden; font-family:'DM Sans',sans-serif; color:#eef2fa; background:#0a0e17; }
+:root { --bg:#070a12; --tx:#eef2fa; --tx2:#a7b2c8; --gn:#1fd189; --cy:#4fd6f0; --pu:#9a78ff; --bl:#4d82ff; }
+body { width:1024px; height:500px; overflow:hidden; font-family:'DM Sans',sans-serif; color:var(--tx); background:var(--bg); -webkit-font-smoothing:antialiased; }
 .vlak { position:relative; width:1024px; height:500px; overflow:hidden;
-  background: radial-gradient(circle at 78% 55%, rgba(31,209,137,.35), transparent 45%),
-              radial-gradient(circle at 8% 0%, rgba(154,120,255,.30), transparent 45%),
-              linear-gradient(160deg,#101830,#0a0e17 60%); }
-.vlak::before { content:""; position:absolute; inset:0; opacity:.5;
-  background-image:linear-gradient(rgba(77,130,255,.08) 1px,transparent 1px), linear-gradient(90deg,rgba(77,130,255,.08) 1px,transparent 1px);
-  background-size:40px 40px; mask-image:linear-gradient(90deg,#000,transparent 70%); }
-.beeld { position:absolute; right:-250px; top:70px; width:740px; border-radius:26px; overflow:hidden; transform:perspective(1200px) rotateY(-14deg);
-  box-shadow:0 30px 80px rgba(0,0,0,.6), 0 0 90px rgba(31,209,137,.35); border:1.5px solid rgba(255,255,255,.14); }
-.beeld img { display:block; width:100%; }
-.beeld::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg, rgba(10,14,23,.0) 60%, rgba(10,14,23,.85)); }
-.tekst { position:absolute; left:64px; top:0; bottom:0; width:470px; display:flex; flex-direction:column; justify-content:center; }
-.merk { display:flex; align-items:center; gap:16px; font-weight:850; font-size:46px; letter-spacing:-.5px; }
-.merk img { width:74px; height:74px; border-radius:24%; box-shadow:0 0 40px rgba(31,209,137,.45); }
-.kop { margin-top:26px; font-size:42px; font-weight:850; line-height:1.05; letter-spacing:-1.2px; }
-.kop em { font-style:normal; background:linear-gradient(90deg,#1fd189,#4fd6f0); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.sub { margin-top:16px; font-size:21px; color:#a7b2c8; font-weight:500; }
+  background:
+    radial-gradient(ellipse 520px 320px at 74% 52%, rgba(31,209,137,.22), transparent 70%),
+    radial-gradient(ellipse 460px 300px at 0% 0%, rgba(154,120,255,.28), transparent 70%),
+    radial-gradient(ellipse 400px 260px at 100% 100%, rgba(77,130,255,.18), transparent 70%),
+    linear-gradient(165deg,#0f1630 0%,#0a0e19 55%,#070a12 100%); }
+/* de baan uit het icoon: perspectieflijnen naar één verdwijnpunt */
+.baan { position:absolute; inset:0; }
+.korrel { position:absolute; inset:0; opacity:.07; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+/* tekst links */
+.tekst { position:absolute; left:60px; top:0; bottom:0; width:420px; display:flex; flex-direction:column; justify-content:center; z-index:5; }
+.merk { display:flex; align-items:center; gap:14px; font-weight:800; font-size:34px; letter-spacing:-.4px; }
+.merk img { width:58px; height:58px; border-radius:24%; box-shadow:0 0 0 1px rgba(255,255,255,.10), 0 10px 30px rgba(0,0,0,.5), 0 0 36px rgba(31,209,137,.40); }
+.kop { margin-top:26px; font-size:47px; font-weight:850; line-height:1.02; letter-spacing:-1.6px; }
+.kop em { font-style:normal; background:linear-gradient(92deg,var(--gn),var(--cy)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sub { margin-top:16px; font-size:19px; line-height:1.35; color:var(--tx2); font-weight:500; max-width:380px; }
+.chips { margin-top:24px; display:flex; gap:8px; }
+.chip { font:500 12px/1 'DM Mono',monospace; letter-spacing:.12em; text-transform:uppercase; color:#cfe9ff;
+  padding:8px 11px; border-radius:999px; border:1px solid rgba(79,214,240,.28); background:rgba(79,214,240,.07); display:flex; align-items:center; gap:7px; }
+.chip i { width:7px; height:7px; border-radius:50%; background:var(--gn); box-shadow:0 0 8px var(--gn); }
+
+/* schermen rechts */
+.scherm { position:absolute; overflow:hidden; background:#000; }
+.scherm img { display:block; width:100%; height:100%; object-fit:cover; }
+.breed { left:470px; top:64px; width:480px; height:216px; border-radius:18px;
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 0 0 6px #0b0f18, 0 0 0 7px rgba(255,255,255,.10), 0 28px 70px rgba(0,0,0,.65), 0 0 80px rgba(31,209,137,.25); }
+.breed::after { content:""; position:absolute; inset:0; border-radius:inherit;
+  background:linear-gradient(115deg, rgba(255,255,255,.07), transparent 35%); pointer-events:none; }
+.toestel { position:absolute; left:822px; top:160px; width:150px; height:304px; border-radius:28px; padding:6px;
+  background:linear-gradient(160deg,#2a3246,#0d1119 40%,#1a2030); z-index:4;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14), 0 30px 60px rgba(0,0,0,.75), 0 0 60px rgba(77,130,255,.25); }
+.toestel .scherm { position:relative; width:100%; height:100%; border-radius:22px; }
+.toestel .scherm img { object-position:top; }
 </style>
 </head>
 <body>
 <div class="vlak">
-  <div class="beeld"><img src="rauw/hyperlane-liggend.png" alt=""></div>
+  <svg class="baan" viewBox="0 0 1024 500" aria-hidden="true">
+    <defs>
+      <linearGradient id="lijn" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#4fd6f0" stop-opacity=".30"/><stop offset="1" stop-color="#4fd6f0" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="streep" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#1fd189" stop-opacity=".55"/><stop offset="1" stop-color="#1fd189" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <!-- verdwijnpunt achter het brede scherm -->
+    <g stroke="url(#lijn)" stroke-width="1.2" fill="none">
+      <path d="M710 172 L420 500"/><path d="M710 172 L640 500"/>
+      <path d="M710 172 L1024 470"/><path d="M710 172 L1024 330"/><path d="M710 172 L540 500"/>
+    </g>
+    <path d="M710 172 L470 500" stroke="url(#streep)" stroke-width="2.4" stroke-dasharray="26 18" fill="none"/>
+    <!-- horizonnet, vervaagt naar links -->
+    <g stroke="#4d82ff" stroke-opacity=".06">
+      <path d="M0 420H1024"/><path d="M0 460H1024"/><path d="M0 385H1024"/>
+    </g>
+  </svg>
+  <div class="korrel"></div>
+
   <div class="tekst">
     <div class="merk"><img src="../icon.png" alt="">PidLane</div>
-    <div class="kop">Je auto <em>live</em>,<br>je monteur <em>kijkt mee</em></div>
-    <div class="sub">OBD2 · foutcodes · diagnose in gewone taal</div>
+    <div class="kop">Je auto <em>live</em>,<br>je monteur<br><em>kijkt mee</em></div>
+    <div class="sub">Foutcodes en sensoren uit je OBD2-poort, uitgelegd in gewone taal.</div>
+    <div class="chips"><span class="chip"><i></i>OBD2</span><span class="chip">Bluetooth</span><span class="chip">Android</span></div>
   </div>
+
+  <div class="scherm breed"><img src="rauw/hyperlane-liggend.png" alt=""></div>
+  <div class="toestel"><div class="scherm"><img src="rauw/check.png" alt=""></div></div>
 </div>
-<script>document.body.dataset.klaar = 1;</script>
+<script>
+Promise.all([document.fonts.ready, ...[...document.images].map(i => i.decode().catch(() => {}))])
+  .then(() => { document.body.dataset.klaar = 1; });
+</script>
 </body>
 </html>
