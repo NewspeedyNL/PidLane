@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Admin: Modulecommando's — een commando of recept naar één stuurapparaat
+ ═════════════════════════════════════════════════════
+   • Adminmenu → 🧰 Modulecommando's: adres (bv. 7D0) en bytes (bv. 22 F1 90), het antwoord met de vertaalde weigering (NRC). Alleen hex, 1–7 bytes, 11-bit adres
+   • Receptenlijst per merk/model/module (bv. Hyundai i20 · Airbag), stappen per regel; de reeks stopt bij de eerste weigering. Geen ingebakken recepten
+   • Schrijvend (alles behalve een lezende dienst, ook 04 en een onbekende dienst): eerst één bevestiging met elk commando, dan zelf 010D/010C lezen — alleen 0 km/u en 0 tpm gaat door. Alles in het logboek; daarna terug op 7DF
+   • test-modulecmd.js: 35 controles, zeven mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Trimkaart-voorwaarde flappert niet meer (#738)
  ═════════════════════════════════════════════════════
    • PLOnderzoek.maat('onderzoek-kaart-…-n'): per vak de rijkste bron (rit, datalog, live) in plaats van de bron met de meeste monsters samen, en wat eenmaal gemeten is blijft deze sessie staan. In de meetrit van 17-11 werd de deelvoorwaarde drie keer opnieuw vervuld

@@ -38,6 +38,25 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Modulecommando's: schrijven alleen na de vraag en bij stilstand (17-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Modulecommando\'s: een schrijvend commando gaat niet zonder bevestiging, niet bij draaiende motor, en de adapter staat daarna weer op 7DF',
+    waarom: 'Nieuw adminvenster dat naar een stuurapparaat kan schrijven (bv. airbagmodule). De remmen moeten in de geladen app werken, niet alleen in de node-test.',
+    proef: async function () {
+      var M = window.PLModuleCmd;
+      if (!M || typeof M.voerUit !== 'function') return { staat: 'FOUT', detail: 'PLModuleCmd ontbreekt — pidlane-modulecmd.js niet geladen (herladen?)' };
+      var tx = [], stuur = function (c) { tx.push(c); return Promise.resolve({ '010D': '41 0D 00', '010C': '41 0C 0C 80', '1101': '51 01' }[c] || 'OK'); };
+      var bus = function (n, f) { return f(); };
+      var nee = await M.voerUit('7D0', ['1101'], { stuur: stuur, vraag: function () { return Promise.resolve(false); }, bus: bus });
+      if (nee.staat !== 'afgebroken' || tx.length) return { staat: 'FOUT', detail: 'na "nee" ging er toch iets op de bus: ' + tx.join(' ') };
+      var aan = await M.voerUit('7D0', ['1101'], { stuur: stuur, vraag: function () { return Promise.resolve(true); }, bus: bus });
+      if (aan.staat !== 'geweigerd' || tx.indexOf('1101') >= 0) return { staat: 'FOUT', detail: 'met 800 tpm ging 11 01 toch weg: ' + tx.join(' ') };
+      if (tx[tx.length - 2] !== 'ATSH7DF') return { staat: 'FOUT', detail: 'de adapter staat daarna niet op 7DF: ' + tx.join(' ') };
+      return { staat: 'ok', detail: 'nee = niets verstuurd; motor aan = geweigerd; terug op 7DF' };
+    }
+  },
+
   // ── Trimkaart-telling per vak en zonder terugval (17-11-2026) ──
   {
     issue: '#738',
