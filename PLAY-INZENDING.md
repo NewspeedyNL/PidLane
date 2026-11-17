@@ -7,7 +7,8 @@ en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadr
 (3.3.0: lampjesgids met foto in §3 en §11, kenteken-check en conditiescore in
 §3, nieuwe release notes in §14, §16b voor 3.3) en 22-10-2026 (3.4.0:
 aankooprapport en wintercheck in §3, nieuwe release notes in §14, §16b voor
-3.4) en 06-11-2026 (3.5.0: nieuwe release notes in §14, §16b voor 3.5). Dit
+3.4) en 06-11-2026 (3.5.0: nieuwe release notes in §14, §16b voor 3.5) en
+17-11-2026 (pakkender §2 en §3, zelfde feiten). Dit
 bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
@@ -86,10 +87,15 @@ Maximaal 80 tekens. Dit is de regel onder de titel in de zoekresultaten en
 het is de enige tekst die iedereen leest.
 
 ```
-Je auto live op je scherm: foutcodes, diagnose en je monteur kijkt mee.
+Lampje aan? Lees je auto uit via OBD2 en laat je monteur live meekijken.
 ```
 
-**Sinds 02-11-2026:** de app laat zich zien (Hyperlane, Check mijn auto) en het
+**Sinds 17-11-2026:** opent met de vraag die iemand tot zoeken brengt
+("Lampje aan?") en zet "OBD2" en het meekijken in één regel — 72 tekens. §3
+volgt dezelfde lijn: probleem, Check mijn auto, meekijken, daarna de rest;
+Vaste expert staat erbij (#646, al in §14). De privacy-alinea is ongewijzigd.
+
+**Daarvoor, sinds 02-11-2026:** de app laat zich zien (Hyperlane, Check mijn auto) en het
 meekijken staat ernaast — de schermen en de feature graphic doen hetzelfde.
 71 tekens. Daarvoor, sinds 17-10-2026, stond Expert op afstand alleen voorop: de
 bestuurder deelt zijn live data, een monteur of kenner kijkt mee. "OBD2-adapter"
@@ -105,38 +111,38 @@ Maximaal 4000 tekens. De eerste alinea doet het werk tegen de
 hardware aan te pas komt die een browser niet kan aansturen.
 
 ```
-PidLane maakt via Bluetooth verbinding met een OBD2-adapter in de
-diagnosepoort van je auto en leest rechtstreeks de boordcomputer uit. Je ziet
-live wat je auto doet, weet binnen een halve minuut wat een lampje betekent,
-en laat je monteur meekijken, waar hij ook is.
+Lampje aan of twijfel bij een occasion? PidLane maakt van je telefoon een
+diagnosecomputer. Steek een OBD2-adapter met Bluetooth in de
+diagnosepoort van je auto en PidLane leest rechtstreeks de boordcomputer uit:
+live sensorwaarden, foutcodes en keuringsstatus, uitgelegd in gewone taal.
+Wil je een tweede mening? Dan kijkt je monteur live mee, waar die ook is.
 
-JE AUTO, ZOALS JE HEM NOG NOOIT ZAG
+LAMPJE AAN? WEET HET IN EEN HALVE MINUUT
 
-Hyperlane maakt van je dashboard een lichttunnel die meestroomt met je
-snelheid: links het toerental, rechts de snelheid, in het midden wat er nu
-toe doet, met schakellampjes en een 0–100-meting. Kies je stand —
-Eco, Sport of Cruise — en je ziet per stand de sensoren die ertoe doen, of
-laat Auto vanzelf meeschakelen.
+Tik op Check mijn auto. PidLane leest de foutcodes en de keuringsstatus uit
+en zegt in gewone taal wat er aan de hand is en wat je nu doet.
 
 JE MONTEUR KIJKT LIVE MEE
 
 1. Adapter in de OBD2-poort, tik op Laat iemand meekijken.
 2. Deel de code, QR of link — voorlezen, scannen of via WhatsApp.
-3. De expert ziet je live data op zijn eigen telefoon. Hij kan waarden en
+3. De expert ziet je live data op de eigen telefoon en kan waarden en
    foutcodes opvragen, maar niets veranderen: alleen lezen.
 
-WAT PIDLANE NOG MEER DOET
+JE AUTO, ZOALS JE HEM NOG NOOIT ZAG
 
-• Check mijn auto — foutcodes en keuringsstatus in ongeveer een halve minuut,
-  met uitleg in gewone taal en wat je nu doet.
-• Diagnoserapport — de meting uitgelegd: wat is er aan de hand, hoe zeker
-  is dat, en welk onderdeel is de eerste verdachte.
-• Slim — de sensoren bij wat je auto op dit moment doet, met het normale
-  bereik erbij.
+Hyperlane maakt van je dashboard een lichttunnel die meestroomt met je
+snelheid, met schakellampjes en een 0–100-meting. Kies Eco, Sport of Cruise en je
+ziet per stand de sensoren die ertoe doen.
+
+ALLES WAT PIDLANE NOG MEER DOET
+
+• Diagnoserapport — wat er aan de hand is, hoe zeker dat is en welk
+  onderdeel als eerste verdacht is.
+• Slim — de sensoren bij wat je auto nu doet, met het normale bereik.
 • Grafieken — het verloop, met het normale bereik als band.
 • Accu & laadsysteem — laadspanning, startdip en trend.
-• Waakronde — loopt rustig langs de sensoren die je niet bekijkt en meldt
-  alleen wat je zou moeten weten.
+• Waakronde — houdt de sensoren in de gaten die je niet bekijkt.
 • Ritmonitor — let tijdens het rijden op uitval en uitschieters.
 • Koopcheck — verraden de readiness-monitors dat er kort geleden fouten
   zijn gewist?
@@ -146,6 +152,7 @@ WAT PIDLANE NOG MEER DOET
 • Kenteken-check — APK, verzekering en terugroepacties (RDW).
 • Mijn voertuigen — tot drie auto's, met rapporten, ritten en je eigen
   sensoren per auto.
+• Vaste expert — je verkoper of garage mag meekijken.
 • Wintercheck — banden, ruitensproeier en het weerbericht.
 • Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
 
@@ -156,8 +163,8 @@ Pro BT 3.0; andere ELM327-adapters werken meestal ook. Vrijwel elke
 personenauto vanaf bouwjaar 2001 (benzine) of 2004 (diesel) heeft een
 OBD2-poort.
 
-Zonder adapter kun je de app toch bekijken: er zit een demomodus in met
-een gesimuleerde auto. Geen account nodig.
+Nog geen adapter? Probeer de demomodus met een gesimuleerde auto. Geen
+account nodig.
 
 OVER DE AI-ANALYSE
 
