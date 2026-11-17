@@ -66,9 +66,25 @@ console.log('A. Het oordeel per sensor, over het hele venster');
   toets('en hij telt hoe vaak: 2 van 20', r.buiten === 2 && /alarmgrens/.test(r.reden), JSON.stringify(r));
   // Eén monster over de alarmgrens is een uitschieter (21-10-2026): let op,
   // niet rood. Koelwater springt niet in een seconde van 95 naar 112 en terug.
+  // Eén monster per tien seconden: 17 °C in 10 s kan, dus geen sprong (#729).
   const v1 = rond(85, 95); v1[7] = 112;
-  const r1 = een('0105', v1);
+  zet({ '0105': v1.map((v, i) => ({ t: 10000 * i, v })) });
+  const r1 = V.samenvatting(['0105']).rijen[0];
   toets('één meting van 112 °C: let op met "uitschieter", niet afwijkend  <- tegenproef', r1.oordeel === 'let' && /uitschieter/.test(r1.reden) && r1.buiten === 1, JSON.stringify(r1));
+  // Dezelfde 112 °C binnen één seconde heen en terug: fysiek onmogelijk (#729).
+  const r1s = een('0105', v1);
+  toets('112 °C één seconde heen en terug: sprong eruit, twijfel, geen let op (#729)', r1s.oordeel === 'twijfel' && r1s.sprongen === 1 && r1s.max === 95 && /sprong/.test(r1s.reden), JSON.stringify(r1s));
+  // Het geval uit het issue: steeds weer één monster 215 °C.
+  const v2 = rond(88, 92, 40); [5, 15, 25, 35].forEach(i => { v2[i] = 215; });
+  const r2 = een('0105', v2);
+  toets('90 → 215 → 90 °C, vier keer: niet afwijkend maar twijfel, met 4 sprongen (#729)', r2.oordeel === 'twijfel' && r2.sprongen === 4 && r2.max === 92, JSON.stringify(r2));
+  // Een steile maar doorgaande stijging is geen heen-en-terug: niets weglaten.
+  const r4 = een('0105', [90, 90, 110, 130, 150, 150, 150, 150, 150, 150]);
+  toets('90 → 150 °C in stappen van 20 en blijven: geen sprong, afwijkend (#729)', r4.sprongen === 0 && r4.oordeel === 'afwijkend', JSON.stringify(r4));
+  // Een echte oververhitting onder de sprongen blijft zichtbaar.
+  const v3 = rond(112, 118, 20); v3[4] = 215;
+  const r3 = een('0105', v3);
+  toets('warm én een sprong: afwijkend blijft afwijkend, de sprong staat erbij (#729)', r3.oordeel === 'afwijkend' && /sprong/.test(r3.reden) && r3.max === 118, JSON.stringify(r3));
 }
 {
   const r = een('0105', rond(90, 104));

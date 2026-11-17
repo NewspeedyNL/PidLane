@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Verzamelscherm: losse sprongen in koelwater, olie en buitenlucht zijn een verminkt antwoord (#729)
+ ═════════════════════════════════════════════════════
+   • PLVerzamel.beoordeel(): een monster dat sneller heen en terug springt dan de grootheid fysiek kan (koelwater en olie 5 °C/s, buitenlucht 2 °C/s, sprong ≥ 15 resp. 10) gaat uit de reeks. De rest wordt gewoon beoordeeld; het oordeel is minstens twijfel, met "N losse sprongen weggelaten". 90 → 215 → 90 °C heet zo geen "afwijkend" meer; een echte oververhitting blijft afwijkend. Een fysiek onmogelijke waarde (300 °C) blijft meetfout
+   • test-verzamel.js: vier gevallen + drie mutaties
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Meetcoach zet alleen sensoren aan die deze auto heeft (#733)
  ═════════════════════════════════════════════════════
    • Hyundai i20 2011: bij elke verbinding stonden eerst 12 PIDs aan, waarvan 4 die de ECU niet meldt (012F, 0149, 0142, 015C) — 10 tegels nooit stabiel. Bron: PLOpdracht.zetSensorenAlle() (meetcoach, ontwikkelaarsrol) zette de sensoren van alle meetopdrachten aan zonder te kijken, vóór de PID-lijst er was

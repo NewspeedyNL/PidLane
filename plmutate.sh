@@ -2943,6 +2943,9 @@ MUTATIES=(
 "public/pidlane-samenhang.js@@    if (!r.gelezen.length) s += @@    if (false) s += @@test-samenhang.js@@een meting waarin niets te lezen viel, gaat naar de AI als \"geen verdenking\""
 "public/pidlane-verzamel.js@@        uitslagSam = metSamenhang(samNu(), histNu());@@        uitslagSam = samNu();@@bproef-verzamel.js@@het scherm toont de samenhang niet meer"
 "public/pidlane-verzamel.js@@    let s = (sam.samenhangTekst || '') + @@    let s = '' + @@test-verzamel.js@@de AI krijgt de samenhang niet meer"
+"public/pidlane-verzamel.js@@      if (Math.abs(z.v - a.v) > g.perS * (d1 + d2)) continue;   // geen heen-en-terug@@@@test-verzamel.js@@een trap omhoog (90 → 112 en blijven) telt als sprong en verdwijnt: een echte oververhitting wordt twijfel (#729)"
+"public/pidlane-verzamel.js@@      if (sprTekst && (oordeel === 'ok' || oordeel === 'twijfel')) { oordeel = 'twijfel';@@      if (false) {@@test-verzamel.js@@sprongen gaan stil uit de reeks: de sensor heet ok terwijl hij verminkte antwoorden gaf (#729)"
+"public/pidlane-verzamel.js@@      const av = alle.map(m => m.v);@@      const av = vals;@@test-verzamel.js@@300 °C wordt als sprong weggelaten in plaats van meetfout te heten (#729)"
 # ── 07-10-2026: wat een weergave toont (PLToon). Pedaal "vast op 20" en een tank die per scherm verschilde.
 "public/pidlane-toon.js@@      if (ABSOLUUT.indexOf(pid) >= 0 && val < ABS_ONDER) return 0;\n@@@@test-toon.js@@een verminkte 0 van het absolute pedaal verpest de geleerde rust: los leest daarna als 20 %"
 "public/pidlane-toon.js@@        .filter(v => ABSOLUUT.indexOf(pid) < 0 || v >= ABS_ONDER);@@;@@test-toon.js@@een verminkte 0 in de historie wordt als rust geleerd"

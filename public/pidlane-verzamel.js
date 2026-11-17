@@ -113,9 +113,40 @@
      `regel` is PID_TOESTAND[pid] (pidlane-data.js), `toestand` wat
      toestandUit() teruggeeft: monsters in regel.toestand gaan langs
      regel.grenzen in plaats van de vaste grens en PID_LET_OP. */
+  /* LOSSE SPRONGEN (#729, 17-11-2026). Koelwater 90 → 215 → 90 °C binnen een
+     seconde kan een koelcircuit niet: dat is een verminkt antwoord (0xFF), geen
+     oververhitting. 215 valt binnen de harde grens, dus de kwaliteitstoets zag
+     het niet, en twee zulke monsters maakten de sensor "afwijkend". Voor
+     trage grootheden: een monster dat er sneller uit en weer in gaat dan
+     `perS`, met een sprong van minstens `min` heen én terug, en buren die
+     onderling kloppen, is een sprong. Die gaat eruit; de rest wordt gewoon
+     beoordeeld en het oordeel is minstens twijfel. Alleen met tijden. */
+  const SPRONG = {
+    '0105': { perS: 5, min: 15 },   // koelwater
+    '015C': { perS: 5, min: 15 },   // olie
+    '0146': { perS: 2, min: 10 }    // buitenlucht
+  };
+  function sprongen(pid, paren) {
+    const g = SPRONG[pid], weg = new Set();
+    if (!g) return weg;
+    for (let i = 1; i < paren.length - 1; i++) {
+      const a = paren[i - 1], m = paren[i], z = paren[i + 1];
+      if (!getal(a.t) || !getal(m.t) || !getal(z.t)) continue;
+      const d1 = Math.max(m.t - a.t, 1) / 1000, d2 = Math.max(z.t - m.t, 1) / 1000;
+      const heen = Math.abs(m.v - a.v), terug = Math.abs(z.v - m.v);
+      if (heen < g.min || terug < g.min) continue;
+      if (heen / d1 <= g.perS || terug / d2 <= g.perS) continue;
+      if (Math.abs(z.v - a.v) > g.perS * (d1 + d2)) continue;   // geen heen-en-terug
+      weg.add(i);
+    }
+    return weg;
+  }
+
   function beoordeel(pid, reeks, def, letOp, kwal, regel, toestand) {
     const d = def || {};
-    const paren = (reeks || []).map(h => (h && typeof h === 'object') ? { t: h.t, v: h.v } : { t: null, v: h }).filter(m => getal(m.v));
+    const alle = (reeks || []).map(h => (h && typeof h === 'object') ? { t: h.t, v: h.v } : { t: null, v: h }).filter(m => getal(m.v));
+    const sprWeg = sprongen(pid, alle);
+    const paren = sprWeg.size ? alle.filter((m, i) => !sprWeg.has(i)) : alle;
     const vals = paren.map(m => m.v);
     const r = { pid, naam: d.name || pid, eenheid: d.unit || '', n: vals.length,
                 min: null, max: null, gem: null, laatste: null, oordeel: 'nodata', reden: '', buiten: 0,
@@ -124,12 +155,20 @@
     r.min = Math.min.apply(null, vals); r.max = Math.max.apply(null, vals);
     r.gem = vals.reduce((a, b) => a + b, 0) / vals.length;
     r.laatste = vals[vals.length - 1];
-    const zet = (oordeel, reden, buiten) => { r.oordeel = oordeel; r.reden = reden; r.buiten = buiten || 0; return r; };
+    r.sprongen = sprWeg.size;
+    const sprTekst = sprWeg.size ? sprWeg.size + ' losse sprong' + (sprWeg.size > 1 ? 'en' : '') + ' weggelaten (sneller heen en terug dan fysiek kan — een verminkt antwoord)' : '';
+    const zet = (oordeel, reden, buiten) => {
+      if (sprTekst && (oordeel === 'ok' || oordeel === 'twijfel')) { oordeel = 'twijfel'; reden = reden ? reden + ' · ' + sprTekst : sprTekst; }
+      else if (sprTekst && oordeel !== 'nodata') reden = reden + ' · ' + sprTekst;
+      r.oordeel = oordeel; r.reden = reden; r.buiten = buiten || 0; return r;
+    };
 
     // 1. Fysiek onmogelijk: geen afwijking maar een meetfout. Gaat vóór alles,
     //    anders leest een parse- of schaalfout als "koelwater 300 °C".
     if (kwal) {
-      for (const v of [r.laatste, r.min, r.max]) {
+      // Over álle monsters, ook de weggelaten sprongen: 300 °C blijft een meetfout.
+      const av = alle.map(m => m.v);
+      for (const v of [r.laatste, Math.min.apply(null, av), Math.max.apply(null, av)]) {
         let q = null;
         try { q = kwal(pid, v); } catch (e) { console.warn('PLVerzamel: kwaliteitsoordeel faalde voor ' + pid, e); }
         if (q && q.status === 'onzin') return zet('meetfout', q.reden || 'fysiek onmogelijke waarde');
