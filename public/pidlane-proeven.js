@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Account resetten, en de schone start die niet meer terugkomt (17-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Account resetten wist platform en toestel; een schone start wist bij de volgende start wat het afsluiten terugschreef',
+    waarom: 'Na "Nieuwe auto — schone start" kwam de vorige auto terug: pagehide schreef pl_appstate (voertuig, VIN, PIDs) na het wissen weer weg.',
+    proef: async function () {
+      if (!window.PLSchoon || typeof PLSchoon.naReset !== 'function' || !PLSchoon.MERK) return { staat: 'FOUT', detail: 'PLSchoon.naReset of het merkteken ontbreekt — oude pidlane-schoon.js (herladen?)' };
+      if (PLSchoon.bewaar('pl_appstate') || PLSchoon.bewaar('pl_selectie')) return { staat: 'FOUT', detail: 'de bewaarlijst houdt de sessiestaat of selectie van de vorige auto vast' };
+      if (!PLSchoon.bewaar('pl_tok') || !PLSchoon.bewaar('pl_session')) return { staat: 'FOUT', detail: 'de bewaarlijst laat de login los' };
+      var src = Array.prototype.map.call(document.querySelectorAll('script[src]'), function (e) { return e.getAttribute('src'); });
+      var iS = src.indexOf('pidlane-schoon.js'), iB = src.indexOf('pidlane-btflow.js');
+      if (iS < 0 || iB < 0 || iS > iB) return { staat: 'FOUT', detail: 'pidlane-schoon.js laadt niet vóór pidlane-btflow.js (' + iS + ' / ' + iB + ')' };
+      var merk = null; try { merk = localStorage.getItem(PLSchoon.MERK); } catch (e) { console.warn('proef: opslag onleesbaar', e); }
+      if (merk) return { staat: 'FOUT', detail: 'het merkteken staat er nog na de start — bijStart() draaide niet' };
+      return { staat: 'OK', detail: 'reset beschikbaar; schoon laadt als ' + (iS + 1) + 'e script, vóór btflow; geen merkteken over' };
+    }
+  },
+
   // ── Accuspanning via de adapter (17-11-2026) ──
   {
     issue: '—',

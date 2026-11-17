@@ -17,6 +17,15 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 17-11-2026 — Waarom "Nieuwe auto — schone start" de vorige auto terugbracht
+
+Melding van de eigenaar: na archiveren of een schone start bleven er stukjes van de vorige auto hangen. Twee oorzaken.
+
+1. **Het afsluiten schreef terug.** `PLSchoon.start()` wiste en deed `location.reload()`. Bij dat afsluiten draaien de `pagehide`-handlers nog: `persistAppState()` (koopcheck) zette `pl_appstate` terug met voertuig, VIN, PID-lijst en foutcodes. Ook de BT-log, het versnellingsprofiel (`PLGear._opslaan`) en de bulk-database kwamen terug. Bij de start laadde `restoreAppState()` die auto weer in (tot zes uur oud). Wissen vóór het herladen kan dat niet vangen. Daarom zet de herstart een merkteken en wist `PLSchoon` bij de volgende start nog eens, vóór elke module die opslag leest.
+2. **De knop is bewust alleen het toestel.** Mijn voertuigen op het platform blijft staan. PLGarage herkent daarna de auto en zet de vaste selectie en eigen PIDs terug. Dat is de bedoeling van "nieuwe auto". Voor "alles weg" is er nu Account resetten: `/klant/reset` plus hetzelfde wissen op het toestel.
+
+Bewust níét gewist bij een reset: meetlogs in D1 (`logregels`, `verbindprofielen`, opdrachtuitkomsten, batterijmeting). Die sturen niets terug naar de app. Ze gaan pas mee bij account verwijderen (besluit eigenaar, 17-11).
+
 ## 17-11-2026 — #733: de twaalf kwamen van de meetcoach; #729: sprongen weglaten in plaats van de sensor afkeuren
 
 **#733.** De twaalf PIDs die bij elke verbinding van de i20 eerst aanstonden waren de sensoren van de meetopdrachten: `PLOpdracht.zetSensorenAlle(12)`, aangeroepen door de meetcoach zodra er verbinding was (alleen met de ontwikkelaarsrol). Die keek niet of de auto ze had, en draaide vóór de PID-lijst er was. Het vermoeden in het issue (een preset, `pl_selectie`, een profiel van de vorige auto) klopte dus niet; het getal 12 was het plafond `CFG.sensorMax`. Bevestigd met `verbindprofielen`: 29 ondersteund, en de vier ontbreken.

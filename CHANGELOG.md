@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Account resetten; schone start laat de vorige auto niet meer terugkomen
+ ═════════════════════════════════════════════════════
+   • Account → Account resetten (met wachtwoord): /klant/reset wist op het platform voertuigen, rapporten, ritten, tankbeurten, open punten, voorkeuren en koppelingen (dezelfde lijst als de schone start bij inloggen); PLSchoon.naReset() wist het toestel en herstart. Login, tegoed, kasboek, akkoord, uitnodigcode, adapter en weergave blijven. Weigert tijdens een verbinding
+   • Bug in "Nieuwe auto — schone start": bij het herladen schreef pagehide pl_appstate (voertuig, VIN, PIDs, foutcodes), de BT-log, het versnellingsprofiel en de bulk-database terug, en restoreAppState() laadde de vorige auto weer in. Nu zet de herstart een merkteken en wist PLSchoon bij de start nog eens; pidlane-schoon.js laadt daarvoor direct na pidlane-data.js
+   • test-schoon.js: 15 nieuwe controles (start, reset, worker met echte SQLite) + vier mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Verzamelscherm: losse sprongen in koelwater, olie en buitenlucht zijn een verminkt antwoord (#729)
  ═════════════════════════════════════════════════════
    • PLVerzamel.beoordeel(): een monster dat sneller heen en terug springt dan de grootheid fysiek kan (koelwater en olie 5 °C/s, buitenlucht 2 °C/s, sprong ≥ 15 resp. 10) gaat uit de reeks. De rest wordt gewoon beoordeeld; het oordeel is minstens twijfel, met "N losse sprongen weggelaten". 90 → 215 → 90 °C heet zo geen "afwijkend" meer; een echte oververhitting blijft afwijkend. Een fysiek onmogelijke waarde (300 °C) blijft meetfout
