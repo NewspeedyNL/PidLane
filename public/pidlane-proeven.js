@@ -38,6 +38,25 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Meetcoach meldt het verloop van alle meetproeven in het logboek (17-11-2026) ──
+  {
+    issue: '—',
+    naam: 'De meetcoach zegt in het logboek welke voorwaarde vervuld raakt en welke proef sluit, en bij niets af per proef waarom',
+    waarom: 'Op 17-11 liep een meetrit van 13 min met ~20 logregels: niet na te gaan waarom geen enkele van de 8 opdrachten sloot.',
+    proef: async function () {
+      if (!window.PLMeetcoach || typeof PLMeetcoach.verloop !== 'function' || typeof PLMeetcoach.standRegels !== 'function')
+        return { staat: 'LET OP', detail: 'PLMeetcoach.verloop ontbreekt — meetcoach niet geladen of oude versie (herladen?)' };
+      var op = function (st, vv) { return { naam: 'proef', opdracht: { naam: 'proef' }, vonnis: { staat: st, reden: 'r', voorwaarden: vv.map(function (x) { return { wat: 'w', vervuld: x }; }) } }; };
+      var a = PLMeetcoach.verloop(null, [op('nog niet', [false])]);
+      var b = PLMeetcoach.verloop(a.stand, [op('gesloten', [true])]);
+      if (a.regels.length !== 0) return { staat: 'FOUT', detail: 'de eerste tik schrijft al veranderingen' };
+      if (b.regels.length !== 2) return { staat: 'FOUT', detail: 'voorwaarde + sluiten gaven ' + b.regels.length + ' regels in plaats van 2' };
+      var sr = PLMeetcoach.standRegels([op('nog niet', [false])]);
+      if (sr.open.length !== 1) return { staat: 'FOUT', detail: 'een open proef staat niet met zijn reden in de stand' };
+      return { staat: 'ok', detail: 'verloop en stand doen wat ze moeten' };
+    }
+  },
+
   // ── Account resetten, en de schone start die niet meer terugkomt (17-11-2026) ──
   {
     issue: '—',
