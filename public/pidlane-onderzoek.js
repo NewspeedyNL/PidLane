@@ -1343,7 +1343,7 @@
      mét trims, levert hij bank 2, hoe lang duurt de momentopname, vult een
      rit de trimkaart, en zegt de kaart hetzelfde als de gecontroleerde
      proef. null = niet gemeten deze sessie, nooit 0. */
-  var _m = { scans: 0, scanMs: null, ff: null, ffTrim: null, bank2: null };
+  var _m = { scans: 0, scanMs: null, ff: null, ffTrim: null, bank2: null, vak: { stationair: null, deel: null } };
   function noteerScan(u, ms) {
     _m.scans++;
     if (typeof ms === 'number') _m.scanMs = ms;
@@ -1352,16 +1352,23 @@
     _m.ffTrim = f ? ((typeof w['0106'] === 'number' || typeof w['0107'] === 'number') ? 1 : 0) : null;
     _m.bank2 = u && u.snap ? (getallen(u.snap['0109']).length ? 1 : 0) : null;
   }
-  // De rijkste bron telt: de meetvraag is of een rit genoeg oplevert.
-  function vakTelling() {
+  /* De rijkste bron telt, PER VAK (17-11-2026, #738). Tot dan won de bron met
+     de meeste monsters samen, en telde daarna één vak: wisselde de rijkste
+     bron (rit, datalog, live), dan zakte "deel" onder de 8 en flapperde de
+     voorwaarde in de meetrit van 17-11 drie keer op "vervuld". En de live-
+     historie schuift door: wat de rit eenmaal opleverde, blijft deze sessie
+     staan (_m.vak). null = nog niet gemeten. */
+  function vakTelling(vak) {
     var best = null;
     kaartBronnen().forEach(function (f) {
       var b = null;
       try { b = f(); } catch (e) { console.warn('PLOnderzoek: bron voor de vaktelling onleesbaar', e); }
       var v = b && b.hist ? trimVakken(b.hist) : null;
-      if (v && (!best || v.stationair.length + v.deel.length > best.stationair.length + best.deel.length)) best = v;
+      if (v && (best === null || v[vak].length > best)) best = v[vak].length;
     });
-    return best;
+    var eerder = _m.vak[vak];
+    if (best !== null && (eerder === null || best > eerder)) _m.vak[vak] = best;
+    return _m.vak[vak];
   }
   function maat(naam) {
     var m = (_st && _st.metingen) || {};
@@ -1374,8 +1381,7 @@
       case 'onderzoek-bankverschil':
         return m.ltft && m.ltft.b1 != null && m.ltft.b2 != null ? Math.round(Math.abs(m.ltft.b1 - m.ltft.b2) * 10) / 10 : null;
       case 'onderzoek-kaart-stationair-n': case 'onderzoek-kaart-deel-n': {
-        var v = vakTelling();
-        return v ? v[naam === 'onderzoek-kaart-deel-n' ? 'deel' : 'stationair'].length : null;
+        return vakTelling(naam === 'onderzoek-kaart-deel-n' ? 'deel' : 'stationair');
       }
       case 'onderzoek-kaart-afwijking': {
         var k = m.kaart, a = [];

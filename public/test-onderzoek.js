@@ -507,6 +507,7 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     eis(O.maat('onderzoek-kaart-afwijking') === 3, 'kaart tegen de proef: het grootste verschil (stationair 15 tegen 12)', O.maat('onderzoek-kaart-afwijking'));
     O._zetStaat({ metingen: { ltft: { b1: 14, b2: null }, kaart: { stationair: { trim: 15, n: 20 }, deel: null } } });
     eis(O.maat('onderzoek-bankverschil') === null && O.maat('onderzoek-kaart-afwijking') === null, 'tegenproef: geen bank 2 en geen proef → niet gemeten, niet 0');
+    eis(O.maat('onderzoek-kaart-deel-n') === null, 'zonder bron: niet gemeten');
     s.pidHist = {};
     ['010C', '0106', '0107', '0105'].forEach((p) => { s.pidHist[p] = []; });
     for (let i = 0; i < 12; i++) {
@@ -516,8 +517,19 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
     }
     eis(O.maat('onderzoek-kaart-stationair-n') === 2 && O.maat('onderzoek-kaart-deel-n') === 7, 'vaktelling uit de live-historie, koude monsters niet meegeteld, ook onder de kaartgrens',
       O.maat('onderzoek-kaart-stationair-n') + ' / ' + O.maat('onderzoek-kaart-deel-n'));
+    // #738: de live-historie schuift door — minder deelmonsters dan eerder haalt de telling niet omlaag.
+    const hist = (n, deel) => { const h = { '010C': [], '0106': [], '0107': [], '0105': [] };
+      for (let i = 0; i < n; i++) { ['0106', '0107'].forEach((p) => h[p].push({ t: i * 1000, v: 1 })); h['010C'].push({ t: i * 1000, v: i < n - deel ? 760 : 2400 }); h['0105'].push({ t: i * 1000, v: 90 }); }
+      return h; };
+    s.pidHist = hist(4, 2);
+    eis(O.maat('onderzoek-kaart-deel-n') === 7, 'de live-historie schuift door: wat eenmaal gemeten is blijft deze sessie staan (#738)', O.maat('onderzoek-kaart-deel-n'));
+    // #738: per vak de rijkste bron. De rit heeft meer monsters samen, de live-meting meer deelmonsters.
+    s.plRitBron = () => ({ naam: 'rit', hist: hist(30, 2) });
+    s.pidHist = hist(12, 10);
+    eis(O.maat('onderzoek-kaart-deel-n') === 10 && O.maat('onderzoek-kaart-stationair-n') >= 20, 'per vak de rijkste bron: de rit wint stationair, de live-meting houdt deel (#738)',
+      O.maat('onderzoek-kaart-stationair-n') + ' / ' + O.maat('onderzoek-kaart-deel-n'));
+    delete s.plRitBron;
     delete s.pidHist;
-    eis(O.maat('onderzoek-kaart-deel-n') === null, 'zonder bron: niet gemeten');
     eis(O.maat('bestaat-niet') === null, 'een onbekende naam: null');
   }
 

@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Trimkaart-voorwaarde flappert niet meer (#738)
+ ═════════════════════════════════════════════════════
+   • PLOnderzoek.maat('onderzoek-kaart-…-n'): per vak de rijkste bron (rit, datalog, live) in plaats van de bron met de meeste monsters samen, en wat eenmaal gemeten is blijft deze sessie staan. In de meetrit van 17-11 werd de deelvoorwaarde drie keer opnieuw vervuld
+   • test-onderzoek.js: twee controles + twee mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Meetcoach: het verloop van alle meetproeven staat in het logboek
  ═════════════════════════════════════════════════════
    • Na het laden: "N meetproeven lopen mee op deze rit — x af, y open", met per open proef waarom hij nog niet af is
