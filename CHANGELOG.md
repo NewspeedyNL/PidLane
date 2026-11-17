@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Meetcoach: het verloop van alle meetproeven staat in het logboek
+ ═════════════════════════════════════════════════════
+   • Na het laden: "N meetproeven lopen mee op deze rit — x af, y open", met per open proef waarom hij nog niet af is
+   • Tijdens de rit: elke voorwaarde die vervuld raakt en elke proef die van staat wisselt (gesloten, bevinding) krijgt één regel; geen herhaling per tik
+   • Verzenden zonder resultaat (tien minuten, contact uit, verbreken) is niet meer stil: dezelfde stand erbij. Aanleiding: meetrit van 17-11, 13 min, 8 opdrachten, nul uitkomsten en niets in het log
+   • test-meetcoach.js: 8 nieuwe controles + drie mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Account resetten; schone start laat de vorige auto niet meer terugkomen
  ═════════════════════════════════════════════════════
    • Account → Account resetten (met wachtwoord): /klant/reset wist op het platform voertuigen, rapporten, ritten, tankbeurten, open punten, voorkeuren en koppelingen (dezelfde lijst als de schone start bij inloggen); PLSchoon.naReset() wist het toestel en herstart. Login, tegoed, kasboek, akkoord, uitnodigcode, adapter en weergave blijven. Weigert tijdens een verbinding

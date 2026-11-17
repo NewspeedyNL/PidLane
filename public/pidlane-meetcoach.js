@@ -26,7 +26,7 @@
 // De keuring telt nu automatisch (PLOpdracht.opstelling): ongekeurd = auto.
 // Afkeuren blijft kunnen, in Second opinion.
 //
-// plan(), actieVoor(), stappen(), vraagHtml() en balkHtml() zijn puur; test-meetcoach.js
+// plan(), actieVoor(), verloop(), standRegels(), stappen(), vraagHtml() en balkHtml() zijn puur; test-meetcoach.js
 // laadt dit bestand met vm.
 // ══════════════════════════════════════════════════════════════════
 (function () {
@@ -116,6 +116,46 @@
     return { acties: acties, klaar: klaar, open: open, uitgesloten: uit, uitNamen: uitNamen };
   }
 
+  /* ── WAT ER VERANDERDE (puur, 17-11-2026) ───────────────────────
+     Op 17-11 liep er 13 min een meetrit en stonden er ~20 regels in het
+     logboek: geen voorwaarde, geen oordeel, en bij het verzenden zonder
+     resultaat helemaal niets. Wat de coach deed was dus niet na te gaan.
+     vorig: de stand van de vorige tik (null = eerste keer, dan geen regels).
+     Geeft { stand, regels: [{ t, n }] }. */
+  function verloop(vorig, alle) {
+    var stand = {}, regels = [];
+    (alle || []).forEach(function (r) {
+      if (!r || !r.opdracht) return;
+      var v = r.vonnis || {}, vw = Array.isArray(v.voorwaarden) ? v.voorwaarden : [];
+      var s = { staat: v.staat || 'geen oordeel', vervuld: vw.map(function (g) { return !!(g && g.vervuld === true); }) };
+      stand[r.naam] = s;
+      var oud = vorig && vorig[r.naam];
+      if (!oud) return;
+      var tel = s.vervuld.filter(Boolean).length;
+      s.vervuld.forEach(function (ja, i) {
+        if (ja && !oud.vervuld[i])
+          regels.push({ t: '🧪 ' + r.naam + ': voorwaarde vervuld — ' + ((vw[i] && vw[i].wat) || ('nr. ' + (i + 1))) + ' (' + tel + ' van ' + s.vervuld.length + ')', n: 'info' });
+      });
+      if (s.staat !== oud.staat)
+        regels.push({ t: '🧪 ' + r.naam + ': ' + oud.staat + ' → ' + s.staat + (v.reden ? ' — ' + v.reden : ''),
+          n: s.staat === 'gesloten' ? 'ok' : (s.staat === 'bevinding' ? 'warn' : 'info') });
+    });
+    return { stand: stand, regels: regels };
+  }
+
+  /* Per open proef waarom hij nog niet af is: één regel elk. */
+  function standRegels(alle) {
+    var open = [], klaar = 0;
+    (alle || []).forEach(function (r) {
+      if (!r || !r.opdracht) return;
+      var v = r.vonnis;
+      if (v && (v.staat === 'gesloten' || v.staat === 'bevinding')) { klaar++; return; }
+      var reden = String((v && v.reden) || 'geen oordeel');
+      open.push('   • ' + r.naam + ': ' + (reden.length > 200 ? reden.slice(0, 199) + '…' : reden));
+    });
+    return { kop: (klaar + open.length) + ' meetproeven lopen mee op deze rit — ' + klaar + ' af, ' + open.length + ' open', open: open };
+  }
+
   /* ── HTML (puur) ───────────────────────────────────────────────── */
   function vraagHtml(keuze) {
     var k = keuze || { duurS: 0, sit: {} };
@@ -187,7 +227,7 @@
   // ── de staat van deze sessie ───────────────────────────────────────
   var S = { geladen: false, laden: false, keuze: null, uit: false, overslaan: [], verzondenN: 0,
             laatsteVerzend: 0, wasVerbonden: false, contactVerzonden: false,
-            bus: null, busLaterTot: 0, busGedaan: {}, timer: null, huidig: null, lijst: false, ritStart: 0 };
+            bus: null, busLaterTot: 0, busGedaan: {}, timer: null, huidig: null, lijst: false, ritStart: 0, verloop: null };
 
   function _diag(m, n) {
     try { if (typeof log === 'function') log(m, n || 'info'); }
@@ -211,6 +251,12 @@
     try { r = PLTestrunLive.verzendAlle(); }
     catch (e) { console.warn('meetcoach: verzenden mislukt', e); return null; }
     if (r && r.aantal) { S.verzondenN += r.aantal; _diag('🧪 Meetcoach: ' + r.aantal + ' uitkomst(en) verzonden (' + waarom + ')', 'ok'); }
+    else if (r) {
+      // Niet stil (17-11-2026): "niets af" is ook een uitkomst, met per proef waarom.
+      var sr = standRegels(_alle());
+      _diag('🧪 Meetcoach: niets af om te verzenden (' + waarom + ') — ' + sr.kop, 'info');
+      sr.open.forEach(function (t) { _diag(t, 'info'); });
+    }
     return r;
   }
 
@@ -248,6 +294,16 @@
     }
     S.wasVerbonden = true;
     laad();
+    if (S.geladen) {
+      var alle = _alle(), vl = verloop(S.verloop, alle);
+      if (!S.verloop) {
+        var sr = standRegels(alle);
+        _diag('🧪 Meetcoach: ' + sr.kop, 'info');
+        sr.open.forEach(function (t) { _diag(t, 'info'); });
+      }
+      vl.regels.forEach(function (x) { _diag(x.t, x.n); });
+      S.verloop = vl.stand;
+    }
     var nu = Date.now();
     var st = null;
     try { st = window.PLToeschouwer ? PLToeschouwer.stand() : null; }
@@ -340,7 +396,7 @@
   aan();
 
   window.PLMeetcoach = {
-    plan: plan, actieVoor: actieVoor, vraagHtml: vraagHtml, balkHtml: balkHtml, stappen: stappen,
+    plan: plan, actieVoor: actieVoor, verloop: verloop, standRegels: standRegels, vraagHtml: vraagHtml, balkHtml: balkHtml, stappen: stappen,
     tik: tik, teken: teken, verzend: verzend,
     kiesDuur: kiesDuur, kiesSit: kiesSit, start: start, nietNu: nietNu, overslaan: overslaan,
     volgende: volgende, kies: kies, lijst: lijst, terug: terug, aanpassen: aanpassen,

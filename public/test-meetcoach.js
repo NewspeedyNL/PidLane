@@ -13,6 +13,7 @@
 //   - tekst uit een opdracht komt geëscaped in de balk
 //   - voortgang telt op naar minS; een periode met bovengrens krijgt geen balk
 //   - Volgende komt rond, een gekozen stap staat vooraan, aanpassen houdt de klok
+//   - het logboek zegt wat er veranderde, en bij 'niets af' per proef waarom (17-11)
 //
 // Draaien vanuit public/:  node test-meetcoach.js       (exit 0 = goed)
 // ══════════════════════════════════════════════════════════════════
@@ -33,7 +34,7 @@ function maak() {
   const c = {
     console: { warn() {}, log() {} }, Promise, Date, JSON, Math, Object, String,
     setInterval: () => 1, clearInterval() {},
-    connected: true, demoMode: false, magOntwikkelen: () => true, log() {},
+    connected: true, demoMode: false, magOntwikkelen: () => true, logs: [], log: (m) => c.logs.push(m),
     _plVerbindingKlaar: 1,
     lijstN: 0, sensoren: null, verzonden: [], busRun: [], stand: { toestand: 'rijden', sinds: 0 }, alle: []
   };
@@ -163,6 +164,32 @@ const flush = () => new Promise((r) => setImmediate(r));
   c = maak(); c.stand = { toestand: 'stil', sinds: Date.now() - 20000 };
   c.PLMeetcoach.kiesDuur('kort'); c.PLMeetcoach.start(); c.PLMeetcoach.tik(); c.PLMeetcoach.busLater(); c.PLMeetcoach.tik();
   toets('Later: vijf minuten geen vraag', c.PLMeetcoach._staat().bus === null);
+
+  console.log('\nX. Het verloop in het logboek (17-11-2026)');
+  {
+    const op = (naam, staat, vv, reden) => ({ id: naam, naam, opdracht: { naam, voorwaarden: vv.map((_, i) => ({ wat: 'w' + i })) },
+      vonnis: { staat, reden, voorwaarden: vv.map((x, i) => ({ wat: 'w' + i, vervuld: x })) } });
+    const M2 = maak().PLMeetcoach;
+    const a0 = M2.verloop(null, [op('A', 'nog niet', [false, false], 'r')]);
+    toets('eerste keer: geen veranderingsregels', a0.regels.length === 0);
+    const a1 = M2.verloop(a0.stand, [op('A', 'nog niet', [true, false], 'r')]);
+    toets('een voorwaarde die vervuld raakt, krijgt een regel', a1.regels.length === 1 && /voorwaarde vervuld — w0 \(1 van 2\)/.test(a1.regels[0].t), JSON.stringify(a1.regels));
+    const a2 = M2.verloop(a1.stand, [op('A', 'nog niet', [true, false], 'r')]);
+    toets('niets veranderd: geen regel (geen herhaling elke tik)', a2.regels.length === 0, JSON.stringify(a2.regels));
+    const a3 = M2.verloop(a2.stand, [op('A', 'gesloten', [true, true], 'alles binnen de band')]);
+    toets('gesloten: een ok-regel met de reden', a3.regels.some((x) => x.n === 'ok' && /nog niet → gesloten — alles binnen de band/.test(x.t)), JSON.stringify(a3.regels));
+    const sr = M2.standRegels([op('A', 'gesloten', [], ''), op('B', 'nog niet', [false], 'mist w0')]);
+    toets('stand: telt af/open en zegt per open proef waarom', /1 af, 1 open/.test(sr.kop) && sr.open.length === 1 && /B: mist w0/.test(sr.open[0]), JSON.stringify(sr));
+
+    const c3 = maak(); c3.alle = [op('A', 'nog niet', [false], 'mist w0')];
+    c3.PLTestrunLive.verzendAlle = () => ({ ok: false, aantal: 0 });
+    c3.PLMeetcoach.tik(); await flush(); c3.PLMeetcoach.tik();
+    toets('na het laden: overzicht in het logboek', c3.logs.some((m) => /lopen mee op deze rit — 0 af, 1 open/.test(m)) && c3.logs.some((m) => /A: mist w0/.test(m)), c3.logs.join(' | '));
+    c3.alle = [op('A', 'gesloten', [true], 'binnen de band')]; c3.PLMeetcoach.tik();
+    toets('tijdens de rit: een proef die sluit, staat in het logboek', c3.logs.some((m) => /A: nog niet → gesloten/.test(m)), c3.logs.join(' | '));
+    c3.logs.length = 0; c3.alle = [op('B', 'nog niet', [false], 'mist w0')]; c3.PLMeetcoach.verzend('tien minuten');
+    toets('verzenden zonder resultaat is niet stil', c3.logs.some((m) => /niets af om te verzenden \(tien minuten\)/.test(m)) && c3.logs.some((m) => /B: mist w0/.test(m)), c3.logs.join(' | '));
+  }
 
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
