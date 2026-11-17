@@ -20,6 +20,7 @@
 <!-- Config — credentials, login, Airtable, versie -->
 <script src="config.js"></script>
 <script src="pidlane-data.js"></script><!-- statische referentiedata (PIDs/DTC/kennisbank) -->
+<script src="pidlane-schoon.js"></script><!-- PLSchoon: schone start en account-reset — vóór elke module die opslag leest: hij wist bij de start wat er bij het afsluiten nog terugkwam -->
 <script src="pidlane-rust.js"></script><!-- PLRust (#691): schermtimers slapen als de app uit beeld is — vóór totalcheck, monitor en bulk -->
 <script src="pidlane-plfetch.js"></script><!-- plFetch: basis-URL, tokenkop, 401 en het serversaldo op één plek (#117) -->
 <script>
@@ -2146,7 +2147,6 @@ function closeConnOv(){
 <script src="pidlane-voorkeur.js"></script><!-- Mijn voorkeuren (PLVoorkeur) — standaardinstellingen per klantaccount; vereist PLRun, PLGarage, plFetch -->
 <script src="pidlane-batterijmeting.js"></script><!-- PLBatterij (#691): lopende batterijmeting bij een beheerderslogin, tot 13-12-2026; vraagt het Android-percentage bij de volgende start -->
 <script src="pidlane-meekijk.js"></script><!-- Meekijken bij een klant met zijn meekijkcode (PLMeekijk) — alleen beheer; vereist plFetch -->
-<script src="pidlane-schoon.js"></script><!-- PLSchoon: nieuwe auto, schone start — wist wat het toestel over eerdere auto's weet; vereist niets bij het laden -->
 <script src="pidlane-afsluiten.js"></script><!-- Rit beëindigen (PLAfsluiten) — rit afronden, verbreken, uitloggen, app sluiten; vereist PLGarage, handleConnect, logout, plSluitApp -->
 <script src="pidlane-nav.js"></script><!-- PLNav: onderbalk, startscherm (Check mijn auto + tegels) en garagemodus; vereist ná datalog, archief, uihelpers, wizard, foutcodes en afsluiten -->
 <script src="pidlane-opstart.js"></script><!-- PLOpstart: opstart of herlaad (pl_laatst_actief), de check één keer per auto per dag, het kenteken uit de VIN, de wekker (native PLWekker) — ná pidlane-nav.js; pidlane-bt.js en PLNav lezen hem alleen tijdens het draaien -->

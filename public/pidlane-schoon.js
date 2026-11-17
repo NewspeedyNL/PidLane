@@ -92,7 +92,31 @@
     catch (e) { console.warn('PLSchoon: verbindingsstand onleesbaar', e); return false; }
   }
 
-  function herstart() { try { location.reload(); } catch (e) { console.warn('PLSchoon: herstart mislukt — sluit en open de app', e); } }
+  /* WISSEN BIJ DE VOLGENDE START (17-11-2026). Wissen en dan herladen was
+     niet genoeg: bij het afsluiten van de pagina schrijven modules hun
+     geheugen terug (pagehide/visibilitychange). persistAppState() zette zo
+     pl_appstate terug — voertuig, VIN, PID-lijst, foutcodes — en
+     restoreAppState() laadde de vorige auto bij de start weer in. Ook de
+     BT-log, het versnellingsprofiel en de bulk-database kwamen terug.
+     Daarom zet herstart() een merkteken, en wist deze module bij de start
+     (hij laadt direct na pidlane-data.js, vóór elke lezer) nog eens alles
+     wat er sinds het wissen bij kwam. */
+  var MERK = 'pl_schoon_bij_start';
+  function herstart() {
+    try { localStorage.setItem(MERK, String(Date.now())); }
+    catch (e) { console.warn('PLSchoon: merkteken niet gezet — wat bij het afsluiten terugkomt, blijft staan', e); }
+    try { location.reload(); } catch (e) { console.warn('PLSchoon: herstart mislukt — sluit en open de app', e); }
+  }
+  function bijStart() {
+    var m = null;
+    try { m = localStorage.getItem(MERK); } catch (e) { console.warn('PLSchoon: merkteken onleesbaar', e); return false; }
+    if (!m) return false;
+    var weg = lokaalWissen();
+    try { localStorage.removeItem(MERK); } catch (e) { console.warn('PLSchoon: merkteken niet weggehaald', e); }
+    idbWissen();
+    console.info('PLSchoon: bij de start nog ' + weg.length + ' sleutels gewist die bij het afsluiten terugkwamen', weg);
+    return true;
+  }
 
   function melding(t) {
     try { if (typeof showToast === 'function') { showToast(t); return; } } catch (e) { console.warn('PLSchoon: showToast', e); }
@@ -125,5 +149,16 @@
     return true;
   }
 
-  window.PLSchoon = { start: start, naLogin: naLogin, lokaalWissen: lokaalWissen, bewaar: bewaar, BEWAAR: BEWAAR };
+  /* Na een account-reset (pidlane-klant.js, /klant/reset): de Worker heeft
+     het platform al gewist; dit wist het toestel en herstart. */
+  async function naReset() {
+    var weg = lokaalWissen();
+    await idbWissen();
+    console.info('PLSchoon: account-reset — ' + weg.length + ' sleutels gewist', weg);
+    herstart();
+    return true;
+  }
+
+  window.PLSchoon = { start: start, naLogin: naLogin, naReset: naReset, bijStart: bijStart, lokaalWissen: lokaalWissen, bewaar: bewaar, BEWAAR: BEWAAR, MERK: MERK };
+  bijStart();
 })();

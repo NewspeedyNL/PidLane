@@ -662,6 +662,8 @@
       // wat je per ongeluk aanraakt, maar het moet wel vindbaar zijn — Google
       // eist een verwijderoptie in de app zelf.
       '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--bd,#26304a)">' +
+        '<button class="mbtn" id="mtReset" style="width:100%;font-weight:400;margin-bottom:8px">' +
+          'Account resetten</button>' +
         '<button class="mbtn" id="mtWeg" style="width:100%;font-weight:400;color:var(--rd,#ef4444)">' +
           'Account verwijderen</button>' +
       '</div>';
@@ -677,6 +679,66 @@
     if (db) db.onclick = openDonatie;
     const wb = body.querySelector('#mtWeg');
     if (wb) wb.onclick = () => { _sluit('klantTokenOv'); openVerwijderAccount(k); };
+    const rb = body.querySelector('#mtReset');
+    if (rb) rb.onclick = () => { _sluit('klantTokenOv'); openResetAccount(); };
+  }
+
+  // ── Account resetten (17-11-2026) ─────────────────────────────────────
+  // Alles van auto's weg, het account blijft: op het platform voertuigen,
+  // rapporten, ritten, tankbeurten, open punten, voorkeuren en koppelingen
+  // (/klant/reset), op het toestel alles wat PLSchoon niet bewaart. Login,
+  // tegoed, akkoord, uitnodigcode, adapter en weergave blijven. Tijdens een
+  // verbinding niet: dan schrijft de meetlus de auto meteen weer terug.
+  function openResetAccount() {
+    const o = _ov('klantResetOv');
+    o.innerHTML =
+      '<div class="modal"><div class="modal-scroll">' +
+        _kop('Account resetten', 'Alles van je auto\'s gaat weg, je account blijft') +
+        '<div class="lg-form">' +
+          '<div style="background:var(--rds,rgba(239,68,68,.12));border-left:3px solid var(--rd,#ef4444);' +
+            'padding:11px 13px;border-radius:8px;font-size:12px;color:var(--tx2,#9aa6bd);line-height:1.6">' +
+            'Weg gaan: je voertuigen, rapporten, ritten, tankbeurten, open punten, voorkeuren, ' +
+            'meekijk- en expertkoppelingen, en op dit toestel de sensoren, profielen en geschiedenis ' +
+            'van eerdere auto\'s. Dit kun je niet terugdraaien.' +
+          '</div>' +
+          '<div style="font-size:11.5px;color:var(--tx3,#7c8aa5);line-height:1.6;margin:12px 0 4px">' +
+            'Je login, tegoed, adapter en weergave blijven. De app start daarna opnieuw.' +
+          '</div>' +
+          '<label style="display:block;font-size:11.5px;color:var(--tx2,#9aa6bd);margin:12px 0 5px">' +
+            'Vul je wachtwoord in om te bevestigen</label>' +
+          '<input type="password" id="rsPass" autocomplete="current-password" class="lg-in" placeholder="Wachtwoord">' +
+          '<div id="rsErr" style="min-height:16px;font-size:11.5px;margin-top:8px"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="mact">' +
+        '<button class="mbtn" id="rsNee" style="flex:1">Annuleren</button>' +
+        '<button class="mbtn" id="rsJa" style="flex:1;color:var(--rd,#ef4444)">Resetten</button>' +
+      '</div></div>';
+    o.classList.remove('hidden');
+    const err = o.querySelector('#rsErr');
+    o.querySelector('#rsNee').onclick = () => _sluit('klantResetOv');
+    o.querySelector('#rsJa').onclick = async () => {
+      const pass = o.querySelector('#rsPass').value || '';
+      if (!pass) return _zetMelding(err, 'err', 'Vul je wachtwoord in.');
+      let verbonden = false;
+      try { verbonden = typeof connected !== 'undefined' && !!connected; } catch (e) { console.warn('Reset: verbindingsstand onleesbaar', e); }
+      if (verbonden) return _zetMelding(err, 'err', 'Verbreek eerst de verbinding met de auto.');
+      if (!window.PLSchoon || typeof PLSchoon.naReset !== 'function') return _zetMelding(err, 'err', 'De app is niet volledig geladen — herstart hem en probeer opnieuw.');
+      o.querySelector('#rsJa').disabled = true;
+      _zetMelding(err, 'ok', 'Bezig…');
+      try {
+        const r = await _post('/klant/reset', { pass: pass }, true);
+        if (!r.ok) {
+          o.querySelector('#rsJa').disabled = false;
+          return _zetMelding(err, 'err', r.data.error || 'Resetten mislukt.');
+        }
+        _log('Account gereset op eigen verzoek', 'ok');
+        await PLSchoon.naReset();
+      } catch (e) {
+        o.querySelector('#rsJa').disabled = false;
+        _zetMelding(err, 'err', 'Geen verbinding met de server (' + (e && e.message || 'onbekend') + ')');
+      }
+    };
   }
 
   // ── Account verwijderen ──────────────────────────────────────────────

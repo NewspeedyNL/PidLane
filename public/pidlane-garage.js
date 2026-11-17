@@ -1477,7 +1477,7 @@
       '<li><b>Open punten</b>: foutcodes en wat de app opvalt, tot ze opgelost zijn.</li></ul></div>' +
       '<div class="gr-blok"><div class="gr-bh">Wat we er níét mee doen</div><ul>' +
       '<li>Niet delen met derden, niet verkopen.</li><li>Niet gebruiken voor de referentiedata onder een pseudoniem — dat is een aparte keuze die je al gemaakt hebt.</li></ul></div>' +
-      '<div class="gr-blok"><div class="gr-bh">Wissen</div><div class="gr-klein">Een voertuig verwijder je zelf, met alles erbij. "Alles wissen" onderaan Mijn voertuigen haalt al deze gegevens in één keer weg. Verwijder je je account, dan gaan ze binnen 30 dagen mee.</div></div>' +
+      '<div class="gr-blok"><div class="gr-bh">Wissen</div><div class="gr-klein">Een voertuig verwijder je zelf, met alles erbij. "Alles wissen" onderaan Mijn voertuigen haalt al deze gegevens in één keer weg. Wil je ook dit toestel leeg en opnieuw beginnen: <b>Account resetten</b> in je account. Verwijder je je account, dan gaan ze binnen 30 dagen mee.</div></div>' +
       (st.eerderAkkoord ? '<div class="gr-melding">De tekst is gewijzigd sinds je eerder akkoord gaf. Je gegevens staan er nog; lees en bevestig opnieuw.</div>' : '') +
       '<div class="gr-knoppen"><button class="gr-k hoofd" onclick="PLGarage._akkoord()">Akkoord — bewaar mijn voertuigen</button></div>' +
       '<div class="gr-knoppen"><button class="gr-k" onclick="PLGarage._nuNiet()">Nu niet</button></div>';

@@ -138,6 +138,29 @@ const BLIJFT = {
       a > 0 && /PLSchoon\.naLogin\(k\)/.test(kl.slice(a, b)));
   }
 
+  console.log('\n4b. Wat bij het afsluiten terugkwam, gaat bij de start alsnog weg (17-11-2026)');
+  {
+    // pagehide schreef pl_appstate (voertuig, VIN, PIDs) na het wissen terug.
+    let r = laadSchoon({ ls: Object.assign({}, AUTO, BLIJFT) });
+    await r.P.start();
+    toets('de menuknop zet het merkteken voor de volgende start', r.ctx.localStorage._m.has(r.P.MERK) && r.st.herladen === 1);
+    const terug = r.ctx.localStorage._m;
+    terug.set('pl_appstate', '{"v":{"merk":"Mazda","vin":"JMZ"}}'); terug.set('pl_btlog', '[]');
+    const nieuw = laadSchoon({ ls: Object.fromEntries(terug) });
+    const ls = nieuw.ctx.localStorage._m;
+    toets('bij de start: wat terugkwam is weg', !ls.has('pl_appstate') && !ls.has('pl_btlog'), [...ls.keys()].join(','));
+    toets('het merkteken ook, en login en tegoed blijven', !ls.has(nieuw.P.MERK) && ls.get('pl_tok') === BLIJFT.pl_tok && ls.get('pl_credits_saldo') === '25');
+    const gewoon = laadSchoon({ ls: Object.assign({ pl_appstate: '{}' }, BLIJFT) });
+    toets('zonder merkteken wist de start niets  <- tegenproef', gewoon.ctx.localStorage._m.has('pl_appstate'));
+    r = laadSchoon({ ls: Object.assign({}, AUTO, BLIJFT) });
+    await r.P.naReset();
+    toets('account-reset: gewist, merkteken gezet en herstart, zonder vraag',
+      !r.ctx.localStorage._m.has('pl_kenteken') && r.ctx.localStorage._m.has(r.P.MERK) && r.st.herladen === 1 && r.st.vragen.length === 0);
+    const id = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
+    const pS = id.indexOf('src="pidlane-schoon.js"'), pB = id.indexOf('src="pidlane-btflow.js"'), pK = id.indexOf('src="pidlane-bulk.js"');
+    toets('pidlane-schoon.js laadt vóór de modules die opslag lezen (btflow, bulk)', pS > 0 && pS < pB && pS < pK, pS + ' ' + pB + ' ' + pK);
+  }
+
   // ── De Worker-kant ─────────────────────────────────────────────
   const wortel = path.join(__dirname, '..');
   const bron = fs.readFileSync(path.join(wortel, 'worker.js'), 'utf8');
@@ -145,7 +168,7 @@ const BLIJFT = {
   if (i < 0) throw new Error('export-blok niet gevonden in worker.js');
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'schoon-')), 'worker.mjs');
   fs.writeFileSync(f, bron.slice(0, i) +
-    'export { d1Tabel, atMaak, atHaal, kpSchema, kpKlantId, hashPassword, handleKlantLogin, klantPubliek };\n');
+    'export { d1Tabel, atMaak, atHaal, kpSchema, kpKlantId, hashPassword, handleKlantLogin, handleKlantReset, klantPubliek };\n');
   const W = await import('file://' + f);
 
   function maakD1(db) {
@@ -206,6 +229,35 @@ const BLIJFT = {
     return (await W.handleKlantLogin(req, env, null)).status;
   })();
   toets('een verkeerd wachtwoord wist niets', mis === 401 && tel('kp_voertuig', idT) === 1, String(mis));
+
+  console.log('\n7. Account resetten (/klant/reset)');
+  {
+    sql.prepare("INSERT INTO kp_voertuig (id, klant_id, status, aangemaakt, bijgewerkt) VALUES ('vA2', ?, 'actief', ?, ?)").run(idA, nu, nu);
+    sql.prepare("INSERT INTO kp_rit (id, klant_id, voertuig_id, start, aangemaakt) VALUES ('ritA', ?, 'vA', ?, ?)").run(idA, nu, nu);
+    sql.prepare("INSERT INTO kp_voertuig (id, klant_id, status, aangemaakt, bijgewerkt) VALUES ('vT3', ?, 'actief', ?, ?)").run(idT, nu, nu);
+    sql.prepare('UPDATE klanten SET "Saldo" = 42 WHERE "Email" = ?').run('anna@voorbeeld.nl');
+    const ln = await login('anna@voorbeeld.nl');
+    const tok = ln.d.token || ln.d.tok;
+    toets('anna heeft een sessietoken', !!tok, JSON.stringify(ln.d).slice(0, 200));
+    const reset = async (pass, t) => {
+      const req = new Request('https://x/klant/reset', { method: 'POST', headers: { 'CF-Connecting-IP': '1.2.3.6', 'Content-Type': 'application/json', 'X-App-Token': t === undefined ? tok : t },
+        body: JSON.stringify({ pass }) });
+      const r = await W.handleKlantReset(req, env);
+      return { status: r.status, d: await r.json() };
+    };
+    let rs = await reset('fout');
+    toets('verkeerd wachtwoord: 401 en niets gewist', rs.status === 401 && tel('kp_voertuig', idA) === 2 && tel('kp_rit', idA) === 1, JSON.stringify(rs));
+    rs = await reset('geheim123', '');
+    toets('zonder sessie: 401', rs.status === 401, JSON.stringify(rs));
+    rs = await reset('geheim123');
+    toets('goed wachtwoord: ok', rs.status === 200 && rs.d.ok, JSON.stringify(rs));
+    toets('voertuigen, rapporten en ritten van anna zijn weg', tel('kp_voertuig', idA) === 0 && tel('kp_rapport', idA) === 0 && tel('kp_rit', idA) === 0);
+    toets('haar akkoord blijft', tel('kp_akkoord', idA) === 1);
+    const k = sql.prepare('SELECT "Saldo" AS s, "Status" AS st FROM klanten WHERE "Email" = ?').get('anna@voorbeeld.nl');
+    toets('haar account en tegoed blijven', k.st === 'actief' && k.s === 42, JSON.stringify(k));
+    toets('ze kan gewoon weer inloggen', (await login('anna@voorbeeld.nl')).status === 200);
+    toets('van de andere klant is niets geraakt', tel('kp_voertuig', idT) >= 1);
+  }
 
   console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
   process.exit(fout ? 1 : 0);
