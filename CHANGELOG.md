@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 17-11-2026 — Accuspanning via de adapter (ATRV) als de ECU 0142 ontkent
+ ═════════════════════════════════════════════════════
+   • Hyundai i20 2011: steunbits melden 0141 en 0143–0146, niet 0142 — de accutegel bleef leeg. Ontkent de ECU 0142 (steunbit uit of NO DATA op blok 0x40), dan vraagt de pollus 0142 niet meer en zet elke 2 s de ATRV-waarde erop; de keuzelijst toont "Accuspanning (adapter)" en de standaardset neemt hem mee. Zegt de ECU ja of is het onbekend: ongewijzigd
+   • test-accuatrv.js (echte plload, steunbits en harde grenzen) + drie mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  16-11-2026 — Log inlezen: basisoordeel van de app, toets van wat de AI ziet
  ═════════════════════════════════════════════════════
    • Adminmenu: 📂 Log inlezen (PLLogImport). Leest een eigen export, Torque (breed) en Car Scanner (lang, komma-decimalen); rekent °F, mph, psi, inHg, bar en lb/min om; een onbekende eenheid valt weg met een waarschuwing; een VIN-kolom wordt niet gelezen. Daarna het verzamelscherm (basisoordeel) en op verzoek de AI

@@ -1129,7 +1129,9 @@ function selectStandardSet(){
   const _voor=plSelectieVoor();                 // #31
   let n=0;
   STANDAARD_PIDS.forEach(pid=>{
-    if(!supportedPIDs.has(pid)) return;     // meldt de auto hem — staat los van de ladder
+    // meldt de auto hem — staat los van de ladder. Uitzondering: accuspanning
+    // die de adapter meet (ATRV) als de ECU 0142 ontkent.
+    if(!supportedPIDs.has(pid) && !(pid==='0142' && typeof plAccuViaAdapter==='function' && plAccuViaAdapter())) return;
     if(!pidGate(pid,'kiesbaar')) return;
     activePIDs.add(pid); manualPIDs.add(pid); n++;
   });
@@ -1203,6 +1205,9 @@ function buildDiscoveredPIDList(){
   // de sweeps en de waakronde bij de auto opvragen.
   try{ if(typeof plBerekendDefs==='function') plBerekendDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Berekende PIDs niet in de keuzelijst gezet', e); }
+  // Accuspanning via de adapter (ATRV) als de ECU 0142 ontkent (pidlane-plload.js).
+  try{ if(typeof plAccuAdapterDefs==='function') plAccuAdapterDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
+  catch(e){ console.warn('Accuspanning via de adapter niet in de keuzelijst gezet', e); }
   // Telefoonsensoren (pidlane-telemetrie.js): alleen als het toestel ze heeft.
   try{ if(typeof plTelemetrieDefs==='function') plTelemetrieDefs().forEach(d=>{ if(!discoveredPIDDefs.some(x=>x.pid===d.pid)) discoveredPIDDefs.push(d); }); }
   catch(e){ console.warn('Telefoonsensoren niet in de keuzelijst gezet', e); }

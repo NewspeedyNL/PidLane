@@ -644,6 +644,8 @@ function pidsDueNow(){
     if(typeof plIsBerekend==='function' && plIsBerekend(pid)) continue;
     // Een telefoonsensor (TL..) evenmin.
     if(typeof plIsTelemetrie==='function' && plIsTelemetrie(pid)) continue;
+    // Accuspanning die de ECU ontkent: de adapter meet hem (ATRV), zie hieronder.
+    if(pid==='0142' && plAccuViaAdapter()) continue;
     // Een band op verzoek ook niet: PLBanden.ververs() vraagt hem (#396).
     try{ if(window.PLEigen && window.PLEigen.opVerzoek && window.PLEigen.opVerzoek(pid)) continue; }
     catch(e){ console.warn('PLEigen.opVerzoek mislukt in pidsDueNow:', e); }
@@ -738,6 +740,66 @@ function stopPoll(){
   pollTimer=null;
 }
 
+/* ── ACCUSPANNING VIA DE ADAPTER (17-11-2026) ─────────────────────────
+   Een Hyundai i20 uit 2011 meldt 0141 en 0143–0146, maar 0142 niet. De accu-
+   tegel las alleen 0142 en bleef dus voor altijd leeg, terwijl de ELM327 de
+   spanning op pin 16 (de accu) zelf meet: ATRV, op elke auto.
+   Daarom: ontkent de ECU 0142 (steunbit uit, of deze sessie gemeten NO DATA
+   op het hele blok), dan vraagt de pollus 0142 niet meer aan de ECU en zet
+   hij elke ACCU_ATRV_MS de ATRV-waarde op 0142. Zegt de ECU ja of is het
+   onbekend, dan blijft alles zoals het was: de ECU-waarde gaat voor.
+   Dezelfde grootheid, een andere meter: de adapter meet aan de OBD-stekker,
+   een paar tienden lager dan de ECU onder belasting. De keuzelijst noemt de
+   bron daarom ("Accuspanning (adapter)"). */
+const ACCU_ATRV_MS=2000;
+let _accuAtrvT=0, _accuAtrvMeld=0;
+
+function plAccuViaAdapter(){
+  try{ if(typeof demoMode!=='undefined' && demoMode) return false; }
+  catch(e){ console.warn('plAccuViaAdapter: demoMode onleesbaar', e); return false; }
+  let s=null;
+  try{ s=(typeof window.ecuSteunt==='function') ? window.ecuSteunt('0142') : null; }
+  catch(e){ console.warn('plAccuViaAdapter: ecuSteunt mislukt', e); return false; }
+  if(s!==null) return s===false;
+  try{ return typeof window.steunNeeRuw==='function' && window.steunNeeRuw().indexOf('0142')>=0; }
+  catch(e){ console.warn('plAccuViaAdapter: steunNeeRuw mislukt', e); return false; }
+}
+
+// "12.4V" → 12.4. null bij geen getal of buiten de harde grens van 0142.
+function plAtrvVolt(raw){
+  const m=String(raw||'').match(/(\d{1,2}(?:[.,]\d{1,2})?)\s*V/i);
+  if(!m) return null;
+  const v=parseFloat(m[1].replace(',','.'));
+  const g=(window.PID_HARD_LIMITS||{})['0142']||{min:4,max:32};
+  return (isFinite(v) && v>=g.min && v<=g.max) ? v : null;
+}
+
+// De keuzelijst-regel voor 0142 als de adapter hem meet ([] anders).
+function plAccuAdapterDefs(){
+  if(!plAccuViaAdapter()) return [];
+  const d=(typeof ALL_PID_DEFS!=='undefined' && ALL_PID_DEFS['0142']) || {name:'Accuspanning',unit:'V',cat:'Electrisch',min:8,max:16};
+  return [Object.assign({pid:'0142'}, d, {name:'Accuspanning (adapter)', bron:'ATRV'})];
+}
+
+async function _plAccuAdapterTik(nu){
+  if(!connected || !activePIDs.has('0142')) return false;
+  if(nu-_accuAtrvT<ACCU_ATRV_MS) return false;
+  if(!plAccuViaAdapter()) return false;
+  _accuAtrvT=nu;
+  const w0=_plWeigeringen();
+  const raw=await sendCmd('ATRV',1500);
+  if(_plWeigeringen()!==w0) return false;          // nooit de adapter bereikt
+  const v=plAtrvVolt(raw);
+  if(v===null){
+    if(nu-_accuAtrvMeld>30000){ _accuAtrvMeld=nu; btDiag('ATRV onleesbaar: "'+String(raw||'').trim().slice(0,30)+'" — accuspanning blijft leeg','warn'); }
+    return false;
+  }
+  markPidData('0142'); updPID('0142',v); checkStability('0142',v); feedDatalog('0142',v); feedSessionStat('0142',v);
+  return true;
+}
+window.plAccuViaAdapter=plAccuViaAdapter;
+window.plAccuAdapterDefs=plAccuAdapterDefs;
+
 function startPoll(){
   stopPoll();
   const gen=_pollGen;
@@ -791,6 +853,7 @@ async function _pollRonde(alsBezet){
         return;
       }
 
+      if(!_plPoortDicht()) await _plAccuAdapterTik(Date.now());
       const due=pidsDueNow();
       if(!due.length) return;   // niets aan de beurt deze tick
       // Staat de ELM-poort dicht (herverbinden, re-init), dan zou élk verzoek

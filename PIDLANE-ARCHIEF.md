@@ -17,6 +17,14 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 17-11-2026 — Hyundai i20 2011: geen accuspanning, en een selectie van een andere auto
+
+Sessie `app-2026-11-17-1515` (OBDLink MX+, CAN 11/500, VIN niet leesbaar via mode 09). Wat de ECU meldt, af te lezen uit de selectie bij "check: knop": 27 standaard-PIDs, waaronder 0141 en 0143–0146 — maar **geen 0142**. Dat is de ECU, niet de app: blok 0x40 is gelezen en het bit staat uit.
+
+Toch bleef de accutegel leeg, en dat wás de app: alles wat accuspanning toont las alleen 0142, terwijl de adapter de spanning op pin 16 zelf meet (`ATRV`). ATRV werd alleen in de accutest, functietest, het veldlab en de snelheidsproeven gebruikt. Sindsdien vult de pollus 0142 met ATRV zodra de ECU hem ontkent (`plAccuViaAdapter()` in `pidlane-plload.js`). Bewust níét bij "onbekend": dan gaat de ECU voor, want ATRV meet aan de stekker en ligt onder belasting een paar tienden lager.
+
+Het "weinig PIDs" had een tweede oorzaak die hier niet is opgelost: bij elke verbinding stond eerst een selectie van twaalf met 012F, 0149, 0142 en 015C — die de i20 alle vier niet meldt. "Data stabiel · pidCount=23 stabiel=13": tien tegels die nooit iets toonden. Zie het issue van deze datum.
+
 ## 16-11-2026 — Een ingelezen log stond op naam van de verbonden auto
 
 Eerste rit van 📂 Log inlezen met `scenariolog/thermostaat-open.csv` (een Golf 1.4 TSI) terwijl er een Mazda CX-5 actief was. De AI vond de thermostaat, zoals het scenario verwachtte. Maar het PDF-rapport stond op naam van de Mazda: kenteken, VIN, kilometerstand, APK en terugroepacties. De AI schreef er zelf boven: "deze log betreft een Volkswagen Golf, niet de Mazda uit het ingestelde dossier". De oorzaak: drie plekken lezen het voertuig uit de globale staat in plaats van uit de meting. `apiFetch` zette voertuig, dossier, live toestand (`pidVals`: "motor DRAAIT"), eerdere rapporten, aanlevering en kenmerken van de Mazda in de systeemprompt. `PLRapport.uitApp` nam `vehicleInfo` en het kenteken. `registerSessionReport` stuurde het rapport via `PLGarage.rapport` het dossier van de Mazda in. Hersteld met één markering, `aanlevering.extern`, die via `_plVerzameld.extern` ook het rapport en het archief bereikt; `bproef-logimport.js` toetst alle drie met een tegenproef.

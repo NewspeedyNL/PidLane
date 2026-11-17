@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Accuspanning via de adapter (17-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Ontkent de ECU 0142, dan meet de adapter de accuspanning (ATRV) en staat hij in de keuzelijst',
+    waarom: 'Hyundai i20 2011 meldt 0141 en 0143–0146 maar niet 0142: de accutegel bleef leeg. Nu vult ATRV hem.',
+    proef: async function () {
+      if (typeof plAccuViaAdapter !== 'function' || typeof plAccuAdapterDefs !== 'function') return { staat: 'FOUT', detail: 'plAccuViaAdapter ontbreekt — herladen?' };
+      if (typeof connected === 'undefined' || !connected || demoMode) return { staat: 'LET OP', detail: 'niet verbonden met een echte auto — niets te meten' };
+      var steun = typeof ecuSteunt === 'function' ? ecuSteunt('0142') : null;
+      if (!plAccuViaAdapter()) return { staat: 'OK', detail: 'deze ECU ' + (steun === true ? 'meldt 0142 zelf' : 'zegt niets over 0142') + ' — ATRV niet nodig' };
+      if (!discoveredPIDDefs.some(function (d) { return d.pid === '0142'; })) return { staat: 'FOUT', detail: 'ECU ontkent 0142, maar hij staat niet in de keuzelijst' };
+      if (!activePIDs.has('0142')) return { staat: 'LET OP', detail: 'ECU ontkent 0142; zet Accuspanning (adapter) aan om de proef te laten meten' };
+      var t = window.PLSched ? PLSched.laatsteSucces('0142') : 0;
+      if (!t || Date.now() - t > 10000) return { staat: 'FOUT', detail: 'ECU ontkent 0142 en ATRV leverde de laatste 10 s niets' };
+      return { staat: 'OK', detail: 'accuspanning via ATRV: ' + pidVals['0142'] + ' V, ' + Math.round((Date.now() - t) / 1000) + ' s oud' };
+    }
+  },
+
   // ── Log inlezen in het adminmenu (16-11-2026) ──
   {
     issue: '—',
