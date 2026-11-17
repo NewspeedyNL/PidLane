@@ -237,6 +237,10 @@ var KRITIEK = [
   // versnellingsindicator met openGearInstellingen; zonder die twee valt het
   // venster terug op kale tekst of doet de knop niets.
   'plBerekendDefs','plIsBerekend','_aiReportHtml','openGearInstellingen',
+  // 17-11-2026. Accuspanning via de adapter (pidlane-plload.js): de keuzelijst
+  // (plAccuAdapterDefs) en de standaardset (plAccuViaAdapter). Ontbreken ze,
+  // dan blijft de accutegel leeg op een ECU zonder 0142.
+  'plAccuAdapterDefs','plAccuViaAdapter',
   // 05-10-2026. Telefoonsensoren (pidlane-telemetrie.js), dezelfde twee guards.
   'plTelemetrieDefs','plIsTelemetrie',
   // 07-10-2026. Wanneer een waarde oud is (pidlane-plload.js): Overzicht en

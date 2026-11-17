@@ -915,6 +915,9 @@ MUTATIES=(
 "public/pidlane-plload.js@@    if(this._handmatig){\n      this._vorigEcho=s.echoTot; this._vorigVenMs=s.venGemMs;@@    if(false){\n      this._vorigEcho=s.echoTot; this._vorigVenMs=s.venGemMs;@@test-adapterpaneel.js@@de automaat regelt een handmatige keuze binnen twee tikken weer weg"
 "public/pidlane-plload.js@@    echoBodem:2,        // hier stopt de automatische krimp@@    echoBodem:1,        // hier stopt de automatische krimp@@test-adapterpaneel.js@@de echo-krimp zakt door naar groep 1 en derdeelt het tempo zonder dat iemand dat koos"
 "public/pidlane-plload.js@@    if(erbij>=this.cfg.echoOp){@@    if(erbij>=1){@@test-adapterpaneel.js@@één herhaling is al genoeg om te krimpen: de groep staat binnen een minuut altijd op 2"
+"public/pidlane-plload.js@@  if(s!==null) return s===false;@@  if(s!==null) return s===true;@@test-accuatrv.js@@de ATRV-terugval draait om: de i20 zonder 0142 houdt een lege accutegel en een auto mét 0142 krijgt de adapterwaarde"
+"public/pidlane-plload.js@@    if(pid==='0142' && plAccuViaAdapter()) continue;@@@@test-accuatrv.js@@0142 gaat naar een ECU die hem ontkent, elke ronde NO DATA naast de ATRV-waarde"
+"public/pidlane-plload.js@@  if(!connected || !activePIDs.has('0142')) return false;@@  if(!connected) return false;@@test-accuatrv.js@@ATRV elke twee seconden op de bus, ook als niemand de accuspanning wil zien"
 "public/pidlane-adapter.js@@    if (metEcho.length === st.length) {@@    if (false) {@@test-adapterpaneel.js@@het advies negeert herhaalde frames en adviseert harder pollen — precies de verkeerde kant op"
 "public/pidlane-data.js@@  batchKleiner(){\n    if(S.batchVast) return false;@@  batchKleiner(){@@test-adapterpaneel.js@@een vastgezette groep wordt alsnog door de automaat verkleind"
 
