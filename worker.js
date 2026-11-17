@@ -5737,6 +5737,49 @@ async function handleKlantVerwijder(request, env) {
 }
 __name(handleKlantVerwijder, "handleKlantVerwijder");
 
+// ── POST /klant/reset  { pass } ─────────────────────────────────────
+// Account resetten (17-11-2026): alles van auto's weg, het account blijft.
+// Op het platform dezelfde lijst als de schone start bij het inloggen
+// (klantSchoneStart → kpAlleWissen met behoudAkkoord): voertuigen,
+// rapporten, ritten, tankbeurten, open punten, voorkeuren, meekijk- en
+// expertkoppelingen. Blijft: login, tegoed en kasboek (tabel klanten), het
+// akkoord en de uitnodigcode. Het toestel wist de app zelf (PLSchoon.naReset).
+// Wachtwoord erbij om dezelfde reden als bij verwijderen: onomkeerbaar.
+async function handleKlantReset(request, env) {
+  const p = await klantAuth(request, env);
+  if (!p) return json({ ok: false, error: "Niet ingelogd." }, 401);
+  if (!env.LOGDB) return json({ ok: false, error: "no_logdb" }, 500);
+
+  const ip = request.headers.get("CF-Connecting-IP") || "onbekend";
+  const rl = await rateLimit(env, "klant-reset", ip, { limit: 10, windowMs: 36e5 }, true);
+  if (rl.limited) return rateLimitResponse(rl);
+
+  let body = {};
+  try { body = await request.json(); } catch (e) { /* stil: kapotte of ontbrekende JSON-body — body blijft {}, het wachtwoord hieronder weigert */ }
+  const pass = String(body.pass || "");
+
+  try {
+    const rec = await klantZoek(env, p.u);
+    if (!rec) return json({ ok: false, error: "Account niet gevonden." }, 404);
+    const f = rec.fields || {};
+    if (f.Status === "verwijderd") return json({ ok: false, error: "Dit account is verwijderd." }, 403);
+
+    const res = await verifyPassword(pass, f.PassHash);
+    if (!res.ok) {
+      await new Promise((r) => setTimeout(r, 500));
+      return json({ ok: false, error: "Wachtwoord klopt niet." }, 401);
+    }
+
+    const gewist = await klantSchoneStart(env, p.u);
+    const n = Object.values(gewist).reduce((a, b) => a + (Number(b) || 0), 0);
+    await klantAudit(env, rec.id, `account gereset op verzoek van de gebruiker (${n} rijen gewist)`, "klant zelf");
+    return json({ ok: true, gewist });
+  } catch (e) {
+    return klantFout(e, "Resetten mislukt.");
+  }
+}
+__name(handleKlantReset, "handleKlantReset");
+
 // ══════════════════════════════════════════════════════════════════
 //  KLANTPLATFORM — "Mijn voertuigen" (27-09-2026)
 // ──────────────────────────────────────────────────────────────────
@@ -7829,6 +7872,8 @@ var worker_default = {
         return lockOrigin(request, await handleKlantMij(request, env));
       if (url.pathname === "/klant/verwijder" && request.method === "POST")
         return lockOrigin(request, await handleKlantVerwijder(request, env));
+      if (url.pathname === "/klant/reset" && request.method === "POST")
+        return lockOrigin(request, await handleKlantReset(request, env));
       if (url.pathname === "/klant/platform" && request.method === "POST")
         return lockOrigin(request, await handleKlantPlatform(request, env));
       if (url.pathname === "/klant/wachtwoord" && request.method === "POST")
