@@ -18,6 +18,22 @@
    • Nieuw: pidlane-vispaneel.js (PLVisPaneel, puur). test-vispaneel.js (33), test-visueel.js (+13), acht mutaties, bproef-visueel bijgewerkt
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Mijn voertuigen: tab Recepten met AI-zoektocht (admin)
+ ═════════════════════════════════════════════════════
+   • Nieuwe tab Recepten naast Sensoren, alleen voor admin: de bewaarde modulerecepten van dit merk, met ✅ bewezen of ⚪ niet bewezen en de laatste uitkomst
+   • 🔎 Zoek recepten: de AI krijgt merk, model, bouwjaar, motor, brandstof en transmissie, plus de idents en de vraag die je invult. Kenteken en VIN gaan niet mee. Een voorstel zonder bron, met zekerheid "laag" of met een dienst buiten 03/04/10/11/14/18/19/1A/21/22/3E (dus geen 27, 2E, 31, 34–3D) valt weg
+   • "Bewezen" komt niet van de AI: een recept wordt bewezen als ▶ in Modulecommando's de hele reeks positief beantwoord krijgt
+   • test-modulecmd.js (+17), bproef-garage.js (+6), vijf mutaties
+
+ ═════════════════════════════════════════════════════
+ 18-11-2026 — Modulecommando's: sjablonen en recepten bewerken
+ ═════════════════════════════════════════════════════
+   • "Recept bewaren" heeft een sjabloonkeuze: Hyundai i20 (PB) airbag foutcodes wissen, UDS (10 03 / 14 FF FF FF / 19 02 FF) en KWP (10 81 / 14 FF 00 / 18 00 FF 00), of leeg. Een sjabloon vult alleen het formulier; het draait pas als je het zelf bewaart
+   • ✎ bij een bewaard recept zet het terug in het formulier; bewaren vervangt het (zelfde id)
+   • Beide sjablonen dragen "ongeverifieerd" in de notitie. Crashdata wissen kan niet via OBD
+   • test-modulecmd.js (+7), één mutatie
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Caravan: terugschakelen bergop, homekaart naar Mijn voertuigen
  ═════════════════════════════════════════════════════
    • Caravanrit: op een klim met vol gas (belasting ≥ 80% of pedaal ≥ 70%) en wegzakkende snelheid zegt het advies "Terug naar N", als het toerental daarna onder 4500 (diesel 3500) blijft. Bergop nooit opschakelen. Eén bron: PLBerekend.schakelTrek(), met de echte versnelling uit PLGear
