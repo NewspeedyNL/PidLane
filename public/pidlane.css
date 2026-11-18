@@ -4419,15 +4419,14 @@ body:has(#lgWaveBg:not(.off)) .ov#connOv{ background:rgba(2,3,10,.30); backdrop-
 .ov#connOv #btLog{ background:rgba(2,3,10,.7) !important; border-color:rgba(90,200,255,.16) !important; }
 
 /* ── Opstart-intro: dezelfde tunnel en kleuren ──
-   Alleen kleur en een raster onder de rijbaan; de tijdlijn hierboven
-   (#plIntro, test-intro.js) blijft precies zoals hij is. */
+   De tunnel en aura tekent pidlane-intro.js in .pli-tunnel (WebGL); het
+   CSS-raster dat hier tot 18-11-2026 stond is weg. De tijdlijn hierboven
+   (#plIntro, test-intro.js) blijft precies zoals hij is. Met de tunnel
+   (.pli-gl) wijkt de rijbaan: één tunnel, geen tweede weg erdoorheen. */
 #plIntro .pli-bg{ background:radial-gradient(ellipse at 50% 40%, #0b1430, var(--hlg-diep) 72%); overflow:hidden; }
-#plIntro .pli-bg::after{ content:""; position:absolute; left:-50%; right:-50%; top:calc(40% + var(--s)*.5); height:200%;
-  transform-origin:50% 0; transform:perspective(260px) rotateX(76deg);
-  background:
-    repeating-linear-gradient(90deg, transparent 0 19px, rgba(90,200,255,.5) 19px 20px),
-    repeating-linear-gradient(0deg, transparent 0 19px, rgba(138,92,255,.5) 19px 20px);
-  -webkit-mask:linear-gradient(transparent, #000 25%); mask:linear-gradient(transparent, #000 25%); }
+#plIntro .pli-tunnel{ position:absolute; inset:0; width:100%; height:100%; display:none; }
+#plIntro.pli-gl .pli-tunnel{ display:block; }
+#plIntro.pli-gl .pli-baan{ display:none; }
 #plIntro .pli-gloed{ background:radial-gradient(60% 34% at 50% 40%, rgba(90,200,255,.24), rgba(138,92,255,.10) 50%, transparent 75%); }
 #pliBaanGr stop:first-child{ stop-color:var(--hlg-violet); }
 #pliBaanGr stop:last-child{ stop-color:var(--hlg-ijs); }

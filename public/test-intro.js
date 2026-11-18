@@ -191,5 +191,16 @@ console.log('\n8. De plek in index.html');
     HTML.slice(body + 6, vlak).replace(/<!--[\s\S]*?-->/g, '').trim(), '');
 }
 
+console.log('\nDe tunnel (18-11-2026): rustig in, warp bij de doorzoom, uit met de rest');
+{
+  const s = bouw();
+  const S = s.PLIntro.tunnelStand;
+  toets('begin: donker, geen warp', [S(0).D, S(0).W], [0, 0]);
+  toets('halverwege: vol licht, nog geen warp', [S(1.5).D, S(1.5).W], [1, 0]);
+  toets('na de doorzoom: volle warp, sneller vooruit dan rustig', S(2.7).W === 1 && S(2.7).Z - S(2.6).Z > (S(1.6).Z - S(1.5).Z) * 2, true);
+  toets('aan het eind uitgedoofd', S(3.1).D, 0);
+  toets('het CSS-raster is weg', /pli-bg::after/.test(CSS), false);
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : n + ' toetsen, allemaal goed'));
 process.exit(fout ? 1 : 0);
