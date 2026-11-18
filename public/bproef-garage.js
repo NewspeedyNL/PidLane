@@ -124,7 +124,23 @@ const NEPSERVER = `(function(){
     // 15-10-2026: Mijn voertuigen opende áchter de keuzelade; de lade gaat nu eerst dicht.
     toets('de sensorkeuzelade gaat dicht, anders opent Mijn voertuigen erachter', await wacht(`!document.getElementById('slPanel').classList.contains('lade-open')`));
     toets('en opent het tabblad Sensoren van het voertuig', await wacht(`(document.querySelector('#plGarBody .gr-tab.aan')||{}).textContent === 'Sensoren'`));
+    // 18-11-2026: tab Recepten — alleen admin; AI-voorstel is niet bewezen tot het op een auto werkt.
     await app.ev(`PLGarage._tab('overzicht'); 'ok'`);
+    toets('een klant ziet geen tab Recepten', await app.ev(`![...document.querySelectorAll('#plGarBody .gr-tab')].some(t => t.textContent === 'Recepten')`));
+    await app.ev(`window._rolWas = window.currentUser; window.currentUser = { user:'beheer', role:'admin', label:'Beheer' };
+      window._apiWas = window.apiFetch; window._aiVraag = null;
+      window.apiFetch = async (p, n, sys) => { window._aiVraag = p; return JSON.stringify({ recepten: [
+        { naam:'SRS wissen', module:'SRS', hdr:'7D0', stappen:['10 03','14 FF FF FF'], bron:'GDS', zekerheid:'hoog' },
+        { naam:'sleutel', hdr:'7D0', stappen:['27 01'], bron:'forum', zekerheid:'hoog' }] }); };
+      PLGarage._tab('recepten'); 'ok'`);
+    toets('een beheerder ziet de tab Recepten naast Sensoren', await wacht(`(function(){ var t=[...document.querySelectorAll('#plGarBody .gr-tab')].map(x=>x.textContent); return t.indexOf('Recepten') === t.indexOf('Sensoren') + 1 && (document.querySelector('#plGarBody .gr-tab.aan')||{}).textContent === 'Recepten'; })()`));
+    await app.ev(`document.getElementById('grRecIdents').value = 'PB 95910-1J400'; PLGarage._recZoek(); 'ok'`);
+    toets('de AI-zoektocht toont het voorstel als niet bewezen', await wacht(`/SRS wissen/.test(document.getElementById('plGarBody').textContent) && /niet bewezen/.test(document.getElementById('plGarBody').textContent)`));
+    toets('het voorstel met 27 is afgekeurd', await app.ev(`/sleutel \\(dienst 27/.test(document.getElementById('plGarBody').textContent)`));
+    toets('de vraag droeg de idents en geen kenteken', await app.ev(`/95910-1J400/.test(window._aiVraag) && !/AB-?123-?C/i.test(window._aiVraag)`));
+    await app.ev(`PLGarage._recBewaar(0); 'ok'`);
+    toets('bewaren zet het in de receptenlijst, nog niet bewezen', await app.ev(`PLModuleCmd.leesRecepten().some(r => r.naam === 'SRS wissen' && r.ai && !r.bewezen)`));
+    await app.ev(`window.apiFetch = window._apiWas; window.currentUser = window._rolWas; localStorage.removeItem('pl_modrecepten'); PLGarage._tab('overzicht'); 'ok'`);
     toets('het kenteken staat als gele plaat met streepjes', await app.ev(`/AB-123-C/.test(document.querySelector('#plGarBody .gr-kent').textContent)`));
 
     console.log('\n── 4. rapporten en foutcodes komen vanzelf bij het voertuig ──');

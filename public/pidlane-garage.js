@@ -1654,10 +1654,50 @@
       PLZonder.checkHtml(c.rdw, 'grRecall').replace('<div id="grRecall"></div>', '<div id="grRecall">' + (c.rdwRecall || '') + '</div>') + (PLZonder.evHtml ? PLZonder.evHtml(c.rdw) : '') + PLZonder.BRON + '</div>';
   }
 
+  /* ── Recepten (18-11-2026, alleen admin) ──────────────────────────────
+     Modulerecepten van PLModuleCmd voor dit voertuig, en een AI-zoektocht
+     met de gegevens uit het profiel. Een AI-voorstel is "niet bewezen" tot
+     het op een auto van begin tot eind positief beantwoord is; draaien gaat
+     altijd via Modulecommando's, met zijn drie remmen. */
+  function receptenAan() { return !!window.PLModuleCmd && typeof isAdmin === 'function' && isAdmin(); }
+  function receptVanVoertuig(r, v) {
+    var m = String(v.merk || '').toLowerCase();
+    return !m || !r.merk || String(r.merk).toLowerCase() === m;
+  }
+  function tekenRecepten(v) {
+    var M = window.PLModuleCmd, rs = _st.rec || (_st.rec = { idents: '', vraag: '', bezig: false, fout: '', ai: null, weg: [] });
+    var eigen = M.leesRecepten().filter(function (r) { return receptVanVoertuig(r, v); });
+    var regel = function (r, i, ai) {
+      var stand = r.bewezen ? '✅ bewezen ' + datumNl(r.bewezen.datum, true) : (r.ai ? '🤖 AI-voorstel, niet bewezen' : '⚪ niet bewezen');
+      if (r.laatst && r.laatst.staat !== 'ok') stand += ' · laatst ' + esc(r.laatst.staat) + ': ' + esc(r.laatst.tekst);
+      return '<div class="gr-item" style="display:block"><b>' + esc(r.naam) + '</b> <span class="gr-klein">' + esc(r.module || '') + '</span>' +
+        '<div style="font-family:monospace;font-size:12px">' + esc(r.hdr) + ': ' + esc(r.stappen.map(function (b) { return b.replace(/(..)/g, '$1 ').trim(); }).join(' | ')) + '</div>' +
+        '<div class="gr-klein">' + stand + (r.notitie ? '<br>' + esc(r.notitie) : '') + '</div>' +
+        (ai ? '<button class="gr-k klein" onclick="PLGarage._recBewaar(' + i + ')">Bewaar als recept</button>'
+          : '<button class="gr-k klein" onclick="PLGarage.sluit();PLModuleCmd.open()">Openen in Modulecommando\'s</button>') + '</div>';
+    };
+    var h = '<div class="gr-blok"><div class="gr-bh">🔎 Zoeken met AI</div>' +
+      '<div class="gr-klein">De AI zoekt met merk, model, bouwjaar en motor uit het profiel, plus wat je hieronder invult. Kenteken en VIN gaan niet mee. ' +
+      'Een voorstel is pas bewezen als het op een auto positief beantwoord is.</div>' +
+      '<div class="gr-veld" style="display:grid;gap:6px;margin:6px 0"><input id="grRecIdents" placeholder="idents van de module (optioneel), bv. PB 95910-1J400" value="' + esc(rs.idents) + '">' +
+      '<input id="grRecVraag" placeholder="wat zoek je, bv. airbag foutcodes wissen" value="' + esc(rs.vraag) + '"></div>' +
+      '<button class="gr-k" ' + (rs.bezig ? 'disabled ' : '') + 'onclick="PLGarage._recZoek()">' + (rs.bezig ? '⏳ Zoeken…' : '🔎 Zoek recepten') + '</button>' +
+      (rs.fout ? '<div class="gr-melding rood">' + esc(rs.fout) + '</div>' : '') + '</div>';
+    if (rs.ai) {
+      h += '<div class="gr-blok"><div class="gr-bh">Voorstellen</div>' + (rs.ai.length ? rs.ai.map(function (r, i) { return regel(r, i, true); }).join('') : '<div class="gr-klein">De AI kent geen recept met een bron voor dit voertuig.</div>') +
+        (rs.weg.length ? '<div class="gr-klein">Afgekeurd: ' + rs.weg.map(function (w) { return esc(w.naam) + ' (' + esc(w.reden) + ')'; }).join(', ') + '</div>' : '') + '</div>';
+    }
+    h += '<div class="gr-blok"><div class="gr-bh">Bewaarde recepten' + (v.merk ? ' voor ' + esc(v.merk) : '') + '</div>' +
+      (eigen.length ? eigen.map(function (r, i) { return regel(r, i, false); }).join('') : '<div class="gr-klein">Nog geen recepten voor dit voertuig.</div>') + '</div>';
+    return h;
+  }
+
   function tekenVoertuig(v) {
-    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['kenteken', 'Kenteken'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['profiel', 'Profiel']]
+    var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['kenteken', 'Kenteken'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['recepten', 'Recepten'], ['profiel', 'Profiel']]
       .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)) && (t[0] !== 'kenteken' || !!v.kenteken); });
+    tabs = tabs.filter(function (t) { return t[0] !== 'recepten' || receptenAan(); });
     if (_st.tab === 'kenteken' && !v.kenteken) _st.tab = 'overzicht';
+    if (_st.tab === 'recepten' && !receptenAan()) _st.tab = 'overzicht';
     if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
     if (_st.tab === 'conditie' && !scoreAan(v)) _st.tab = 'overzicht';
     var h = '<div class="gr-knoppen" style="margin:0 0 10px"><button class="gr-k klein" onclick="PLGarage._terug()">← Alle voertuigen</button>' +
@@ -1775,6 +1815,8 @@
       }).join('') : '<div class="gr-klein">Nog geen rapporten. Elk AI-rapport, elke foutcode-uitlezing en elke waakronde met dit voertuig actief komt hier vanzelf terecht.</div>') : '<div class="gr-klein">⏳</div>') + '</div>';
     } else if (_st.tab === 'sensoren') {
       h += tekenSensoren(v);
+    } else if (_st.tab === 'recepten') {
+      h += tekenRecepten(v);
     } else if (_st.tab === 'profiel') {
       h += fotoBlok(v);
       var rijProf = function (l, w) { return '<div>' + l + '</div><div><b>' + (w == null || w === '' ? '—' : esc(w)) + '</b></div>'; };
@@ -2802,6 +2844,24 @@
     _tab: function (t) { _st.tab = t; _st.rrForm = null; _st.labelRit = null; _st.tankForm = null; _st.condForm = false; _st.condFout = null; _st.kiesModus = false; _st.kies = {}; // Sensoren opnieuw openen = verse stand uit het voertuig en de bibliotheek,
       // behalve als er nog iets onbewaards staat.
       if (t !== 'sensoren' || !(_st.sens && _st.sens.gewijzigd)) _st.sens = null; teken(); },
+    _recZoek: async function () {
+      var v = voertuig(_st.vid), rs = _st.rec;
+      if (!v || !rs || rs.bezig) return;
+      var w = function (id) { var e = document.getElementById(id); return e ? e.value : ''; };
+      rs.idents = w('grRecIdents'); rs.vraag = w('grRecVraag'); rs.bezig = true; rs.fout = ''; teken();
+      try {
+        var u = await PLModuleCmd.zoekAi(v, rs.idents, rs.vraag);
+        if (u.ok) { rs.ai = u.recepten; rs.weg = u.weg; } else rs.fout = u.fout;
+      } catch (e) { console.warn('PLGarage: receptzoektocht mislukt', e); rs.fout = 'Zoeken mislukt: ' + ((e && e.message) || e); }
+      rs.bezig = false; teken();
+    },
+    _recBewaar: function (i) {
+      var rs = _st.rec, r = rs && rs.ai && rs.ai[i];
+      if (!r) return;
+      var u = PLModuleCmd.bewaarRecept(r);
+      if (u.ok) rs.ai.splice(i, 1); else rs.fout = 'Niet bewaard: ' + u.fout;
+      teken();
+    },
     _terug: function () { _st.view = _st.view === 'formulier' && _st.vid ? 'voertuig' : 'lijst'; if (_st.view === 'lijst') _st.vid = null; teken(); },
     _terugNaar: function (t) { _st.view = 'voertuig'; _st.tab = t; teken(); },
     _actief: function (id) { zetActief(id); melding('Actief voertuig gewijzigd'); teken(); },

@@ -113,6 +113,56 @@ const bus = (n, f) => f();
   toets('zonder naam geweigerd', !M.receptBij([], { hdr: '7D0', stappen: '1003' }).ok);
   toets('weghalen', M.receptWeg(l.lijst, 'a').length === 0);
 
+  console.log('\n7. Sjablonen');
+  const sj = M.SJABLONEN.map((t, i) => M.sjabloon(i)).filter((t, i) => !M.SJABLONEN[i].leeg);
+  toets('er is een i20-airbagsjabloon op 7D0', sj.some((t) => /i20/.test(t.model) && t.hdr === '7D0'));
+  toets('elk sjabloon komt door de receptkeuring', sj.every((t) => M.receptKeur(t).ok), JSON.stringify(sj.map((t) => M.receptKeur(t))));
+  toets('elk sjabloon zegt dat het ongeverifieerd is', sj.every((t) => /ongeverifieerd/i.test(t.notitie)));
+  toets('een sjabloon heeft geen id (bewaren maakt een nieuw recept)', sj.every((t) => t.id === ''));
+  toets('het lege formulier is geen geldig recept', !M.receptKeur(M.sjabloon(M.SJABLONEN.length - 1)).ok);
+  toets('elk sjabloon opent eerst een diagnosesessie (10 ..)', sj.every((t) => M.receptKeur(t).recept.stappen[0].slice(0, 2) === '10'));
+  toets('geen sjabloon buiten de lijst', M.sjabloon(99) === null);
+  toets('een sjabloon wist met 14 en is dus schrijvend', sj.every((t) => M.receptKeur(t).recept.stappen.some((b) => b.slice(0, 2) === '14' && M.schrijft(b))));
+
+  console.log('\n8. Bewijs: alleen een positief beantwoorde reeks');
+  let bl = M.receptBij([], { id: 'b', naam: 'x', hdr: '7D0', stappen: '10 03\n14 FF FF FF' }).lijst;
+  toets('een nieuw recept is niet bewezen', !bl[0].bewezen);
+  let na = M.bewijs(bl, 'b', { staat: 'geweigerd', tekst: 'stilstand' }, 'T1');
+  toets('een weigering bewijst niets, maar staat in laatst', !na[0].bewezen && na[0].laatst.staat === 'geweigerd');
+  toets('afgebroken vóór versturen telt niet', M.bewijs(bl, 'b', { staat: 'afgebroken' }, 'T1')[0].laatst === null);
+  na = M.bewijs(na, 'b', { staat: 'ok', tekst: '2 stappen' }, 'T2');
+  toets('ok maakt bewezen', na[0].bewezen && na[0].bewezen.datum === 'T2');
+  na = M.bewijs(na, 'b', { staat: 'fout', tekst: '7F 14 33' }, 'T3');
+  toets('een latere weigering laat bewezen staan, laatst toont hem', na[0].bewezen.datum === 'T2' && na[0].laatst.staat === 'fout');
+  toets('bewezen overleeft de receptkeuring', M.receptKeur(na[0]).recept.bewezen.datum === 'T2');
+  toets('bewijs raakt andere recepten niet', M.bewijs([{ id: 'z' }], 'b', { staat: 'ok' }, 'T')[0].bewezen === undefined);
+
+  console.log('\n9. AI-voorstellen keuren');
+  const vtg = { merk: 'Hyundai', model: 'i20', bouwjaar: 2009, motor: '1.4', kenteken: '12-ABC-3', vin: 'KMHBT51GP9U000000' };
+  const pr = M.zoekPrompt(vtg, 'PB 95910-1J400', 'airbag wissen');
+  toets('de prompt draagt merk, model, jaar en idents', /Hyundai/.test(pr) && /i20/.test(pr) && /2009/.test(pr) && /95910-1J400/.test(pr));
+  toets('kenteken en VIN gaan niet mee', !/12-ABC-3/.test(pr) && !/KMHBT/.test(pr));
+  const aiAntw = 'Hier: ' + JSON.stringify({ recepten: [
+    { naam: 'SRS wissen', module: 'SRS', hdr: '7D0', stappen: ['10 03', '14 FF FF FF'], bron: 'GDS handleiding', zekerheid: 'hoog' },
+    { naam: 'zonder bron', hdr: '7D0', stappen: ['10 03'], bron: '', zekerheid: 'hoog' },
+    { naam: 'gok', hdr: '7D0', stappen: ['10 03'], bron: 'x', zekerheid: 'laag' },
+    { naam: 'sleutel', hdr: '7D0', stappen: ['10 03', '27 01'], bron: 'forum', zekerheid: 'hoog' },
+    { naam: 'schrijven', hdr: '7D0', stappen: ['2E F1 90 00'], bron: 'forum', zekerheid: 'middel' },
+    { naam: 'routine', hdr: '7D0', stappen: ['31 01 FF 00'], bron: 'forum', zekerheid: 'middel' },
+    { naam: 'raar adres', hdr: '18DA', stappen: ['10 03'], bron: 'forum', zekerheid: 'middel' }] }) + ' klaar';
+  const la = M.leesAiRecepten(aiAntw, vtg);
+  toets('één voorstel blijft over', la.ok && la.recepten.length === 1 && la.recepten[0].naam === 'SRS wissen', JSON.stringify(la));
+  toets('zes afgekeurd, elk met reden', la.weg.length === 6 && la.weg.every((w) => w.reden));
+  toets('27, 2E en 31 vallen af op de dienst', ['sleutel', 'schrijven', 'routine'].every((nm) => la.weg.some((w) => w.naam === nm && /dienst/.test(w.reden))));
+  const vs = la.recepten[0];
+  toets('een voorstel is AI, niet bewezen, met bron in de notitie', vs.ai && !vs.bewezen && /niet bewezen/.test(vs.notitie) && /GDS/.test(vs.notitie));
+  toets('merk en model komen uit het voertuig', vs.merk === 'Hyundai' && /i20/.test(vs.model) && /2009/.test(vs.model));
+  toets('geen JSON = nette fout', !M.leesAiRecepten('ik weet het niet', vtg).ok);
+  toets('lege lijst = ok, niets', M.leesAiRecepten('{"recepten":[]}', vtg).recepten.length === 0);
+  let gevraagd = null;
+  const za = await M.zoekAi(vtg, 'PB', 'x', { ai: (p, sys) => { gevraagd = { p, sys }; return Promise.resolve(aiAntw); } });
+  toets('zoekAi stuurt de systeemprompt mee en keurt het antwoord', gevraagd && /Verzin niets/.test(gevraagd.sys) && za.recepten.length === 1);
+
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
 })().catch((e) => { console.log('FOUT  test gooide: ' + (e.stack || e)); process.exit(1); });
