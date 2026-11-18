@@ -38,6 +38,21 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Na het inleren het RDW meteen bij het voertuig (18-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Een op VIN herkende auto zonder kenteken krijgt het kenteken van de verbinding; een bestaand kenteken blijft',
+    waarom: 'Na het inleren stond het voertuig in Mijn voertuigen half leeg terwijl de voertuigkaart al vol was: het RDW kwam pas bij de dagelijkse ronde, en zonder kenteken nooit.',
+    proef: async function () {
+      var G = window.PLGarage;
+      if (!G || !G._kern || typeof G._kern.kentekenErbij !== 'function') return { staat: 'FOUT', detail: 'PLGarage._kern.kentekenErbij ontbreekt — pidlane-garage.js niet bijgewerkt (herladen?)' };
+      var k = G._kern.kentekenErbij;
+      if (k({ id: 'x' }, 'ab-123-c') !== 'AB123C') return { staat: 'FOUT', detail: 'leeg kenteken kreeg dat van de verbinding niet' };
+      if (k({ id: 'x', kenteken: 'XX99YY' }, 'AB123C') !== null) return { staat: 'FOUT', detail: 'de verbinding overschreef een bestaand kenteken' };
+      return { staat: 'ok', detail: 'leeg → kenteken van de verbinding; bestaand blijft' };
+    }
+  },
+
   // ── Modulecommando's: schrijven alleen na de vraag en bij stilstand (17-11-2026) ──
   {
     issue: '—',
