@@ -3787,6 +3787,7 @@ body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vtp-cel { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; text-align:center; }
 .vtp-cel b { font:800 19px/1.1 var(--f); color:var(--tx); font-variant-numeric:tabular-nums; }
 .vtp-cel b i { font-style:normal; font-size:11px; font-weight:600; color:var(--tx3); margin-left:1px; }
+.vtp-kop { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
 .vtp-cel small { max-width:100%; font-size:11px; color:var(--tx3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* De helling: de weg kantelt, de combinatie rijdt erop. */
 .vtp-helling svg { width:100%; max-width:132px; height:auto; overflow:hidden; }

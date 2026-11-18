@@ -129,26 +129,26 @@ const COMBI = '<rect class="vtp-car" x="22" y="22" width="36" height="20" rx="4"
   '<circle class="vtp-wiel" cx="40" cy="43" r="4"/><circle class="vtp-wiel" cx="76" cy="43" r="4"/><circle class="vtp-wiel" cx="97" cy="43" r="4"/>';
 
 function hellingHtml(t){
-  return '<div class="vtp-cel vtp-helling" data-terrein="'+(t.climb||'geen')+'" data-bron="'+t.bron+'">'+
+  return '<div class="vtp-cel vtp-helling" data-terrein="'+(t.climb||'geen')+'" data-bron="'+t.bron+'"><span class="vtp-kop">Helling</span>'+
     '<svg viewBox="0 0 120 60" aria-hidden="true"><line class="vtp-horizon" x1="0" y1="47" x2="120" y2="47"/>'+
     '<g class="vtp-kantel" style="transform:rotate('+(-t.hoek)+'deg)"><line class="vtp-weg" x1="-20" y1="47" x2="140" y2="47"/>'+COMBI+'</g></svg>'+
     '<b>'+esc(t.tekst || (t.climb==='klim' ? '⛰' : t.climb==='afdaling' ? '↘' : '—'))+'</b><small>'+esc(t.label)+'</small></div>';
 }
 function schakelHtml(s){
   const pijl=s.advies==='terug' ? '▼' : s.advies==='op' ? '▲' : s.advies==='ok' ? '✓' : '';
-  return '<div class="vtp-cel vtp-schakel" data-advies="'+(s.advies||'geen')+'" aria-live="polite">'+
+  return '<div class="vtp-cel vtp-schakel" data-advies="'+(s.advies||'geen')+'" aria-live="polite"><span class="vtp-kop">Schakelen</span>'+
     '<div class="vtp-rad"><span class="vtp-pijl">'+pijl+'</span><b>'+esc(s.groot)+'</b></div><small>'+esc(s.tekst)+'</small></div>';
 }
 function lastHtml(l){
   // Halve boog, lengte 100 (pathLength), zodat de vulling gewoon een percentage is.
   const v=l.frac===null ? 0 : Math.round(l.frac*100), a=l.aandeel===null ? 0 : Math.round(l.aandeel*100);
-  return '<div class="vtp-cel vtp-last" data-st="'+l.st+'">'+
+  return '<div class="vtp-cel vtp-last" data-st="'+l.st+'"><span class="vtp-kop">Belasting</span>'+
     '<svg viewBox="0 0 100 56" aria-hidden="true">'+
       '<path class="vtp-boog-bg" d="M10 50 A40 40 0 0 1 90 50" pathLength="100"/>'+
       '<path class="vtp-boog" d="M10 50 A40 40 0 0 1 90 50" pathLength="100" stroke-dasharray="'+v+' 100"/>'+
       '<path class="vtp-boog-5" d="M18 50 A32 32 0 0 1 82 50" pathLength="100" stroke-dasharray="'+a+' 100"/></svg>'+
     '<b>'+(l.v===null ? '—' : Math.round(l.v))+'<i>%</i></b>'+
-    '<small>'+(l.aandeel===null ? 'belasting' : 'zwaar '+a+'% · 5 min')+'</small></div>';
+    '<small>'+(l.aandeel===null ? 'nu' : 'zwaar '+a+'% · 5 min')+'</small></div>';
 }
 function tempHtml(t){
   return '<div class="vtp-temp" data-rol="'+esc(t.rol)+'" data-st="'+t.st+'"'+(t.stijgt ? ' data-stijgt="1"' : '')+'>'+
