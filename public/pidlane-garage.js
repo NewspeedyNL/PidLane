@@ -1694,7 +1694,8 @@
 
   function tekenVoertuig(v) {
     var tabs = [['overzicht', 'Overzicht'], ['issues', 'Open punten'], ['ritten', 'Ritten'], ['conditie', 'Conditie'], ['tanken', 'Tankbeurten'], ['kenteken', 'Kenteken'], ['rapporten', 'Rapporten'], ['sensoren', 'Sensoren'], ['recepten', 'Recepten'], ['profiel', 'Profiel']]
-      .filter(function (t) { return (t[0] !== 'recepten' || receptenAan()) && (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)) && (t[0] !== 'kenteken' || !!v.kenteken); });
+      .filter(function (t) { return (t[0] !== 'tanken' || tankenAan(v)) && (t[0] !== 'conditie' || scoreAan(v)) && (t[0] !== 'kenteken' || !!v.kenteken); });
+    tabs = tabs.filter(function (t) { return t[0] !== 'recepten' || receptenAan(); });
     if (_st.tab === 'kenteken' && !v.kenteken) _st.tab = 'overzicht';
     if (_st.tab === 'recepten' && !receptenAan()) _st.tab = 'overzicht';
     if (_st.tab === 'tanken' && !tankenAan(v)) _st.tab = 'overzicht';
