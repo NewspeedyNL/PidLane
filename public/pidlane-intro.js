@@ -160,6 +160,10 @@ window.PLIntro = (function () {
     hlg.classList.add('hlg-gl');
     try { deur.rust = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
     catch (e) { console.warn('PLIntro: prefers-reduced-motion niet leesbaar — de deur beweegt', e); }
+    // Onder automatisering één stilstaand beeld, net als de intro die dan niet
+    // speelt: headless Chromium tekent WebGL in software, en een bewegende
+    // tunnel vertraagde daar de pollus (bproef-antwoordtal, 18-11-2026).
+    if (navigator.webdriver) deur.rust = true;
     if (window.MutationObserver) {
       var mo = new MutationObserver(deurWek);
       ['lgWaveBg', 'loginOv', 'connOv'].forEach(function (id) {
