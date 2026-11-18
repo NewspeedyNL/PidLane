@@ -1824,9 +1824,9 @@ body.pl-vis-vol .vt-thema, body.pl-vis-vol .vt-uit { display:inline-flex; }
   body.pl-vis-vol .vis.vhl-basis { padding-top:calc(var(--pl-sat, 0px) + 62px); }
   body.pl-vis-vol .vis.vhl-basis .vis-bak { max-width:min(100%, calc(var(--pl-vh) - 76px), 760px); }
   /* Liggend staan meldingen en trekstrook rechts naast de meter, niet eronder. */
-  body.pl-vis-vol .vis-meldingen, body.pl-vis-vol .vis-trek { position:fixed; right:12px; width:min(28%, 300px); }
+  body.pl-vis-vol .vis-meldingen, body.pl-vis-vol .vis-onder { position:fixed; right:12px; width:min(30%, 340px); }
   body.pl-vis-vol .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 12px); }
-  body.pl-vis-vol .vis-trek { top:calc(var(--pl-sat, 0px) + 64px); }
+  body.pl-vis-vol .vis-onder { top:calc(var(--pl-sat, 0px) + 64px); max-height:calc(var(--pl-vh) - var(--pl-sat, 0px) - var(--pl-sab, 0px) - 150px); overflow:auto; }
 }
 /* De keuzestrook onderin: een rondje per thema, met de naam eronder. */
 .vt-strook { position:fixed; left:50%; transform:translateX(-50%); bottom:calc(var(--pl-sab, 0px) + 14px); z-index:3; display:flex; gap:10px;
@@ -1930,7 +1930,7 @@ body.pl-vis-vol .vhl-schil { position:fixed; inset:0; margin:0; border:0; border
   justify-content:center; padding:calc(var(--pl-sat, 0px) + 64px) 4vw calc(var(--pl-sab, 0px) + 24px); }
 body.pl-vis-vol .vis:has(.vhl-schil) { overflow:hidden; }
 body.pl-vis-vol .vis:has(.vhl-schil) .vt-thema, body.pl-vis-vol .vis:has(.vhl-schil) .vt-strook { display:none; }
-body.pl-vis-vol .vis:has(.vhl-schil) .vis-meldingen, body.pl-vis-vol .vis:has(.vhl-schil) .vis-trek { position:relative; z-index:2; }
+body.pl-vis-vol .vis:has(.vhl-schil) .vis-meldingen, body.pl-vis-vol .vis:has(.vhl-schil) .vis-onder { position:relative; z-index:2; }
 
 /* GLAS — temperatuur: vijf neonbuizen. De vulling gloeit in de kleur van
    het rijgedrag, warn amber en danger rood; het getal dun en gloeiend. */
@@ -1990,7 +1990,7 @@ body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(56vh, 70vw, 440px); }
 .vis.vhl-basis.vhl-gl { background:#02030a; }
 .vis.vhl-basis > .vhl-bg { position:absolute; inset:0; width:100%; height:100%; display:block; z-index:0; pointer-events:none; }
 .vis.vhl-basis.vhl-zonder > .vhl-bg { visibility:hidden; }
-.vis.vhl-basis > .vis-bak, .vis.vhl-basis > .vis-meldingen, .vis.vhl-basis > .vis-trek { position:relative; z-index:1; }
+.vis.vhl-basis > .vis-bak, .vis.vhl-basis > .vis-meldingen, .vis.vhl-basis > .vis-onder { position:relative; z-index:1; }
 body.pl-vis-vol .vis.vhl-basis { border-radius:0; background:#02030a; }
 .vhl-basis .vis-plaat { fill:rgba(2,4,12,.55); stroke:color-mix(in srgb, var(--vhl-c) 45%, transparent); }
 .vhl-basis .vis-spoor { stroke:rgba(255,255,255,.07); }
@@ -2222,7 +2222,7 @@ body.pl-vis-vol .vhl-mid { padding-top:calc(5cqh + var(--pl-sat, 0px)); }
    Meldingen, trekstrook en knoppen liggen erboven. */
 body.pl-vis-vol .vpf-hyper { position:fixed; inset:0; margin:0; border:0; border-radius:0; aspect-ratio:auto; z-index:1; }
 body.pl-vis-vol .vis:has(.vpf-hyper) { overflow:hidden; }
-body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.vpf-hyper) .vis-trek { position:relative; z-index:2; }
+body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.vpf-hyper) .vis-onder { position:relative; z-index:2; }
 @media (orientation:portrait) {
   /* Staand (16-11-2026, uit de auto): de ringen naast elkaar bovenaan, zoals
      liggend, en het midden eronder over de volle breedte. Boven elkaar kregen
@@ -3772,17 +3772,119 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 #plGearOv .plg-k { width:44px; height:44px; border-radius:10px; border:1px solid var(--bd2); background:var(--sur2);
   color:var(--tx); font:800 18px var(--f); cursor:pointer; }
 #plGearOv .plg-k.nu { border-color:var(--bl); }
-/* Trekmodus in Slim visueel (27-09-2026): caravan of beladen. Een strook
-   tegels onder de meter met wat er dan telt; zie pidlane-visueel.js. */
-.vis-trek { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:6px; width:100%; max-width:420px; }
-.vis-tt { background:var(--sur); border:1px solid var(--bd); border-radius:10px; padding:7px 9px; display:flex; flex-direction:column; gap:1px; min-width:0; }
-.vis-tt small { font-size:11px; color:var(--tx3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.vis-tt b { font-size:20px; font-weight:800; color:var(--tx); font-variant-numeric:tabular-nums; line-height:1.15; }
-.vis-tt b i { font-style:normal; font-size:11px; font-weight:600; color:var(--tx3); margin-left:3px; }
-.vis-tt span { font-size:11px; color:var(--tx3); }
-.vis-tt.geen { opacity:.55; }
-.vis-tt.warn { border-color:var(--or); } .vis-tt.warn b { color:var(--or); }
-.vis-tt.danger { border-color:var(--rd); } .vis-tt.danger b { color:var(--rd); }
+/* ══ ONDER DE METER (19-11-2026): trekpaneel en rit-monitor ══════════
+   pidlane-vispaneel.js tekent, pidlane-visueel.js vult. Eén kolom onder de
+   meter; liggend op het volle scherm rechts ernaast (zie hierboven). */
+.vis-onder { display:flex; flex-direction:column; gap:8px; width:100%; max-width:420px; }
+.vis-onder:not(:has(.vtp, .vrm)) { display:none; }
+.vis-trek, .vis-ritmon { width:100%; }
+.vis-ritmon:empty { display:none; }
+body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
+.vis:has(.vrm) .vis-chip[data-id="monitor"] { display:none; }
+
+.vtp { display:flex; flex-direction:column; gap:10px; padding:10px; border-radius:16px; border:1px solid var(--bd); background:var(--sur); }
+.vtp-top { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:6px; align-items:end; }
+.vtp-cel { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:0; text-align:center; }
+.vtp-cel b { font:800 19px/1.1 var(--f); color:var(--tx); font-variant-numeric:tabular-nums; }
+.vtp-cel b i { font-style:normal; font-size:11px; font-weight:600; color:var(--tx3); margin-left:1px; }
+.vtp-cel small { max-width:100%; font-size:11px; color:var(--tx3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* De helling: de weg kantelt, de combinatie rijdt erop. */
+.vtp-helling svg { width:100%; max-width:132px; height:auto; overflow:hidden; }
+.vtp-horizon { stroke:var(--bd2); stroke-width:1; stroke-dasharray:2 3; }
+.vtp-kantel { transform-origin:60px 47px; transition:transform .8s cubic-bezier(.3,.7,.2,1); }
+.vtp-weg { stroke:var(--tx3); stroke-width:3; stroke-linecap:round; }
+.vtp-car { fill:var(--sur2); stroke:var(--tx2); stroke-width:1.5; }
+.vtp-raam { fill:var(--bd2); }
+.vtp-dissel { stroke:var(--tx2); stroke-width:2; }
+.vtp-auto { fill:var(--bl); }
+.vtp-wiel { fill:var(--tx); }
+.vtp-helling[data-terrein="klim"] .vtp-weg, .vtp-helling[data-terrein="klim"] b { stroke:var(--or); color:var(--or); }
+.vtp-helling[data-terrein="afdaling"] .vtp-weg, .vtp-helling[data-terrein="afdaling"] b { stroke:var(--bl); color:var(--bl); }
+.vtp-helling[data-bron="obd"] .vtp-weg { stroke-dasharray:7 5; }
+/* Het schakeladvies: een rond plaatje met de versnelling groot. */
+.vtp-rad { position:relative; display:flex; align-items:center; justify-content:center; width:62px; height:62px; border-radius:50%;
+  border:3px solid var(--bd2); background:var(--sur2); transition:border-color .3s, background .3s; }
+.vtp-rad b { font-size:28px; }
+.vtp-pijl { position:absolute; top:-2px; right:-2px; display:flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%;
+  font-size:12px; font-weight:900; color:#fff; background:var(--bd2); }
+.vtp-pijl:empty { display:none; }
+.vtp-schakel[data-advies="terug"] .vtp-rad { border-color:var(--or); background:var(--ors); animation:vtp-puls 1.2s ease-in-out infinite; }
+.vtp-schakel[data-advies="terug"] .vtp-pijl { background:var(--or); }
+.vtp-schakel[data-advies="terug"] b, .vtp-schakel[data-advies="terug"] small { color:var(--or); }
+.vtp-schakel[data-advies="op"] .vtp-rad { border-color:var(--bl); background:var(--bls); }
+.vtp-schakel[data-advies="op"] .vtp-pijl { background:var(--bl); }
+.vtp-schakel[data-advies="ok"] .vtp-rad { border-color:var(--gn); }
+.vtp-schakel[data-advies="ok"] .vtp-pijl { background:var(--gn); }
+@keyframes vtp-puls { 50% { box-shadow:0 0 0 7px transparent, 0 0 16px var(--or); } }
+/* De belasting: boog nu, dunne binnenboog = aandeel zwaar in 5 min. */
+.vtp-last svg { width:100%; max-width:96px; height:auto; }
+.vtp-last b { margin-top:-22px; }
+.vtp-boog-bg, .vtp-boog, .vtp-boog-5 { fill:none; stroke-linecap:round; }
+.vtp-boog-bg { stroke:var(--sur2); stroke-width:8; }
+.vtp-boog { stroke:var(--gn); stroke-width:8; transition:stroke-dasharray .5s; }
+.vtp-boog-5 { stroke:var(--tx3); stroke-width:3; opacity:.55; }
+.vtp-last[data-st="warn"] .vtp-boog, .vtp-last[data-st="warn"] .vtp-boog-5 { stroke:var(--or); opacity:1; }
+.vtp-last[data-st="danger"] .vtp-boog { stroke:var(--rd); }
+.vtp-last[data-st="warn"] small { color:var(--or); }
+.vtp-last[data-st="geen"] { opacity:.5; }
+/* Temperaturen: een balk per sensor, met de trend. */
+.vtp-temps { display:grid; grid-template-columns:1fr 1fr; gap:8px 14px; }
+.vtp-temp { display:grid; grid-template-columns:1fr auto; grid-template-areas:"tn b" "bar bar" "em em"; align-items:baseline; gap:2px 6px; min-width:0; }
+.vtp-tn { grid-area:tn; font-size:11.5px; color:var(--tx2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vtp-temp b { grid-area:b; font:800 16px var(--f); color:var(--tx); font-variant-numeric:tabular-nums; }
+.vtp-bar { grid-area:bar; height:6px; border-radius:3px; background:var(--sur2); overflow:hidden; }
+.vtp-bar i { display:block; height:100%; border-radius:3px; background:linear-gradient(90deg, var(--bl), var(--gn)); transition:width .6s; }
+.vtp-temp em { grid-area:em; min-height:13px; font-size:11px; font-style:normal; color:var(--tx3); }
+.vtp-temp[data-stijgt] em { color:var(--or); font-weight:700; }
+.vtp-temp[data-st="warn"] .vtp-bar i { background:var(--or); } .vtp-temp[data-st="warn"] b { color:var(--or); }
+.vtp-temp[data-st="danger"] .vtp-bar i { background:var(--rd); } .vtp-temp[data-st="danger"] b { color:var(--rd); }
+.vtp-temp[data-st="geen"] { opacity:.45; }
+.vtp-voet { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--tx2); font-variant-numeric:tabular-nums; }
+.vtp-tip { padding:7px 10px; border-left:3px solid var(--gn); border-radius:0 8px 8px 0; background:var(--sur2); font-size:13px; font-weight:600; color:var(--tx); }
+.vtp-tip[data-level="warn"] { border-left-color:var(--or); }
+body.pl-vis-vol .vtp-cel b { font-size:22px; } body.pl-vis-vol .vtp-rad { width:72px; height:72px; } body.pl-vis-vol .vtp-rad b { font-size:32px; }
+
+/* De rit-monitor: één segment per controle op een ring. */
+.vrm { display:flex; align-items:center; gap:12px; width:100%; padding:10px 12px; border-radius:16px; border:1px solid var(--bd); background:var(--sur);
+  color:var(--tx); font-family:var(--f); text-align:left; cursor:pointer; }
+.vrm:active { transform:scale(.99); }
+.vrm-ring { flex:none; width:60px; height:60px; }
+.vrm-bg { fill:none; stroke:var(--sur2); stroke-width:6; }
+.vrm-seg { fill:none; stroke-width:6; stroke:var(--bd2); transition:stroke .4s; }
+.vrm-seg[data-s="ok"] { stroke:var(--gn); }
+.vrm-seg[data-s="hit"] { stroke:var(--or); }
+.vrm-n { font:800 18px var(--f); fill:var(--gn); }
+.vrm-tx { display:flex; flex-direction:column; gap:1px; min-width:0; }
+.vrm-tx b { font-size:13.5px; }
+.vrm-tx small { font-size:11.5px; color:var(--tx2); }
+.vrm-tx em { font-size:12px; font-style:normal; font-weight:700; color:var(--or); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.vrm[data-st="let"] { border-color:var(--or); } .vrm[data-st="let"] .vrm-n { fill:var(--or); }
+.vrm[data-st="ernstig"] { border-color:var(--rd); background:var(--rds); } .vrm[data-st="ernstig"] .vrm-n { fill:var(--rd); }
+.vrm[data-st="ernstig"] .vrm-ecu { color:var(--rd); font-weight:700; }
+.vrm[data-st="wacht"] { opacity:.7; } .vrm[data-st="wacht"] .vrm-n { fill:var(--tx3); }
+
+/* Een nieuwe bevinding: een balk bovenin die vanzelf wegschuift (pidlane-visueel.js, popBij). */
+.vis-pop { position:fixed; left:50%; top:calc(var(--pl-sat, 0px) + 10px); z-index:var(--z-modal-hoog); display:flex; width:min(calc(100% - 24px), 520px);
+  border-radius:14px; border:1px solid var(--or); background:rgba(14,18,30,.94); color:#fff; overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,.35); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  transform:translate(-50%, calc(-100% - 20px)); transition:transform .35s cubic-bezier(.3,.7,.2,1); }
+.vis-pop.aan { transform:translate(-50%, 0); }
+.vis-pop.ernstig { border-color:var(--rd); }
+.vis-pop-tx { flex:1; display:flex; align-items:flex-start; gap:10px; min-width:0; padding:10px 12px; border:0; background:none; color:inherit; font-family:var(--f); text-align:left; cursor:pointer; }
+.vis-pop-ic { flex:none; font-size:18px; line-height:1.2; }
+.vis-pop-tx > span:last-child { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.vis-pop-tx b { font-size:14px; font-weight:800; }
+.vis-pop-tx b i { font-style:normal; font-size:11px; padding:1px 6px; margin-left:4px; border-radius:8px; background:rgba(255,255,255,.14); }
+.vis-pop-tx small { font-size:12.5px; line-height:1.35; color:rgba(255,255,255,.78); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.vis-pop-x { flex:none; width:46px; border:0; border-left:1px solid rgba(255,255,255,.12); background:none; color:#fff; font-size:15px; font-weight:800; cursor:pointer; }
+.vis-pop-tijd { position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--or); transform-origin:left; transform:scaleX(0); }
+.vis-pop.ernstig .vis-pop-tijd { background:var(--rd); }
+.vis-pop.aan .vis-pop-tijd { animation-name:vis-pop-tijd; animation-timing-function:linear; animation-fill-mode:forwards; }
+@keyframes vis-pop-tijd { from { transform:scaleX(1); } to { transform:scaleX(0); } }
+@media (prefers-reduced-motion:reduce) {
+  .vis-pop, .vtp-kantel, .vtp-boog, .vtp-bar i { transition:none; }
+  .vtp-schakel[data-advies="terug"] .vtp-rad { animation:none; }
+}
 #plGearOv .plg-r.plg-r2 { width:118px; }
 
 /* ══ NAVIGATIE (29-09-2026) — onderbalk, startscherm, Meer, garagemodus ══

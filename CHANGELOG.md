@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 19-11-2026 — Slim visueel: trekpaneel, rit-monitor onder de meter, bevinding als pop-up
+ ═════════════════════════════════════════════════════
+   • Trekmodus (caravan of beladen): de zes getaltegels zijn één paneel. De helling als weg met de combinatie erop (gemeten of geschat), het schakeladvies als rad met de doelversnelling (pas na 3 s, zoals de coach), de belasting als boog met het aandeel zwaar van 5 min, elke temperatuur als balk met trend (koelwater, olie, inlaat, en bakolie als de auto die als eigen sensor heeft). De laatste coachtip in één regel
+   • Rit-monitor: aan = een ring met één segment per controle (wacht, getoetst, zag iets), in het midden de meldingen, ernaast MIL en foutcodeteller van de ECU. De chip op de rail vervalt dan
+   • Bevindingen: geen kaarten meer in het vak. Een nieuwe komt 7 s (ernstig 12 s) als balk bovenin; tik = alle bevindingen. Daarna één chip "N open" op de rail
+   • Nieuw: pidlane-vispaneel.js (PLVisPaneel, puur). test-vispaneel.js (33), test-visueel.js (+13), acht mutaties, bproef-visueel bijgewerkt
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Caravan: terugschakelen bergop, homekaart naar Mijn voertuigen
  ═════════════════════════════════════════════════════
    • Caravanrit: op een klim met vol gas (belasting ≥ 80% of pedaal ≥ 70%) en wegzakkende snelheid zegt het advies "Terug naar N", als het toerental daarna onder 4500 (diesel 3500) blijft. Bergop nooit opschakelen. Eén bron: PLBerekend.schakelTrek(), met de echte versnelling uit PLGear

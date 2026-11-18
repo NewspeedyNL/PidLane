@@ -196,7 +196,10 @@ const TREK = [
   { rol:'last',     naam:'Belasting',   keten:['0104','0143'], eenheid:'%'  },
   { rol:'inlaat',   naam:'Inlaatlucht', keten:['010F'],        eenheid:'°C' },
   { rol:'verbruik', naam:'Verbruik nu', keten:['CA03','015E'], eenheid:'' },
-  { rol:'laaddruk', naam:'Laaddruk',    keten:['CA04'],        eenheid:'bar', turbo:true }
+  { rol:'laaddruk', naam:'Laaddruk',    keten:['CA04'],        eenheid:'bar', turbo:true },
+  // Bakolie (19-11-2026): geen OBD-standaard, dus alleen een eigen sensor met
+  // die naam. Bij trekken met een automaat de temperatuur die het eerst oploopt.
+  { rol:'atf',      naam:'Bakolie',     keten:[],              eenheid:'°C', zoek:/\batf\b|transmissie|versnellingsbak|bakolie|gearbox|transmission|\bcvt\b/i }
 ];
 const KOEL_TREND_MS = 60000;   // venster voor de trend
 const KOEL_TREND_WARN = 1.5;   // °C per minuut: daarboven, en warm, is het een waarschuwing
@@ -218,14 +221,40 @@ function koelTrend(hist, nu){
   if(!(Math.abs(d)>1e-9)) return null;
   return Math.round((n*sxy-sx*sy)/d*10)/10;
 }
-/* Welke PID staat op welke tegel? `mag(pid)` = bruikbaar; turbo = bewezen.
-   Geeft voor elke tegel {rol, naam, pid|null, gear?}. */
-function trekIndeling(mag, turbo){
-  return TREK.filter(function(t){ return !t.turbo || turbo; }).map(function(t){
+/* Welke PID staat op welke rij? `mag(pid)` = bruikbaar; turbo = bewezen;
+   `defs` = [{pid, name}] voor een rij die op naam zoekt (bakolie). Geeft per
+   rij {rol, naam, pid|null}; een zoekrij zonder treffer valt weg. */
+function trekIndeling(mag, turbo, defs){
+  const uit=[];
+  TREK.forEach(function(t){
+    if(t.turbo && !turbo) return;
     let pid=null;
     for(let i=0;i<t.keten.length;i++){ if(mag(t.keten[i])){ pid=t.keten[i]; break; } }
-    return { rol:t.rol, naam:t.naam, pid:pid, eenheid:t.eenheid, trend:!!t.trend };
+    if(!pid && t.zoek && Array.isArray(defs)) defs.forEach(function(d){ if(!pid && d && d.pid && t.zoek.test(String(d.name||'')) && mag(d.pid)) pid=d.pid; });
+    if(!pid && t.zoek) return;
+    uit.push({ rol:t.rol, naam:t.naam, pid:pid, eenheid:t.eenheid, trend:!!t.trend });
   });
+  return uit;
+}
+/* De snelheidstrend in km/u per s over de laatste ~5 s uit pidHist, of null. */
+function snelheidTrend(hist, nu){
+  if(!Array.isArray(hist) || hist.length<2) return null;
+  const a=hist[hist.length-1], doel=(nu||Date.now())-5000;
+  if(!a || typeof a.v!=='number' || a.t<(nu||Date.now())-2000) return null;
+  let b=null;
+  for(let i=hist.length-2;i>=0;i--){ const x=hist[i]; if(x && typeof x.v==='number'){ b=x; if(x.t<=doel) break; } }
+  if(!b || a.t-b.t<3000) return null;
+  return Math.round((a.v-b.v)/((a.t-b.t)/1000)*100)/100;
+}
+/* Het schakeladvies pas tonen als het 3 s hetzelfde is: geen pijl die
+   heen en weer springt bij een kuil. Puur: st in, st uit; st.toon is wat er
+   staat. Dezelfde regel als de coach (caravanTick). */
+const SCHAKEL_STABIEL_MS = 3000;
+function schakelStabiel(st, s, nu){
+  const k=s ? s.advies+'|'+s.doel : '';
+  const uit=(st && st.k===k) ? { k:k, t:st.t, toon:st.toon } : { k:k, t:nu, toon:st ? st.toon : null };
+  if(nu-uit.t>=SCHAKEL_STABIEL_MS) uit.toon=s;
+  return uit;
 }
 function caravanLoopt(){
   try{ const r=(window.PLRun && typeof window.PLRun.staat==='function') ? window.PLRun.staat() : null; return !!(r && r.caravan && r.caravan.aan); }
@@ -268,7 +297,9 @@ function zorgPids(){
   catch(e){ console.warn('PLVisueel: keuzelijst onleesbaar', e); }
   try{ if(typeof hiddenPIDs!=='undefined' && hiddenPIDs) verborgen=hiddenPIDs; }
   catch(e){ console.warn('PLVisueel: verborgen sensoren onleesbaar', e); }
-  const kies=nodigePids(heeft, activePIDs, verborgen, trekAan(), profielKetens().concat(reserveKetens(heeft, verborgen)));
+  const trek=trekAan();
+  const atf=trek ? trekIndeling(function(p){ return heeft.has(p); }, false, profielOpts().defs).filter(function(t){ return t.rol==='atf'; })[0] : null;
+  const kies=nodigePids(heeft, activePIDs, verborgen, trek, profielKetens().concat(reserveKetens(heeft, verborgen)).concat(atf ? [[atf.pid]] : []));
   if(!kies.length) return [];
   const voor=(typeof plSelectieVoor==='function') ? plSelectieVoor() : null;
   const r=(typeof pidToevoegen==='function') ? pidToevoegen(kies, { handmatig:false }) : { ok:[] };
@@ -1159,7 +1190,7 @@ function indeling(){
               schaal:schaalVoor(motor, d10 && d10.wH) };
   const kz=basisKeuzes();
   PLEKKEN.forEach(function(r){ ind.plekken[r.rol]=eerste(plekKeten(r, kz)); });
-  ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen()) : null;
+  ind.trek = trekAan() ? trekIndeling(bruikbaar, turboBewezen(), profielOpts().defs) : null;
   const pr=profielNu();
   ind.profiel = (pr!=='basis' && PF()) ? PF().indeling(pr, bruikbaar, motor, profielOpts()) : null;
   return ind;
@@ -1248,7 +1279,6 @@ const HOOFD = [
 // alternatief: dat zijn twee monitors over dezelfde rit.
 const HOOFD_MAX = 2;
 const MONITOREN = ['monitor','caravan'];
-const BEV_IN_VAK = 2;           // zelfde grens als de bevindingenbalk (BEV_MAX)
 
 function leesRun(){
   let run=null;
@@ -1321,9 +1351,11 @@ function meldingen(run, bev, admin, nu){
   const hoofd=HOOFD.filter(function(h){ return run[h.id] && run[h.id].aan; });
   hoofd.forEach(function(h){ uit.lopend.push(chip(h.id, h.icoon, h.kort, run[h.id], nu)); });
   if(run.waak && run.waak.aan) uit.lopend.push(chip('waak', '👁', 'Waakronde', run.waak, nu));
+  // Bevindingen staan sinds 19-11-2026 niet meer als kaart in het vak: een
+  // nieuwe komt even als balk bovenin (popBij), daarna is het één chip.
   if(bev && bev.length){
-    bev.slice(0, BEV_IN_VAK).forEach(function(b){ uit.regels.push({ soort:'bevinding', id:b.id, ernst:b.ernst, naam:b.naam, detail:b.uitleg||'' }); });
-    if(bev.length>BEV_IN_VAK) uit.regels.push({ soort:'meer', naam:'nog '+(bev.length-BEV_IN_VAK)+' bevinding'+(bev.length-BEV_IN_VAK===1?'':'en') });
+    const n=bev.length, ernstig=bev.some(function(b){ return b.ernst>=2; });
+    uit.lopend.push({ id:'bev', icoon:'🔗', naam:'Bevindingen', kort:n+' open', let:n, ernstig:ernstig, opname:false });
   }
   if(hoofd.length<HOOFD_MAX) HOOFD.forEach(function(h){
     if(!h.snel || !run[h.id] || run[h.id].aan || (h.admin && !admin)) return;
@@ -1343,19 +1375,6 @@ function chipHtml(c){
 function meldHtml(m){
   let h='';
   if(m.lopend.length) h+='<div class="vis-rail">'+m.lopend.map(chipHtml).join('')+'</div>';
-  m.regels.forEach(function(r){
-    if(r.soort==='bevinding'){
-      // Eén tik opent alle bevindingen, twee tikken of het ✕ verbergen deze
-      // (bevindingTik in pidlane-correlatie.js) — net als bij de tegels.
-      const id=String(r.id||'').replace(/[^A-Za-z0-9_\-]/g,'');
-      h+='<div class="vis-meld bev'+(r.ernst>=2?' ernstig':'')+'" role="button" tabindex="0" data-bev="'+id+'" onclick="bevindingTik(\''+id+'\')"'+
-         ' title="Tik: alle bevindingen · dubbeltik: verbergen"><span class="vis-meld-ic">🔗</span>'+
-         '<span class="vis-meld-tx"><b>'+esc(r.naam)+'</b><small>'+esc(r.detail)+'</small></span>'+
-         '<button type="button" class="vis-meld-x" onclick="event.stopPropagation();bevindingVerberg(\''+id+'\')" aria-label="Verbergen" title="Verbergen — de AI krijgt hem nog mee">✕</button></div>';
-    } else if(r.soort==='meer'){
-      h+='<button type="button" class="vis-meld meer" onclick="openBevindingen()">'+esc(r.naam)+' — bekijk alles →</button>';
-    }
-  });
   if(m.snel.length){
     h+='<div class="vis-snelk">'+m.snel.map(function(s){
       return '<button type="button" class="pidview-btn" onclick="PLVisueel.schakel(\''+s.id+'\')">'+s.icoon+' '+esc(s.naam)+'</button>';
@@ -1363,11 +1382,63 @@ function meldHtml(m){
   }
   return h;
 }
+// ── DE POP-UP VOOR EEN NIEUWE BEVINDING (19-11-2026) ─────────────────
+// Tot deze datum stonden de bevindingen als kaarten met de volle uitleg in
+// het vak, en dat werd "vol onleesbaar". Nu: een nieuwe bevinding komt één
+// keer als balk bovenin, met naam en één regel uitleg, en verdwijnt vanzelf.
+// Tik = alle bevindingen, ✕ = weg. Daarna staat hij als chip op de rail.
+// Wat er al lag toen de weergave openging, popt niet: dat staat op de chip.
+const POP_MS = 7000, POP_ERNSTIG_MS = 12000;
+let _popGezien=null, _popTimer=null;
+/* Welke bevinding popt: de ernstigste die nog niet gezien is. Puur. */
+function popKies(bev, gezien){
+  const nieuw=(bev||[]).filter(function(b){ return b && b.id!==undefined && !gezien.has(String(b.id)); });
+  if(!nieuw.length) return null;
+  const b=nieuw.slice().sort(function(x, y){ return (y.ernst||0)-(x.ernst||0); })[0];
+  return { b:b, extra:nieuw.length-1, ids:nieuw.map(function(x){ return String(x.id); }) };
+}
+function popWeg(){
+  if(_popTimer){ clearTimeout(_popTimer); _popTimer=null; }
+  const p=(typeof document!=='undefined') ? document.getElementById('visPop') : null;
+  if(p) p.classList.remove('aan');
+}
+function popBij(bev){
+  if(typeof document==='undefined' || !document.body) return;
+  const lijst=bev||[];
+  if(_popGezien===null){ _popGezien=new Set(lijst.map(function(b){ return String(b.id); })); return; }
+  const k=popKies(lijst, _popGezien);
+  if(!k) return;
+  k.ids.forEach(function(id){ _popGezien.add(id); });
+  let p=document.getElementById('visPop');
+  if(!p){
+    p=document.createElement('div'); p.id='visPop'; p.className='vis-pop'; p.setAttribute('role', 'status'); p.setAttribute('aria-live', 'polite');
+    document.body.appendChild(p);
+  }
+  const id=String(k.b.id).replace(/[^A-Za-z0-9_\-]/g, ''), ernstig=k.b.ernst>=2;
+  p.classList.toggle('ernstig', ernstig);
+  p.innerHTML='<button type="button" class="vis-pop-tx" onclick="PLVisueel.popTik(\''+id+'\')">'+
+    '<span class="vis-pop-ic" aria-hidden="true">'+(ernstig ? '⚠️' : '🔗')+'</span>'+
+    '<span><b>'+esc(k.b.naam||'Nieuwe bevinding')+(k.extra ? ' <i>+'+k.extra+'</i>' : '')+'</b>'+
+    (k.b.uitleg ? '<small>'+esc(k.b.uitleg)+'</small>' : '')+'</span></button>'+
+    '<button type="button" class="vis-pop-x" onclick="PLVisueel.popWeg()" aria-label="Sluiten">✕</button>'+
+    '<i class="vis-pop-tijd" style="animation-duration:'+(ernstig ? POP_ERNSTIG_MS : POP_MS)+'ms"></i>';
+  void p.offsetWidth;            // de animatie opnieuw laten lopen bij een volgende
+  p.classList.add('aan');
+  if(_popTimer) clearTimeout(_popTimer);
+  _popTimer=setTimeout(popWeg, ernstig ? POP_ERNSTIG_MS : POP_MS);
+}
+function popTik(id){
+  popWeg();
+  try{ if(typeof bevindingTik==='function') bevindingTik(id); else if(typeof openBevindingen==='function') openBevindingen(); }
+  catch(e){ console.warn('PLVisueel: bevinding openen mislukt', e); }
+}
 /* Alleen de korte teksten veranderd? Dan alleen die bijwerken, zodat de
    knoppen blijven staan. Anders opnieuw tekenen. */
 function meldBij(){
   const el=document.getElementById('visMeld'); if(!el) return;
-  const m=meldingen(leesRun(), leesBevindingen(), leesAdmin(), Date.now());
+  const bev=leesBevindingen();
+  try{ popBij(bev); }catch(e){ console.warn('PLVisueel: pop-up bevinding mislukt', e); }
+  const m=meldingen(leesRun(), bev, leesAdmin(), Date.now());
   const sleutel=JSON.stringify([m.lopend.map(function(c){ return [c.id,c.let>0,c.ernstig,c.opname]; }), m.regels, m.snel]);
   if(sleutel!==_staat.meldSleutel){ el.innerHTML=meldHtml(m); _staat.meldSleutel=sleutel; return; }
   const kort=el.querySelectorAll('.vis-chip [data-kort]');
@@ -1389,6 +1460,7 @@ function open(id){
     if(id==='monitor' && typeof openMonitorView==='function') openMonitorView();
     else if(id==='bulk' && typeof openBulkRecorder==='function') openBulkRecorder();
     else if(id==='waak' && typeof openWaakvenster==='function') openWaakvenster();
+    else if(id==='bev' && typeof openBevindingen==='function') openBevindingen();
     else if(window.PLRun && typeof window.PLRun.open==='function') window.PLRun.open();
   }catch(e){ console.warn('PLVisueel: openen van '+id+' mislukt', e); }
 }
@@ -1618,11 +1690,12 @@ function bouw(g, reden){
           '<span class="vis-lamp leeg" id="vis-lamp-accu" role="button" tabindex="0" onclick="window.PLAccu&&PLAccu.open()" aria-label="Accu en laadsysteem openen"></span></div>'+
         PF().html(ind.profiel.id, ind.profiel)+
       '</div>'+
-      (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+      '<div class="vis-onder">'+(ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+        '<div class="vis-ritmon" id="visRitMon"></div></div>'+
       '<div class="vis-meldingen" id="visMeld"></div>'+
       '</div>';
     _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-    meldBij(); lampjesBij(); trekBij();
+    meldBij(); lampjesBij(); trekBij(); ritMonBij();
     veegAan(g.querySelector('.vis'));
     // Tik op een plek: zelf een sensor kiezen (06-10-2026). Eén luisteraar op
     // het vak; de plekken dragen hun rol in hun id (vpf-p-<rol>).
@@ -1658,7 +1731,8 @@ function bouw(g, reden){
       // het klein: vier groene wielen als alles goed is. bandenBij() vult het.
       '<button type="button" class="vis-lamp-banden geen" id="vis-banden" style="display:none" onclick="PLBanden.open()" aria-label="Banden"></button>'+
     '</div>'+
-    (ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+    '<div class="vis-onder">'+(ind.trek ? '<div class="vis-trek" id="visTrek" aria-label="Trekmodus: caravan of beladen"></div>' : '')+
+      '<div class="vis-ritmon" id="visRitMon"></div></div>'+
     '<div class="vis-meldingen" id="visMeld"></div>'+
     '</div>';
   // De plekken: icoon of kort woord, eenheid en titel. Zonder PID blijft
@@ -1675,7 +1749,7 @@ function bouw(g, reden){
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
+  meldBij(); lampjesBij(); trekBij(); ritMonBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
   themaBij(g);   // de basismeter krijgt daar geen thema: de schil kleurt hem (PLVisThema.pas)
   try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
@@ -1825,41 +1899,73 @@ function trekOordeel(S){
 }
 
 // ── DE TREKSTROOK ─────────────────────────────────────────────────
-function trekTekst(t, v){
-  const n=Number(v);
-  if(v===null || v===undefined || v==='' || !isFinite(n)) return '—';
-  if(t.rol==='verbruik') return n.toFixed(1).replace('.',',');
-  if(t.rol==='laaddruk') return (n>0.04?'+':'')+n.toFixed(2).replace('.',',');
-  return String(Math.round(n));
-}
-function trekBij(){
-  const ind=_staat.ind, e=el('visTrek');
-  if(!ind || !ind.trek || !e) return;
-  const nu=Date.now();
-  const h=ind.trek.map(function(t){
-    let waarde='—', eenheid=t.eenheid||'', st='geen', sub='';
-    if(t.pid){
-      const v=(typeof pidVals!=='undefined') ? pidVals[t.pid] : undefined;
-      if(v!==undefined && !isOud(t.pid, nu)){
-        waarde=trekTekst(t, v); st=oordeel(t.pid, v);
-        if(t.rol==='verbruik') eenheid=(t.pid==='CA03')?'l/100':'l/u';
-      }
-      if(t.trend){
-        const tr=koelTrend((typeof pidHist!=='undefined' && pidHist) ? pidHist[t.pid] : null, nu);
-        if(tr!==null){
-          sub=(tr>0.2?'↑ ':tr<-0.2?'↓ ':'→ ')+String(Math.abs(tr)).replace('.',',')+' °C/min';
-          const koel=Number(v);
-          if(echtVerbonden() && (_sessie.maxTrend===null || tr>_sessie.maxTrend)) _sessie.maxTrend=tr;
-          if(tr>=KOEL_TREND_WARN && isFinite(koel) && koel>=KOEL_WARM){
-            if(st==='ok') st='warn';
-            if(st==='warn' || st==='danger') koelAlarm(koel, tr, nu);
-          }
+function VP(){ return window.PLVisPaneel || null; }
+function lees(fn, wat){ try{ return fn(); }catch(e){ console.warn('PLVisueel: '+wat+' onleesbaar', e); return null; } }
+/* Wat het trekpaneel nodig heeft, uit de live data. Het advies en het
+   terrein komen uit pidlane-caravan.js (caravanSchakel, caravanTerrein), ook
+   als er alleen een rijsituatie aanstaat: één rekensom voor coach en beeld. */
+function trekInvoer(ind, nu){
+  const v=(typeof pidVals!=='undefined' && pidVals) ? pidVals : {}, H=(typeof pidHist!=='undefined' && pidHist) ? pidHist : {};
+  const vers=function(p){ return (p && v[p]!==undefined && v[p]!==null && !isOud(p, nu) && isFinite(Number(v[p]))) ? Number(v[p]) : null; };
+  const rij=function(rol){ return ind.trek.filter(function(t){ return t.rol===rol; })[0] || null; };
+  const lastRij=rij('last'), speed=vers('010D'), rpm=vers('010C'), load=lastRij ? vers(lastRij.pid) : null;
+  const throttle=vers('0111'), pedaal=vers('015A')!==null ? vers('015A') : vers('0149');
+  const trend=snelheidTrend(H['010D'], nu);
+  const helling=lees(function(){ return (window.PLTelemetrie && PLTelemetrie.hellingVast) ? PLTelemetrie.hellingVast() : null; }, 'helling');
+  const terrein=(speed!==null && typeof caravanTerrein==='function') ? lees(function(){ return caravanTerrein(load, speed, throttle, trend, helling); }, 'terrein') : null;
+  const sb=lees(function(){ return (window.PLBerekend && PLBerekend.schakelBron) ? PLBerekend.schakelBron() : null; }, 'versnelling') || {};
+  const ft=lees(function(){ return typeof vehicleFuelType==='function' ? vehicleFuelType() : null; }, 'brandstof');
+  const schakel=(typeof caravanSchakel==='function') ? lees(function(){
+    return caravanSchakel({ speed:speed, rpm:rpm, load:load, pedaal:pedaal, trend:trend, climb:terrein ? terrein.climb : null,
+                            fuelType:ft, gear:sb.gear, ratios:sb.ratios });
+  }, 'schakeladvies') : null;
+  _staat.schakel=schakelStabiel(_staat.schakel, schakel, nu);
+  const temps=[];
+  ['koel','olie','inlaat','atf'].forEach(function(rol){
+    const t=rij(rol); if(!t) return;
+    const x={ rol:rol, naam:t.naam, v:vers(t.pid), st:'geen', trend:null };
+    if(x.v!==null) x.st=oordeel(t.pid, x.v);
+    if(t.trend && t.pid){
+      const tr=koelTrend(H[t.pid], nu);
+      x.trend=tr;
+      if(tr!==null){
+        if(echtVerbonden() && (_sessie.maxTrend===null || tr>_sessie.maxTrend)) _sessie.maxTrend=tr;
+        if(tr>=KOEL_TREND_WARN && x.v!==null && x.v>=KOEL_WARM){
+          if(x.st==='ok') x.st='warn';
+          if(x.st==='warn' || x.st==='danger') koelAlarm(x.v, tr, nu);
         }
       }
-    } else sub='niet beschikbaar';
-    return '<div class="vis-tt '+st+'"><small>'+esc(t.naam)+'</small><b>'+esc(waarde)+(waarde!=='—' && eenheid?'<i>'+esc(eenheid)+'</i>':'')+'</b>'+
-      (sub?'<span>'+esc(sub)+'</span>':'')+'</div>';
-  }).join('');
+    }
+    temps.push(x);
+  });
+  const vr=rij('verbruik'), lr=rij('laaddruk');
+  return { terrein:terrein, helling:helling, schakel:_staat.schakel.toon, gear:sb.gear,
+           last:lastRij && load!==null ? { v:load, st:oordeel(lastRij.pid, load) } : null, lastHist:lastRij ? H[lastRij.pid] : null,
+           temps:temps, verbruik:vr && vers(vr.pid)!==null ? { v:vers(vr.pid), eenheid:vr.pid==='CA03' ? 'l/100' : 'l/u' } : null,
+           laaddruk:lr ? vers(lr.pid) : null,
+           coach:(typeof caravanActive!=='undefined' && caravanActive && typeof caravanCoach!=='undefined') ? caravanCoach : null, nu:nu };
+}
+function trekBij(){
+  const ind=_staat.ind, e=el('visTrek'), P=VP();
+  if(!ind || !ind.trek || !e || !P) return;
+  const h=P.trekHtml(P.trekModel(trekInvoer(ind, Date.now())));
+  if(e._sleutel!==h){ e.innerHTML=h; e._sleutel=h; }
+}
+/* De rit-monitor onder de meter: alleen als hij aanstaat. */
+function ritMonBij(){
+  const e=el('visRitMon'), P=VP();
+  if(!e || !P) return;
+  const run=lees(function(){ return (window.PLRun && PLRun.staat) ? PLRun.staat() : null; }, 'PLRun.staat()');
+  const r=run && run.monitor;
+  let h='';
+  if(r && r.aan){
+    const M=window.PLMon || {}, W=window.PLWatch || {};
+    const o=M._order || [];
+    h=P.ritHtml(P.ritModel({ tests:W.tests, dekking:W._dekking, meldingen:o.length, draait:!!r.draait,
+      ernstig:(typeof _MON_ERNSTIG!=='undefined') && o.some(function(k){ return _MON_ERNSTIG.test(k); }),
+      mil:M.prev ? M.prev.mil : null, teller:M.prev ? M.prev.count : null,
+      fase:typeof M._state==='function' ? (lees(function(){ return M._state().fase; }, 'rijfase') || '') : '' }));
+  }
   if(e._sleutel!==h){ e.innerHTML=h; e._sleutel=h; }
 }
 function zetDash(id, d){ const e=el(id); if(e) e.setAttribute('stroke-dasharray', (Math.round(d*10)/10)+' 200'); }
@@ -2077,7 +2183,7 @@ function tik(){
   }
   if(I.profiel) energieProfielBij();
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
+  meldBij(); lampjesBij(); trekBij(); ritMonBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -2111,6 +2217,7 @@ function stop(){
   const was=_staat.aan;
   _staat.aan=false;
   lichaam(false);
+  popWeg(); _popGezien=null;
   try{ if(window.PLVisThema) PLVisThema.uit(); }catch(e){ console.warn('PLVisueel: volledig scherm sluiten mislukt', e); }
   if(_staat.timer){ clearInterval(_staat.timer); _staat.timer=null; }
   _staat.ind=null; _staat.gebruik=new Set();
@@ -2128,7 +2235,7 @@ window.PLVisueel = {
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
   indeling:indeling, gebruiktePids:gebruiktePids, herbouwKeuze:herbouwKeuze, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel, wisselSchakel:wisselSchakel, schakelAan:schakelAan, schakelStand:schakelStand, schakelMenu:schakelMenu, SCHAKEL_SLEUTEL:SCHAKEL_SLEUTEL,
-  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan,
+  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan, snelheidTrend:snelheidTrend, schakelStabiel:schakelStabiel, popKies:popKies, popTik:popTik, popWeg:popWeg,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },
