@@ -120,6 +120,7 @@ const bus = (n, f) => f();
   toets('elk sjabloon zegt dat het ongeverifieerd is', sj.every((t) => /ongeverifieerd/i.test(t.notitie)));
   toets('een sjabloon heeft geen id (bewaren maakt een nieuw recept)', sj.every((t) => t.id === ''));
   toets('het lege formulier is geen geldig recept', !M.receptKeur(M.sjabloon(M.SJABLONEN.length - 1)).ok);
+  toets('elk sjabloon opent eerst een diagnosesessie (10 ..)', sj.every((t) => M.receptKeur(t).recept.stappen[0].slice(0, 2) === '10'));
   toets('geen sjabloon buiten de lijst', M.sjabloon(99) === null);
   toets('een sjabloon wist met 14 en is dus schrijvend', sj.every((t) => M.receptKeur(t).recept.stappen.some((b) => b.slice(0, 2) === '14' && M.schrijft(b))));
 
