@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Caravan: terugschakelen bergop, homekaart naar Mijn voertuigen
+ ═════════════════════════════════════════════════════
+   • Caravanrit: op een klim met vol gas (belasting ≥ 80% of pedaal ≥ 70%) en wegzakkende snelheid zegt het advies "Terug naar N", als het toerental daarna onder 4500 (diesel 3500) blijft. Bergop nooit opschakelen. Eén bron: PLBerekend.schakelTrek(), met de echte versnelling uit PLGear
+   • Het schakeladvies verschijnt pas als het 3 s staat, in hooguit acht woorden
+   • Startscherm: een tik op de auto opent Mijn voertuigen zodra er een voertuig is; Kenteken-check alleen zonder voertuig. Tot nu toe alleen bij rol klant
+   • test-trekschakel.js (25 controles), test-thuis.js (+3), vier mutaties
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Telemetrie heuvelaf, intro-tunnel, adapterkeuze
  ═════════════════════════════════════════════════════
    • Telemetrie: een helling tot 25° (voorover/achterover) telt niet meer als verschoven telefoon; zijwaarts blijft 15°. Heuvelaf gaf "niet in de houder"
