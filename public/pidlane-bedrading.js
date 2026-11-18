@@ -302,7 +302,7 @@ var KRITIEK = [
   'openBulkRecorder',
   // Slim visueel: een chip op de rail opent het scherm van zijn module, en
   // het analysevenster laat weg wat niet bij het voertuig past (26-09-2026).
-  'openMonitorView','openWaakvenster','vehiclePlausiblePid',
+  'openMonitorView','openWaakvenster','openBevindingen','bevindingTik','vehiclePlausiblePid',
   'openTestrun','closeTestrun','startTestrun','stopTestrun','testrunOpslaan','testrunTekst',
   'plDiagGevallen','nativeShareFile','plOpslaan','plMaakPdf',
   // De ene plek waar de app het net op gaat (#117, pidlane-plfetch.js). Elf
@@ -324,7 +324,7 @@ var KRITIEK = [
   // Erbij op 14-10-2026. De rijmodus (pidlane-rijmodus.js) leest het advies
   // van de caravancoach achter een guard: ontbreekt een van deze, dan blijft
   // het radertje of de verbruiksbalk leeg zonder dat iets het zegt.
-  'caravanRenderLive','caravanRichtverbruik','caravanSchakelAdvies','caravanVerbruikNiveau',
+  'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanSchakelAdvies','caravanVerbruikNiveau',
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.

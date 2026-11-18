@@ -640,12 +640,18 @@ m = V.meldingen(run({ bulk: { aan: true, draait: false, detail: 'gepauzeerd', pa
 waar('een gepauzeerde recorder zegt dat, en ademt niet', m.lopend[0].kort === 'gepauzeerd' && !m.lopend[0].opname, JSON.stringify(m.lopend[0]));
 const BEV = [{ id: 'a', naam: 'Regel A', uitleg: 'x', ernst: 2 }, { id: 'b', naam: 'Afwijkend', uitleg: 'y', ernst: 1 }, { id: 'c', naam: 'C', uitleg: 'z', ernst: 1 }];
 m = V.meldingen(run(), BEV);
-waar('drie bevindingen: de eerste twee, en een regel "nog 1 bevinding"',
-  m.regels.filter(x => x.soort === 'bevinding').length === 2 && m.regels.some(x => x.soort === 'meer' && /nog 1 bevinding$/.test(x.naam)),
-  JSON.stringify(m.regels));
-waar('bevindingen komen er in de volgorde van de engine in (ernstigste eerst)', m.regels[0].naam === 'Regel A');
+const bevChip = m.lopend.filter(x => x.id === 'bev')[0];
+waar('19-11: bevindingen staan niet meer als kaart in het vak, maar als één chip met het aantal',
+  !m.regels.some(x => x.soort === 'bevinding') && bevChip && bevChip.kort === '3 open' && bevChip.let === 3 && bevChip.ernstig, JSON.stringify(m));
+waar('zonder ernstige bevinding kleurt de chip niet rood', !V.meldingen(run(), BEV.slice(1)).lopend.filter(x => x.id === 'bev')[0].ernstig);
 m = V.meldingen(run(), null);
-waar('bevindingen uitgezet in ☰: ook hier geen bevindingen', !m.regels.some(x => x.soort === 'bevinding'));
+waar('bevindingen uitgezet in ☰: ook geen chip', !m.lopend.some(x => x.id === 'bev'));
+// De pop-up: de ernstigste nieuwe, met het aantal andere nieuwe erbij
+let pk = V.popKies(BEV, new Set());
+waar('pop-up: de ernstigste nieuwe bevinding, met +2', pk && pk.b.id === 'a' && pk.extra === 2 && pk.ids.length === 3, JSON.stringify(pk));
+pk = V.popKies(BEV, new Set(['a']));
+waar('pop-up: een al getoonde komt niet terug', pk && pk.b.id === 'b' && pk.extra === 1, JSON.stringify(pk));
+waar('pop-up: alles gezien → niets', V.popKies(BEV, new Set(['a', 'b', 'c'])) === null && V.popKies(null, new Set()) === null);
 m = V.meldingen(null, BEV);
 waar('zonder PLRun geen vak (en geen snelkoppelingen die niets kunnen)', m.regels.length === 0 && m.snel.length === 0);
 
@@ -798,6 +804,26 @@ console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
   waar('koelTrend: vijf metingen binnen 16 s is te kort', V.koelTrend(stijg.slice(0, 5).map((x, i) => ({ t: t0 + i * 4000, v: x.v })), t0 + 16000) === null);
   waar('koelTrend: oude metingen buiten het venster tellen niet',
     V.koelTrend(stijg.map(x => ({ t: x.t - 120000, v: x.v })), t0 + 60000) === null);
+  // 19-11-2026: bakolie op naam, snelheidstrend, stabiel schakeladvies
+  {
+    const mag = p => ['0105', 'E1F2'].includes(p);
+    const metAtf = V.trekIndeling(mag, false, [{ pid: 'E1F2', name: 'Transmission Fluid Temp' }]);
+    waar('bakolie: een eigen sensor met die naam komt in het trekpaneel', (metAtf.find(x => x.rol === 'atf') || {}).pid === 'E1F2', JSON.stringify(metAtf));
+    waar('bakolie: zonder treffer geen lege rij', !V.trekIndeling(mag, false, [{ pid: 'E1F2', name: 'Olie' }]).some(x => x.rol === 'atf'));
+    waar('bakolie: een naamtreffer die niet bruikbaar is telt niet', !V.trekIndeling(p => p === '0105', false, [{ pid: 'E1F2', name: 'ATF temp' }]).some(x => x.rol === 'atf'));
+    const T = 2e9, h = Array.from({ length: 11 }, (_, i) => ({ t: T - 5000 + i * 500, v: 80 - i * 0.3 }));   // −0,6 km/u per s
+    waar('snelheidTrend: 3 km/u verlies in 5 s is −0,6', V.snelheidTrend(h, T) === -0.6, String(V.snelheidTrend(h, T)));
+    waar('snelheidTrend: korter dan 3 s geschiedenis zegt niets', V.snelheidTrend(h.slice(-4), T) === null);
+    waar('snelheidTrend: een oude laatste meting zegt niets', V.snelheidTrend(h, T + 5000) === null);
+    let st = V.schakelStabiel(null, { advies: 'terug', doel: 4 }, 0);
+    waar('schakelStabiel: een nieuw advies staat niet meteen in beeld', st.toon === null);
+    st = V.schakelStabiel(st, { advies: 'terug', doel: 4 }, 2900);
+    waar('schakelStabiel: na 2,9 s nog niet', st.toon === null);
+    st = V.schakelStabiel(st, { advies: 'terug', doel: 4 }, 3000);
+    waar('schakelStabiel: na 3 s wel', st.toon && st.toon.doel === 4);
+    st = V.schakelStabiel(st, { advies: 'ok', doel: 5 }, 3500);
+    waar('schakelStabiel: een kuil (kort ander advies) laat de pijl staan', st.toon && st.toon.advies === 'terug');
+  }
   const heeft = new Set(['0105', '0104', '010F', 'CA03']);
   const ind = V.trekIndeling(p => heeft.has(p), false);
   const rol = r => ind.find(x => x.rol === r);

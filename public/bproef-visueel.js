@@ -151,15 +151,19 @@ function beoordeel(m) {
       if (situatieActief().some(function(x){ return x.id === 'beladen'; })) toggleSituatie('beladen');
       toggleSituatie('beladen');
       await new Promise(function(r){ setTimeout(r, 1500); });
-      const aan = { tegels: document.querySelectorAll('#visTrek .vis-tt').length, tekst: (document.getElementById('visTrek')||{}).textContent || '',
+      const t = document.getElementById('visTrek');
+      const aan = { tegels: t ? t.querySelectorAll('.vtp-helling, .vtp-schakel, .vtp-last, .vtp-temp').length : 0, tekst: (t||{}).textContent || '',
+                    rad: !!(t && t.querySelector('.vtp-rad')), weg: !!(t && t.querySelector('.vtp-weg')),
+                    breed: t ? Math.round(t.getBoundingClientRect().width) : 0, scroll: document.documentElement.scrollWidth - innerWidth,
                     gebruik: PLVisueel.staat().gebruik, actief: ['0104','010F'].filter(function(p){ return activePIDs.has(p); }) };
       toggleSituatie('beladen'); await new Promise(function(r){ setTimeout(r, 1500); });
       const uit = { strook: !!document.getElementById('visTrek'), knop: !!document.querySelector('.vis-trekknop') };
       return { aan: aan, uit: uit };
     })()`);
-    toets('rijsituatie beladen: de strook verschijnt vanzelf, met tegels', trek.aan.tegels >= 5, JSON.stringify(trek.aan));
+    toets('rijsituatie beladen: het trekpaneel verschijnt vanzelf: helling, schakelen, belasting en temperaturen', trek.aan.tegels >= 5 && trek.aan.rad && trek.aan.weg, JSON.stringify(trek.aan));
+    toets('het paneel past op het scherm (geen zijwaarts scrollen)', trek.aan.breed > 200 && trek.aan.scroll <= 0, JSON.stringify({ b: trek.aan.breed, s: trek.aan.scroll }));
     toets('en zet de sensoren van de strook zelf aan (belasting, inlaatlucht)', trek.aan.actief.length === 2, JSON.stringify(trek.aan.actief));
-    toets('koelwater, olie en belasting staan erop', /Koelwater/.test(trek.aan.tekst) && /Motorolie/.test(trek.aan.tekst) && /Belasting/.test(trek.aan.tekst), trek.aan.tekst);
+    toets('koelwater, olie en belasting staan erop', /Koelwater/.test(trek.aan.tekst) && /Motorolie/.test(trek.aan.tekst) && /belasting/i.test(trek.aan.tekst), trek.aan.tekst);
     toets('de belasting (0104) wordt dan niet geremd', trek.aan.gebruik.indexOf('0104') >= 0, JSON.stringify(trek.aan.gebruik));
     toets('rijsituatie weer uit: de strook is weg, en er staat geen knop voor in de plaats', !trek.uit.strook && !trek.uit.knop, JSON.stringify(trek.uit));
 
@@ -293,7 +297,11 @@ function beoordeel(m) {
       _bevHits=[{id:'proef', naam:'Proefbevinding', uitleg:'alleen voor bproef-visueel', ernst:2, rang:0}];
       _bevToonBij(); PLVisueel.tik();
       const balk=document.getElementById('corrBanner');
-      const r={ balkWeg: !balk || balk.style.display==='none', inVak: /Proefbevinding/.test(document.getElementById('visMeld').textContent) };
+      const pop=document.getElementById('visPop');
+      const r={ balkWeg: !balk || balk.style.display==='none', geenKaart: !document.querySelector('#visMeld .vis-meld'),
+                chip: !!document.querySelector('#visMeld .vis-chip[data-id="bev"]'),
+                pop: !!pop && pop.classList.contains('aan') && /Proefbevinding/.test(pop.textContent) };
+      PLVisueel.popWeg();
       setPidView('slim');
       const b2=document.getElementById('corrBanner');
       r.balkTerug = !!b2 && b2.style.display!=='none';
@@ -301,9 +309,29 @@ function beoordeel(m) {
       _bevHits=[]; Object.keys(_bevSinds).forEach(function(k){ delete _bevSinds[k]; }); _bevToonBij(); setPidView('visueel');
       return r;
     })()`);
-    toets('in Slim visueel staat de bevinding in het vak', bev.inVak, JSON.stringify(bev));
+    toets('19-11: een nieuwe bevinding komt als pop-upbalk bovenin, niet als kaart in het vak', bev.pop && bev.geenKaart, JSON.stringify(bev));
+    toets('…en blijft daarna als chip op de rail', bev.chip, JSON.stringify(bev));
     toets('…en niet óók nog in de balk bovenaan (verhuisd, niet verdubbeld)', bev.balkWeg, JSON.stringify(bev));
     toets('terug in Slim staat de balk er weer', bev.balkTerug, JSON.stringify(bev));
+
+    console.log('\n5b. De rit-monitor onder de meter (19-11-2026)');
+    const rm = await app.ev(`(async function(){
+      const was = !!(PLRun.staat().monitor||{}).aan;
+      if (!was) PLRun.schakel('monitor');
+      await new Promise(function(r){ setTimeout(r, 1300); });
+      const v = document.querySelector('#visRitMon .vrm');
+      const r = { paneel: !!v, seg: v ? v.querySelectorAll('.vrm-seg').length : 0, tests: (PLWatch.tests||[]).length,
+                  chipWeg: (function(){ const c=document.querySelector('.vis-chip[data-id="monitor"]'); return !c || getComputedStyle(c).display==='none'; })(),
+                  tekst: v ? v.textContent : '' };
+      if (!was) PLRun.schakel('monitor');
+      await new Promise(function(r){ setTimeout(r, 1300); });
+      r.weg = !document.querySelector('#visRitMon .vrm');
+      return r;
+    })()`);
+    toets('rit-monitor aan: een ring met één segment per controle', rm.paneel && rm.seg === rm.tests && rm.tests > 0, JSON.stringify(rm));
+    toets('…met wat de ECU zegt', /ECU|motorlampje|foutcode/.test(rm.tekst), rm.tekst);
+    toets('…en niet óók nog als chip op de rail', rm.chipWeg, JSON.stringify(rm));
+    toets('rit-monitor uit: het paneel is weg', rm.weg, JSON.stringify(rm));
     await WACHT(300);
 
     console.log('\n6. De rem op de bus');
