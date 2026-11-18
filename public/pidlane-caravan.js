@@ -30,6 +30,7 @@ let caravanLastTick     = 0;      // voor integratie met échte dt
 let caravanHist         = {};     // { pid: [{t,v}] } ring, ~6 min
 let caravanCoach        = [];     // gegeven tips (feed + rapportbewijs)
 let caravanCooldown     = {};     // per-regel laatste-vuur-timestamp
+let caravanSchakelSinds  = { adv:'', t:0 };   // sinds wanneer het schakeladvies hetzelfde is
 let caravanKm           = 0;      // geïntegreerde afstand
 let caravanLiters       = 0;      // geïntegreerd verbruik
 let caravanSpeedLimit   = 100;    // instelbaar; caravan-snelweglimiet
@@ -103,7 +104,7 @@ async function startCaravan(){
   caravanStartTime=Date.now();
   try{ setPollProfile('caravan','caravan-rit gestart'); }catch(e){ console.warn('setPollProfile mislukt:', e); }
   caravanLastTick=Date.now();
-  caravanHist={}; caravanCoach=[]; caravanCooldown={};
+  caravanHist={}; caravanCoach=[]; caravanCooldown={}; caravanSchakelSinds={ adv:'', t:0 };
   caravanKm=0; caravanLiters=0;
   caravanClimbSecs={ klim:0, afdaling:0, vlak:0 };
   caravanTerreinBron={ helling:0, obd:0 };
@@ -288,17 +289,16 @@ function _carAlert(key,msg,level,cooldownMs){
 
 function caravanCheckRules(ctx){
   const { speed,rpm,load,coolant,throttle,volt,lkm,climb,fuelType,cruiseTarget,limit } = ctx;
-  const lugRpm = fuelType==='diesel'?1500:1900;
-  const upRpm  = fuelType==='diesel'?2000:2400;
   const baseL  = fuelType==='diesel'?11:14;       // richt-verbruik caravan L/100km
 
-  // 1) TERUGSCHAKELEN — motor zwoegt (hoge belasting, laag toerental)
-  if(typeof load==='number'&&typeof rpm==='number'&&load>=85&&rpm<lugRpm&&speed>10){
-    _carAlert('terug',`⬇️ Schakel terug — de motor zwoegt (belasting ${Math.round(load)}%, ${Math.round(rpm)} tpm). Een versnelling lager rijdt zuiniger én koelt beter op de klim.`,'tip',45000);
+  // 1/2) SCHAKELEN — uit caravanSchakel(), pas als het advies 3 s staat
+  //      (geen geflapper bij een kuil in de weg). Kort: dit lees je rijdend.
+  const sch=ctx.schakel;
+  if(sch&&ctx.schakelStabiel&&sch.advies==='terug'&&speed>10){
+    _carAlert('terug',sch.doel?`⬇️ Terug naar ${sch.doel} — de motor trekt het niet`:'⬇️ Schakel terug — de motor zwoegt','tip',45000);
   }
-  // 2) OPSCHAKELEN — onnodig hoog toerental bij licht werk
-  else if(typeof rpm==='number'&&typeof load==='number'&&rpm>upRpm&&load<45&&climb!=='klim'&&speed>25){
-    _carAlert('op',`⬆️ Je kunt opschakelen — ${Math.round(rpm)} tpm is meer dan nodig bij deze belasting. Lager toerental bespaart direct brandstof.`,'tip',120000);
+  else if(sch&&ctx.schakelStabiel&&sch.advies==='op'&&speed>25){
+    _carAlert('op',sch.doel?`⬆️ Naar ${sch.doel} — zuiniger`:'⬆️ Schakel op — zuiniger','tip',120000);
   }
 
   // 3) CRUISE OP ~95 — vlak/gelijkmatig en snelheid boven het zuinige punt
@@ -412,8 +412,16 @@ function caravanTick(){
   if(typeof load==='number'&&load>caravanPeak.load) caravanPeak.load=load;
   if(pw.unit==='kW'&&pw.val>caravanPeak.power) caravanPeak.power=pw.val;
 
-  const ctx={ speed,rpm,load,coolant,throttle,volt,fuelRate,lkm,climb,trend,helling,terreinBron:terrein.bron,
-              fuelType,cruiseTarget,limit:caravanSpeedLimit };
+  let sb={ gear:null, ratios:null };
+  try{ if(window.PLBerekend&&PLBerekend.schakelBron) sb=PLBerekend.schakelBron(); }
+  catch(e){ console.warn('caravan: versnelling niet gelezen', e); }
+  const pedaal=(typeof g('015A')==='number')?g('015A'):g('0149');
+  const ctx={ speed,rpm,load,coolant,throttle,pedaal,volt,fuelRate,lkm,climb,trend,helling,terreinBron:terrein.bron,
+              fuelType,cruiseTarget,limit:caravanSpeedLimit, gear:sb.gear, ratios:sb.ratios };
+  ctx.schakel=caravanSchakel(ctx);
+  const adv=ctx.schakel?ctx.schakel.advies+'|'+ctx.schakel.doel:'';
+  if(adv!==caravanSchakelSinds.adv) caravanSchakelSinds={ adv, t:now };
+  ctx.schakelStabiel=now-caravanSchakelSinds.t>=3000;
 
   caravanRenderLive(ctx,pw);
   caravanCheckRules(ctx);
@@ -424,14 +432,28 @@ function caravanTick(){
 // Eén bron voor het schakel- en verbruiksoordeel van het live-beeld, zodat de
 // rijmodus (pidlane-rijmodus.js) hetzelfde toont als het caravandashboard.
 function caravanRichtverbruik(fuelType){ return fuelType==='diesel'?11:14; }   // L/100km met caravan
-// 'terug' | 'op' | 'ok', of null als toerental of belasting ontbreekt.
-function caravanSchakelAdvies(ctx){
-  if(!ctx||typeof ctx.load!=='number'||typeof ctx.rpm!=='number') return null;
-  const lugRpm=ctx.fuelType==='diesel'?1500:1900, upRpm=ctx.fuelType==='diesel'?2000:2400;
-  if(ctx.load>=85&&ctx.rpm<lugRpm) return 'terug';
-  if(ctx.rpm>upRpm&&ctx.load<45&&ctx.climb!=='klim') return 'op';
-  return 'ok';
+// { advies:'terug'|'op'|'ok', doel:versnelling|null }, of null zonder toerental.
+// Met een bekende versnelling beslist PLBerekend.schakelTrek() (18-11-2026):
+// dezelfde rekensom als CA11, maar op een klim die snelheid verliest ook
+// omlaag. Zonder versnelling de toerentalregels hieronder.
+function caravanSchakel(ctx){
+  if(!ctx||typeof ctx.rpm!=='number') return null;
+  const B=(typeof window!=='undefined')?window.PLBerekend:null;
+  if(B&&typeof B.schakelTrek==='function'&&typeof ctx.gear==='number'&&ctx.ratios){
+    const d=B.schakelTrek({ kmh:ctx.speed, rpm:ctx.rpm, gear:ctx.gear, ratios:ctx.ratios, diesel:ctx.fuelType==='diesel',
+                            belasting:ctx.load, pedaal:ctx.pedaal, trend:ctx.trend, klim:ctx.climb==='klim' });
+    if(d!==null) return { advies:d<ctx.gear?'terug':d>ctx.gear?'op':'ok', doel:d };
+  }
+  if(typeof ctx.load!=='number') return null;
+  const dsl=ctx.fuelType==='diesel';
+  const lugRpm=dsl?1500:1900, upRpm=dsl?2000:2400, klimRpm=dsl?2600:3300;   // klimRpm ≈ max na terugschakelen ÷ 1,35
+  if(ctx.load>=85&&ctx.rpm<lugRpm) return { advies:'terug', doel:null };
+  if(ctx.climb==='klim'&&ctx.load>=80&&typeof ctx.trend==='number'&&ctx.trend<=-0.3&&ctx.rpm<klimRpm) return { advies:'terug', doel:null };
+  if(ctx.rpm>upRpm&&ctx.load<45&&ctx.climb!=='klim') return { advies:'op', doel:null };
+  return { advies:'ok', doel:null };
 }
+// 'terug' | 'op' | 'ok', of null — voor de rijmodus.
+function caravanSchakelAdvies(ctx){ const s=caravanSchakel(ctx); return s?s.advies:null; }
 // 'ok' | 'letop' | 'alarm' t.o.v. het richtverbruik, of null zonder meting.
 function caravanVerbruikNiveau(lkm,fuelType){
   if(typeof lkm!=='number'||isNaN(lkm)) return null;

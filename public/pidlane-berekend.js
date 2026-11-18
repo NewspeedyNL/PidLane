@@ -77,7 +77,11 @@ const PRIJS_STANDAARD = { benzine:2.64, diesel:2.69, lpg:1.29, hybride:2.64, 'pl
 // Het schakeladvies: alleen OPschakelen. Terugschakelen adviseert deze app
 // bewust niet — op de top van een klim is dat precies verkeerd, en dat kan
 // de app niet zien aankomen (besluit 27-09-2026).
-const SCHAKEL = { benzine:{ vanaf:2400, na:1700 }, diesel:{ vanaf:2000, na:1400 }, maxBelasting:75, minKmh:15 };
+const SCHAKEL = { benzine:{ vanaf:2400, na:1700 }, diesel:{ vanaf:2000, na:1400 }, maxBelasting:75, minKmh:15,
+  // Trekken (caravan, 18-11-2026): onder `min` zwoegt hij, terugschakelen mag
+  // tot `max` na het schakelen. Zwaar = belasting of pedaal boven de grens;
+  // `verlies` = km/u per s waarmee de snelheid op een klim wegzakt.
+  trek:{ benzine:{ min:2000, max:4500 }, diesel:{ min:1600, max:3500 }, zwaarBelasting:80, zwaarPedaal:70, verlies:-0.3 } };
 // Roetfilterregeneratie: zo heet, zo lang. Een schatting — de ECU zegt het niet.
 const DPF = { heet:580, minS:90, maxBelasting:80 };
 
@@ -198,6 +202,28 @@ function schakelAdvies(kmh, rpm, gear, ratios, isDiesel, belasting){
     if (na>=g.na) beste=k; else break;
   }
   return beste;
+}
+/* Het schakeladvies met een aanhanger (18-11-2026). schakelAdvies() zegt bij
+   een belasting boven maxBelasting "blijven", en dat is op een klim met een
+   caravan precies verkeerd: vol gas, de snelheid zakt weg, en de motor zit in
+   een versnelling die het niet trekt. Hier mag het advies ook omlaag:
+   - zwaar en onder `min` tpm: hij zwoegt, één lager;
+   - zwaar op een klim terwijl de snelheid wegzakt: één lager,
+   telkens alleen als het toerental daarna onder `max` blijft. Op een klim
+   nooit omhoog; daarbuiten het gewone advies. o = { kmh, rpm, gear, ratios,
+   diesel, belasting, pedaal, trend (km/u per s), klim }. null = geen uitspraak. */
+function schakelTrek(o){
+  o = o || {};
+  const gear=o.gear, r=o.ratios;
+  if (typeof gear!=='number' || gear<1 || !r || !r[gear]) return null;
+  if (typeof o.kmh!=='number' || typeof o.rpm!=='number' || o.kmh<SCHAKEL.minKmh) return null;
+  const T=SCHAKEL.trek, g=o.diesel ? T.diesel : T.benzine;
+  const zwaar=(typeof o.belasting==='number' && o.belasting>=T.zwaarBelasting) || (typeof o.pedaal==='number' && o.pedaal>=T.zwaarPedaal);
+  const na=r[gear-1] ? o.rpm*r[gear]/r[gear-1] : null;
+  const zakt=!!o.klim && typeof o.trend==='number' && o.trend<=T.verlies;
+  if (zwaar && na!==null && na<=g.max && (o.rpm<g.min || zakt)) return gear-1;
+  if (o.klim) return gear;
+  return schakelAdvies(o.kmh, o.rpm, gear, r, o.diesel, o.belasting);
 }
 /* Het toerental waarop schakelAdvies() de volgende versnelling aanraadt
    (31-10-2026, voor de schakellampjes van Hyperlane). Dezelfde drempels:
@@ -651,7 +677,7 @@ try{
   });
 }catch(e){ console.warn('PLBerekend: ALL_PID_DEFS aanvullen mislukt', e); }
 
-window.PLBerekend = { vermogensvraag, DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, schakelPunt, schakelBron, dpfTik, defs, isBerekend,
+window.PLBerekend = { vermogensvraag, DEFS, SCHAKEL, DPF, PRIJS_STANDAARD, KWH_PER_L, bereken, bronset, schakelAdvies, schakelTrek, schakelPunt, schakelBron, dpfTik, defs, isBerekend,
   tik, stats, oordeel, weiger, voertuig, prijs, VERS_MS, SAMEN_MS, samen, maat, buitenPerCode, _nieuweSessie:function(){ _s=leegSessie(); } };
 window.plIsBerekend = isBerekend;
 window.plBerekendDefs = defs;
