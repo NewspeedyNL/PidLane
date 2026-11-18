@@ -38,6 +38,41 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Telemetrie heuvelaf en de intro-tunnel (18-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Telemetrie: 20° voorover (heuvelaf) is geen verschoven telefoon, 20° zijwaarts wel; de intro-tunnel warpt bij de doorzoom',
+    waarom: 'Met de telefoon in de houder gaf heuvelaf "telefoon niet in de houder": de houdercheck telde de helling van de auto als verschuiving. De intro kreeg de tunnel van Hyperlane in plaats van een CSS-raster.',
+    proef: async function () {
+      var T = window.PLTelemetrie;
+      if (!T || typeof T.afwijkingBuitenHelling !== 'function') return { staat: 'FOUT', detail: 'PLTelemetrie.afwijkingBuitenHelling ontbreekt — pidlane-telemetrie.js niet bijgewerkt (herladen?)' };
+      var R = Math.PI / 180, nul = [0, 0, 1], voor = [0, 1, 0];
+      var langs = T.afwijkingBuitenHelling([0, Math.sin(-20 * R), Math.cos(20 * R)], nul, voor, T.HOUDER.maxHelling);
+      var dwars = T.afwijkingBuitenHelling([Math.sin(20 * R), 0, Math.cos(20 * R)], nul, voor, T.HOUDER.maxHelling);
+      if (!(langs < 1)) return { staat: 'FOUT', detail: 'heuvelaf (20° voorover) telt nog als ' + langs.toFixed(1) + '° afwijking' };
+      if (!(dwars > T.HOUDER.maxAfwijking)) return { staat: 'FOUT', detail: '20° zijwaarts telt niet meer als verschoven (' + dwars.toFixed(1) + '°)' };
+      if (!window.PLIntro || typeof PLIntro.tunnelStand !== 'function') return { staat: 'FOUT', detail: 'PLIntro.tunnelStand ontbreekt — pidlane-intro.js niet bijgewerkt (herladen?)' };
+      if (PLIntro.tunnelStand(2.7).W !== 1) return { staat: 'FOUT', detail: 'de intro-tunnel warpt niet bij de doorzoom' };
+      if (typeof PLIntro.deurStand !== 'function' || PLIntro.deurStand(PLIntro.DEUR_MS, false).beweegt) return { staat: 'FOUT', detail: 'de tunnel achter inloggen staat na DEUR_MS niet stil' };
+      return { staat: 'ok', detail: 'heuvelaf ' + langs.toFixed(1) + '°, zijwaarts ' + dwars.toFixed(1) + '°; tunnel warpt' };
+    }
+  },
+
+  // ── Na het inleren het RDW meteen bij het voertuig (18-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Een op VIN herkende auto zonder kenteken krijgt het kenteken van de verbinding; een bestaand kenteken blijft',
+    waarom: 'Na het inleren stond het voertuig in Mijn voertuigen half leeg terwijl de voertuigkaart al vol was: het RDW kwam pas bij de dagelijkse ronde, en zonder kenteken nooit.',
+    proef: async function () {
+      var G = window.PLGarage;
+      if (!G || !G._kern || typeof G._kern.kentekenErbij !== 'function') return { staat: 'FOUT', detail: 'PLGarage._kern.kentekenErbij ontbreekt — pidlane-garage.js niet bijgewerkt (herladen?)' };
+      var k = G._kern.kentekenErbij;
+      if (k({ id: 'x' }, 'ab-123-c') !== 'AB123C') return { staat: 'FOUT', detail: 'leeg kenteken kreeg dat van de verbinding niet' };
+      if (k({ id: 'x', kenteken: 'XX99YY' }, 'AB123C') !== null) return { staat: 'FOUT', detail: 'de verbinding overschreef een bestaand kenteken' };
+      return { staat: 'ok', detail: 'leeg → kenteken van de verbinding; bestaand blijft' };
+    }
+  },
+
   // ── Modulecommando's: schrijven alleen na de vraag en bij stilstand (17-11-2026) ──
   {
     issue: '—',

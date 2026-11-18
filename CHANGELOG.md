@@ -10,6 +10,22 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Telemetrie heuvelaf, intro-tunnel, adapterkeuze
+ ═════════════════════════════════════════════════════
+   • Telemetrie: een helling tot 25° (voorover/achterover) telt niet meer als verschoven telefoon; zijwaarts blijft 15°. Heuvelaf gaf "niet in de houder"
+   • Inloggen en verbinden: dezelfde WebGL-tunnel in plaats van het CSS-raster; hoogstens een minuut beweging per keer in beeld, daarna stil (accu)
+   • Intro: het CSS-raster is weg; de tunnel en aura van Hyperlane in een eigen WebGL-shader, met warp bij de doorzoom. Zonder WebGL de oude rijbaan
+   • Verbinden: adapterkeuze als tegels met een chip (MX+, ELM, BLE, ?), stappen compact, de tip achter "Lukt het niet?"
+   • test-telemetrie.js, test-intro.js: negen controles, twee mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
+ 18-11-2026 — Mijn voertuigen: na het inleren staat het voertuig meteen vol
+ ═════════════════════════════════════════════════════
+   • Leer de auto (setup-wizard) met kenteken: APK, motor, cilinderinhoud en vermogen komen meteen uit het RDW, niet pas bij de dagelijkse ronde. Eigen invoer blijft staan
+   • Een op VIN herkende auto zonder kenteken krijgt het bevestigde kenteken van de verbinding, en daarna het RDW
+   • test-garage.js: acht controles, twee mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  17-11-2026 — Admin: Modulecommando's — een commando of recept naar één stuurapparaat
  ═════════════════════════════════════════════════════
    • Adminmenu → 🧰 Modulecommando's: adres (bv. 7D0) en bytes (bv. 22 F1 90), het antwoord met de vertaalde weigering (NRC). Alleen hex, 1–7 bytes, 11-bit adres

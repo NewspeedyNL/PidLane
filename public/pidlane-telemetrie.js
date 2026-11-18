@@ -82,7 +82,7 @@ const NUL_LS = 'pl_telemetrie_nul';
    niet af, en lijkt 0,5 g remmen 3 s lang een telefoon die 19° voorover
    staat. Een telefoon op schoot of in een vakje blijft verschoven en wordt
    dus nog steeds weggezet, alleen 2 s later. Zie PIDLANE-ARCHIEF.md. */
-const HOUDER = { maxAfwijking:15, maxWiebel:8, rustMs:2000, tauWiebelMs:500, wiebelMs:1000, vensterMs:3000, verschovenMs:2000 };
+const HOUDER = { maxAfwijking:15, maxHelling:25, maxWiebel:8, rustMs:2000, tauWiebelMs:500, wiebelMs:1000, vensterMs:3000, verschovenMs:2000 };
 /* De dwarsversnelling (snelheid × gieren) mag een oudere snelheid gebruiken
    dan de lengteversnelling: de snelheid verandert in een bocht weinig, de
    afgeleide dv/dt wel. Tot 02-11-2026 viel de correctie weg zodra 010D ouder
@@ -340,10 +340,25 @@ function wiebelBij(w, nu){
   }
   _wT=nu;
 }
+/* Puur: de hoek tussen omhoog (v) en de nulstand die een helling níét
+   verklaart. Een helling kantelt de hele auto om zijn dwarsas; tot
+   maxHelling° daarvan telt niet als verschoven. Tot 18-11-2026 telde de
+   volle hoek, en heuvelaf (helling plus remmen, of een oude snelheid zodat
+   de remvertraging er niet af ging) gaf "telefoon niet in de houder". */
+function afwijkingBuitenHelling(v, nul, voor, maxHelling){
+  if (!v || !nul) return null;
+  const z=dot(v, nul);
+  if (!voor) return Math.acos(Math.max(-1, Math.min(1, z)))/RAD;
+  const y=dot(v, voor), r=Math.hypot(y, z);
+  const p=Math.atan2(y, z), m=maxHelling*RAD;
+  const rest=p-Math.max(-m, Math.min(m, p));
+  return Math.acos(Math.max(-1, Math.min(1, r*Math.cos(rest))))/RAD;
+}
 function houderMeting(nu){
   const mVers=!!_m && nu-_mT<=VERS_MS, uVers=!!_u && nu-_t<=VERS_MS;
   const v=mVers ? _m : (uVers ? _u : null);
-  const afwijking=(v && _nul) ? Math.acos(Math.max(-1, Math.min(1, dot(v, _nul))))/RAD : null;
+  const ax=_nul ? assen(_nul) : null;
+  const afwijking=(v && _nul) ? afwijkingBuitenHelling(v, _nul, ax && ax.voor, HOUDER.maxHelling) : null;
   const wiebel=(_w && nu-_wT<=VERS_MS) ? Math.hypot(_w[0], _w[1], _w[2]) : null;
   return { vers:!!v, genuld:!!_nul, afwijking, wiebel, wiebelMs:wiebelBoven(nu), verschovenMs:_verschovenSinds ? nu-_verschovenSinds : 0 };
 }
@@ -495,7 +510,7 @@ if (typeof window!=='undefined' && window.ALL_PID_DEFS) Object.keys(DEFS).forEac
   if (!window.ALL_PID_DEFS[pid]) window.ALL_PID_DEFS[pid]=Object.assign({ telemetrie:true }, DEFS[pid]);
 });
 window.PLTelemetrie = { DEFS, omhoog, hoeken, standaardNul, isTelemetrie, defs, nulstellen, genuld, nu, beschikbaar,
-  tik, stats, weiger, gNu, lengteA, zwaarte, situatie, SIT, LEER, houder, houderNu, los, hellingVast, HOUDER, SNEL_DWARS_MS,
+  tik, stats, weiger, gNu, afwijkingBuitenHelling, lengteA, zwaarte, situatie, SIT, LEER, houder, houderNu, los, hellingVast, HOUDER, SNEL_DWARS_MS,
   _opEvent:opEvent, _opMotion:opMotion };
 window.plIsTelemetrie = isTelemetrie;
 window.plTelemetrieDefs = defs;

@@ -694,6 +694,42 @@ function laad(opties) {
     eis(r === null && gezocht === 1, 'zonder model: niet zoeken');
   }
 
+  console.log('\nNa het inleren: het RDW meteen bij het voertuig (18-11-2026)');
+  {
+    // Tot deze datum vulde Leer de auto alleen merk, model en bouwjaar; APK,
+    // motor en vermogen kwamen pas bij de dagelijkse ronde, en die was voor
+    // een voertuig dat vandaag al nagelegd was pas morgen.
+    const lijst = [];
+    const L = laad({ rol: 'klant', server: {
+      stand: () => ({ ok: true, akkoord: true, voertuigen: lijst.map((x) => Object.assign({}, x)) }),
+      voertuig_opslaan: (b) => {
+        let v = lijst.filter((x) => x.id === b.voertuig.id)[0];
+        if (!v) { v = { id: 'n1', actief: 1 }; lijst.push(v); }
+        Object.assign(v, b.voertuig, { id: v.id });
+        return { ok: true, voertuig: Object.assign({}, v) };
+      } } });
+    let gehaald = 0;
+    L.s.PLZonder = { haal: async (k) => { gehaald++; return k === 'AB123C' ? { rij: { merk: 'MAZDA', handelsbenaming: 'CX-5', datum_eerste_toelating: '20180315', vervaldatum_apk: '20270314', cilinderinhoud: '1998' }, bs: [{ brandstof_omschrijving: 'Benzine', nettomaximumvermogen: '121.00' }] } : null; } };
+    await L.G.ververs();
+    const nv = await L.G.inrichtBewaar({ kenteken: 'AB123C', merk: 'Mazda', bouwjaar: 2018, naam: 'Mijn Mazda' });
+    eis(gehaald === 1 && nv.apk_tot === '2027-03-14' && nv.vermogen_kw === 121 && nv.cilinderinhoud === 1998 && /2,0 liter/.test(nv.motor || ''), 'wizard met kenteken: APK, motor en vermogen staan er meteen', JSON.stringify(nv));
+    eis(nv.merk === 'Mazda' && nv.model === 'CX-5', 'wat de wizard gaf blijft, wat leeg was vult het RDW', JSON.stringify(nv));
+    eis(Object.keys(L.opslag).some((k) => /^pl_rdw_dag_n1$/.test(k)), 'de dagelijkse ronde telt hem vandaag als gedaan');
+    await L.G.inrichtBewaar({ onderhoud: 'aan' });
+    eis(gehaald === 1, 'bewaren zonder kenteken (stap Bijhouden) haalt het RDW niet opnieuw');
+    L.s.PLZonder = { haal: async () => { throw new Error('RDW weg'); } };
+    const nv2 = await L.G.inrichtBewaar({ kenteken: 'AB123C' });
+    eis(nv2 && nv2.id === 'n1', 'RDW onbereikbaar: het voertuig is toch bewaard');
+  }
+
+  console.log('\nEen herkende auto zonder kenteken krijgt dat van de verbinding');
+  {
+    const { K } = laad();
+    eis(K.kentekenErbij({ id: 'a' }, 'ab-123-c') === 'AB123C', 'leeg kenteken + bevestigd kenteken → dat kenteken');
+    eis(K.kentekenErbij({ id: 'a', kenteken: 'XX99YY' }, 'AB123C') === null, 'een kenteken dat er staat overschrijft de verbinding niet');
+    eis(K.kentekenErbij({ id: 'a', kenteken: '' }, '') === null && K.kentekenErbij({ id: 'a' }, 'AB') === null, 'geen of te kort kenteken van de verbinding → niets');
+  }
+
   console.log('\n' + (fouten ? fouten + ' van ' + aantal + ' FOUT' : 'Alle ' + aantal + ' goed'));
   process.exit(fouten ? 1 : 0);
 })().catch((e) => { console.log('FOUT test liep niet af: ' + (e && e.stack || e)); process.exit(1); });

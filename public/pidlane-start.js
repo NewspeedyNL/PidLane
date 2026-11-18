@@ -60,6 +60,7 @@
       naam: 'OBDLink MX+',
       kort: 'MX+',
       merk: 'OBDLink MX+ of LX',
+      sub: 'MX+ · LX',
       transport: 'Bluetooth Classic',
       // Stuurt de vololgorde van de verbindingsketen; zie adapterTransport().
       kanaal: 'classic',
@@ -77,6 +78,7 @@
       naam: 'ELM327',
       kort: 'ELM327',
       merk: 'ELM327 (v1.5 / v2.1 en klonen)',
+      sub: 'v1.5 · v2.1 · klonen',
       transport: 'Bluetooth Classic',
       kanaal: 'classic',
       stappen: [
@@ -93,6 +95,7 @@
       naam: 'BLE-adapter',
       kort: 'BLE',
       merk: 'Vgate iCar Pro, Veepeak BLE, LELink',
+      sub: 'Vgate · Veepeak · LELink',
       transport: 'Bluetooth Low Energy',
       kanaal: 'ble',
       stappen: [
@@ -108,6 +111,7 @@
       naam: 'Weet ik niet',
       kort: 'Onbekend',
       merk: 'PidLane zoekt zelf',
+      sub: 'PidLane zoekt zelf',
       transport: 'alles achter elkaar',
       // Bewust leeg: wie het niet weet, krijgt de volledige keten.
       kanaal: '',
@@ -170,53 +174,48 @@
   const VAK = document.createElement('div');   // vervangt .msteps
   VAK.id = 'startVak';
 
+  // Sinds 18-11-2026 in klassen (.pls-*, pidlane.css) in plaats van inline
+  // stijl: het scherm was een blok tekst tussen strakke schermen. De uitleg
+  // is niet weg, hij staat één tik verder (de tip achter "Lukt het niet?",
+  // de volle WiFi-zin als title).
+  const CHIP = { mxplus:'MX+', elm327:'ELM', ble:'BLE', onbekend:'?' };
   function tekenKiezer() {
     const keys = ['mxplus', 'elm327', 'ble', 'onbekend'];
     VAK.innerHTML =
-      '<div style="padding:0 20px 4px">' +
-        '<div style="font-size:13px;font-weight:700;color:var(--tx);margin-bottom:3px">Welke adapter heb je?</div>' +
-        '<div style="font-size:11.5px;color:var(--tx3);line-height:1.5;margin-bottom:10px">' +
-          'De stappen verschillen per type. Kies er een, dan krijg je alleen wat voor jou geldt.</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">' +
+      '<div class="pls">' +
+        '<div class="pls-kop">Welke adapter heb je?</div>' +
+        '<div class="pls-tegels">' +
           keys.map(function (k) {
             const a = ADAPTERS[k];
-            return '<button onclick="PLStart.kies(\'' + k + '\')" ' +
-              'style="text-align:left;background:var(--sur2);border:1px solid var(--bd);border-radius:10px;' +
-              'padding:10px 11px;cursor:pointer;font-family:var(--f)">' +
-              '<span style="display:block;font-size:13px;font-weight:700;color:var(--tx)">' + _esc(a.naam) + '</span>' +
-              '<span style="display:block;font-size:10.5px;color:var(--tx3);line-height:1.4;margin-top:2px">' + _esc(a.merk) + '</span>' +
+            return '<button class="pls-tegel" onclick="PLStart.kies(\'' + k + '\')" title="' + _esc(a.merk) + '">' +
+              '<span class="pls-chip">' + _esc(CHIP[k]) + '</span>' +
+              '<span class="pls-naam">' + _esc(a.naam) + '</span>' +
+              '<span class="pls-sub">' + _esc(a.sub) + '</span>' +
               '</button>';
           }).join('') +
         '</div>' +
-        '<div style="font-size:10.5px;color:var(--tx3);line-height:1.5;margin-top:9px;padding-left:2px">' +
-          '⚠ ' + _esc(WIFI_WAARSCHUWING) + '</div>' +
+        '<div class="pls-let" title="' + _esc(WIFI_WAARSCHUWING) + '">⚠ WiFi-adapters werken niet — PidLane gebruikt Bluetooth</div>' +
       '</div>';
   }
 
   function tekenStappen(type) {
-    const a = ADAPTERS[type] || ADAPTERS.onbekend;
+    const k = ADAPTERS[type] ? type : 'onbekend', a = ADAPTERS[k];
     VAK.innerHTML =
-      '<div style="padding:0 20px 4px">' +
-        '<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px">' +
-          '<span style="font-size:13px;font-weight:700;color:var(--tx)">' + _esc(a.naam) + '</span>' +
-          '<span style="font-size:10.5px;color:var(--tx3)">' + _esc(a.transport) + '</span>' +
-          '<button onclick="PLStart.terugNaarKiezer()" style="margin-left:auto;background:none;border:none;' +
-            'color:var(--bl);font:600 11px var(--f);cursor:pointer;padding:2px 0">Ander type</button>' +
+      '<div class="pls">' +
+        '<div class="pls-rij">' +
+          '<span class="pls-chip">' + _esc(CHIP[k]) + '</span>' +
+          '<span class="pls-naam">' + _esc(a.naam) + '</span>' +
+          '<span class="pls-sub">' + _esc(a.transport) + '</span>' +
+          '<button class="pls-link" onclick="PLStart.terugNaarKiezer()">Ander type</button>' +
         '</div>' +
         // Genummerd, want hier is de volgorde echte informatie: de pair-knop
         // moet vóór het koppelen, niet erna.
-        '<ol style="margin:0;padding:0 0 0 4px;list-style:none">' +
+        '<ol class="pls-stappen">' +
           a.stappen.map(function (s, i) {
-            return '<li style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;' +
-              'border-bottom:1px solid var(--bd);font-size:12.5px;color:var(--tx2);line-height:1.45">' +
-              '<span style="flex:none;width:19px;height:19px;border-radius:6px;background:var(--bl);color:#fff;' +
-                'font:700 11px var(--f);display:flex;align-items:center;justify-content:center;margin-top:1px">' +
-                (i + 1) + '</span>' +
-              '<span style="min-width:0">' + _esc(s) + '</span></li>';
+            return '<li><span class="pls-nr">' + (i + 1) + '</span><span>' + _esc(s) + '</span></li>';
           }).join('') +
         '</ol>' +
-        '<div style="font-size:11px;color:var(--tx3);line-height:1.55;margin-top:8px;padding:8px 10px;' +
-          'background:var(--sur2);border-radius:8px;border:1px solid var(--bd)">' + _esc(a.tip) + '</div>' +
+        '<details class="pls-tip"><summary>Lukt het niet?</summary><div>' + _esc(a.tip) + '</div></details>' +
       '</div>';
   }
 
@@ -226,25 +225,20 @@
     const naam = laatsteAdapterNaam() || a.naam;
     const wanneer = geledenTekst();
     VAK.innerHTML =
-      '<div style="padding:0 20px 4px">' +
-        '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--sur2);' +
-          'border:1px solid var(--bd);border-radius:10px">' +
-          '<span style="width:8px;height:8px;border-radius:50%;background:var(--gn);flex:none"></span>' +
-          '<span style="min-width:0">' +
-            '<span style="display:block;font-size:13px;font-weight:700;color:var(--tx)">' + _esc(naam) + '</span>' +
-            '<span style="display:block;font-size:10.5px;color:var(--tx3);margin-top:1px">' +
-              (wanneer ? 'laatst verbonden ' + _esc(wanneer) : _esc(a.transport)) + '</span>' +
+      '<div class="pls">' +
+        '<div class="pls-kaart">' +
+          '<span class="pls-stip"></span>' +
+          '<span class="pls-kol">' +
+            '<span class="pls-naam">' + _esc(naam) + '</span>' +
+            '<span class="pls-sub">' + (wanneer ? 'laatst verbonden ' + _esc(wanneer) : _esc(a.transport)) + '</span>' +
           '</span>' +
         '</div>' +
         // Gecentreerd, en de verbindingsdetails staan op dezelfde regel
         // (02-10-2026): drie kleine links in plaats van twee plus een knop.
-        '<div style="display:flex;justify-content:center;flex-wrap:wrap;gap:6px 16px;margin-top:8px">' +
-          '<button onclick="PLStart.terugNaarKiezer()" style="background:none;border:none;color:var(--bl);' +
-            'font:600 11.5px var(--f);cursor:pointer;padding:0">Andere adapter</button>' +
-          '<button onclick="PLStart.toonHulp()" style="background:none;border:none;color:var(--tx3);' +
-            'font:600 11.5px var(--f);cursor:pointer;padding:0">Uitleg</button>' +
-          '<button onclick="toggleConnDetails()" style="background:none;border:none;color:var(--tx3);' +
-            'font:600 11.5px var(--f);cursor:pointer;padding:0">Verbindingsdetails</button>' +
+        '<div class="pls-links">' +
+          '<button class="pls-link" onclick="PLStart.terugNaarKiezer()">Andere adapter</button>' +
+          '<button class="pls-link pls-stil" onclick="PLStart.toonHulp()">Uitleg</button>' +
+          '<button class="pls-link pls-stil" onclick="toggleConnDetails()">Verbindingsdetails</button>' +
         '</div>' +
       '</div>';
   }

@@ -17,6 +17,21 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 18-11-2026 — Waarom heuvelaf "telefoon niet in de houder" gaf
+
+Melding van de eigenaar: telefoon in de houder, heuvelaf rijden, en de app meldt dat de telefoon niet in de houder zit. `houderMeting()` mat de volle hoek tussen omhoog en de nulstand. Een helling kantelt de hele auto om zijn dwarsas, dus die hoek groeit met de helling mee; daar komt bij remmen de vertraging bij als 010D ouder is dan 2 s (dan trekt `opMotion()` hem er niet af). Boven 15°, 2 s lang, was het `verschoven`. Nu telt alleen wat een helling tot `HOUDER.maxHelling` (25°) níét verklaart (`afwijkingBuitenHelling()`); zijwaarts blijft de grens 15°. Wat dit niet vangt: een telefoon die in de houder alleen voorover kantelt, minder dan 25°. Die beweegt dan los van de auto, en daar is de wiebelgrens voor. Zonder bekende rijrichting (geen nulstand) geldt de volle hoek, zoals vroeger.
+
+
+## 18-11-2026 — Waarom het voertuig na het inleren half leeg bleef
+
+Melding van de eigenaar: kenteken bij de verbinding, het profiel en het dossier lijken langs elkaar heen te werken; na het inleren staat het voertuig in Mijn voertuigen half leeg terwijl dezelfde gegevens elders (de voertuigkaart) al ingevuld zijn.
+
+1. **Twee RDW-opzoekingen, één schrijver.** `rdwLookup()` (pidlane-bt.js) vult `vehicleInfo` — dat is wat de voertuigkaart toont. De garage heeft zijn eigen pad: `rdwNaarProfiel()` via de RDW-knop in het profiel of `rdwDagelijks()`. De wizard (`PLInrichten.auto()`) gaf `PLGarage.inrichtBewaar()` alleen kenteken, brandstof, km, merk, model en bouwjaar mee. APK, motor, cilinderinhoud en vermogen kwamen pas bij de dagelijkse ronde — en die stond voor een voertuig dat vandaag al nagelegd was (`pl_rdw_dag_<id>`) pas morgen weer aan, en anders hoogstens één keer per uur.
+2. **Herkend op VIN, maar zonder kenteken.** Een auto die eerder zonder kenteken in Mijn voertuigen kwam, werd bij elke verbinding op zijn chassisnummer herkend, maar het bevestigde kenteken van de verbinding (`PLIdentiteit.kenteken()`) ging nooit naar het voertuig. Dan doet de dagelijkse RDW-ronde ook niets: die filtert op `v.kenteken`.
+
+Oplossing: `inrichtBewaar()` legt het RDW meteen na (`rdwNaOpslaan()` → `rdwVoertuig()`, dezelfde regels als de dagelijkse ronde: APK volgt het RDW, de rest alleen als hij leeg is) zodra er een kenteken meekomt; `herkenAuto()` zet het kenteken van de verbinding bij een op VIN herkende auto zonder kenteken (`kentekenErbij()`, overschrijft nooit) en legt daarna het RDW na. Niet aangeraakt: het dossier-PDF (`exportVehicleDossier`) leest nog alleen `vehicleInfo`; voor een klant neemt `loadUserVehicleData()` de garagewaarden daarin over, dus dat volgt nu vanzelf.
+
+
 ## 17-11-2026 — Waarom "Nieuwe auto — schone start" de vorige auto terugbracht
 
 Melding van de eigenaar: na archiveren of een schone start bleven er stukjes van de vorige auto hangen. Twee oorzaken.

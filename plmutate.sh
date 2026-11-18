@@ -1172,6 +1172,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@    kmh:  { min: 0,   max: 254,@@    kmh:  { min: 0,   max: 255,@@test-garage.js@@de rand van de codering (255 km/u) telt weer als echte snelheid"
 "public/pidlane-garage.js@@    var kmh = ritGoed(r, 'kmh', ruw, t);@@    var kmh = ruw;@@test-garage.js@@een losse 255 km/u (0xFF) wordt weer de topsnelheid van een rit"
 "public/pidlane-garage.js@@    return Math.abs(v - vorig.v) <= g.sprongPerS * dt + g.marge;@@    return true;@@test-garage.js@@een sprong naar 180 km/u in twee seconden telt weer als topsnelheid"
+"public/pidlane-garage.js@@    if (w.kenteken && await rdwNaOpslaan(nv)) nv = voertuig(nv.id) || nv;@@    // RDW pas bij de dagelijkse ronde@@test-garage.js@@na het inleren staat het voertuig weer half leeg tot de dagelijkse RDW-ronde"
+"public/pidlane-garage.js@@    if (!v || String(v.kenteken || '').replace(/[^A-Za-z0-9]/g, '')) return null;@@    if (!v) return null;@@test-garage.js@@het kenteken van de verbinding overschrijft weer een kenteken dat bij het voertuig staat"
 "public/pidlane-garage.js@@    var koel = ritGoed(r, 'koel', m.koelwater, t), accu = ritGoed(r, 'accu', m.accu, t);@@    var koel = m.koelwater, accu = m.accu;@@test-garage.js@@koelwater 215 °C en accu 0 V tellen weer als uiterste van de rit"
 "public/pidlane-garage.js@@    if (ritPlausibel(soort, v, t, r.goed[soort])) { r.goed[soort] = { v: v, t: t }; return v; }@@    if (true) { r.goed[soort] = { v: v, t: t }; return v; }@@test-garage.js@@de plausibiliteitsregel doet niets meer: elke waarde telt"
 "public/pidlane-garage.js@@    if (mild) uit.brandstof = mild;@@@@test-garage.js@@een oud profiel dat hybride zegt voor een mild hybride blijft hybride na de RDW-ronde"
@@ -1588,6 +1590,8 @@ MUTATIES=(
 "public/index.html@@<div class=\"hlg-horizon\"></div>@@<div></div>@@test-hyperlanedeur.js@@de horizon verdwijnt uit de tunnel en niemand ziet het"
 "public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
 "public/pidlane-intro.js@@  var DUUR_MS = 3100;@@  var DUUR_MS = 2600;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
+"public/pidlane-intro.js@@    return { Z: t * .55 + w * w * 2.2, W: w, D: d };@@    return { Z: t * .55, W: w, D: d };@@test-intro.js@@de tunnel versnelt niet meer bij de doorzoom: geen warp"
+"public/pidlane-intro.js@@    return { Z: t * .22, D: Math.min(1, .35 + t / 1.2), beweegt: !rust && ms < DEUR_MS };@@    return { Z: t * .22, D: Math.min(1, .35 + t / 1.2), beweegt: !rust };@@test-intro.js@@de tunnel achter inloggen blijft eindeloos bewegen en kost accu"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 # ── #297: het log staat in D1, en het scherm zegt dat ──
@@ -2664,6 +2668,7 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@  const vMs=typeof o.verschovenMs==='number' ? o.verschovenMs : Infinity;@@  const vMs=Infinity;@@test-telemetrie.js@@een remstoot of drempel maakt de kanteling meteen grijs: verschoven telt zonder dat hij aanhoudt"
 "public/pidlane-telemetrie.js@@  const aD=(versD && typeof kmh==='number')@@  const aD=(vers && typeof kmh==='number')@@test-telemetrie.js@@een bocht op een volle bus (010D ouder dan 2 s) geeft weer een schijnkanteling en grijs"
 "public/pidlane-telemetrie.js@@        _houderS.redenMs[hz.reden]=(_houderS.redenMs[hz.reden]||0)+dt;\n@@@@test-telemetrie.js@@het verslag zegt niet meer waaróm de telefoon niet vast was: de volgende rit bewijst niets"
+"public/pidlane-telemetrie.js@@  const rest=p-Math.max(-m, Math.min(m, p));@@  const rest=p;@@test-telemetrie.js@@heuvelaf telt de helling weer als een verschoven telefoon"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"
