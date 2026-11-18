@@ -1004,6 +1004,8 @@
       _st.onbekend = null;
       if (_st.actiefId !== hit.id) { zetActief(hit.id); melding('🚗 Verbonden met ' + (hit.naam || hit.merk || 'je voertuig')); }
       _st.gekoppeld = hit.id;
+      var kErbij = kentekenErbij(hit, kentVerbinding());
+      if (kErbij) kentekenKoppel(hit, kErbij).catch(function (x) { console.warn('PLGarage: kenteken van de verbinding niet bij het voertuig gezet', x); });
       // De kennis van dit model vanzelf binnenhalen (gratis, één keer per maand).
       api('pidbib_lijst', { voertuig_id: hit.id }).then(function (d) { return obdbVanzelf(hit, d && d.lijst); })
         .catch(function (x) { console.warn('PLGarage: bibliotheek voor OBDb vanzelf niet te laden', x); });
@@ -1029,6 +1031,22 @@
      elke auto zonder VIN aan — ook op een andere auto, met de PID-poort als
      enige rem, en die rekende met de brandstof van de vorige. Een auto die
      op zijn VIN níét herkend is (_st.onbekend) krijgt niets. */
+  /* Een auto die op zijn chassisnummer herkend is maar in Mijn voertuigen
+     geen kenteken heeft, krijgt het bevestigde kenteken van de verbinding
+     (PLIdentiteit hangt dat zelf aan deze VIN). Een kenteken dat er al
+     staat, overschrijft de verbinding nooit. Puur: het kenteken of null. */
+  function kentekenErbij(v, kentVerb) {
+    if (!v || String(v.kenteken || '').replace(/[^A-Za-z0-9]/g, '')) return null;
+    var k = String(kentVerb || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    return k.length >= 4 ? k : null;
+  }
+  async function kentekenKoppel(v, k) {
+    var d = await api('voertuig_opslaan', { voertuig: { id: v.id, kenteken: k } });
+    if (d.kentekenOpgeslagen === false) { melding('Het kenteken kon niet versleuteld bewaard worden en is niet opgeslagen'); return; }
+    delete _st.cache[v.id];
+    await ververs();
+    await rdwNaOpslaan(voertuig(v.id) || Object.assign({}, v, { kenteken: k }));
+  }
   var GEEN_VIN = '-';
   function kentVerbinding() { return window.PLIdentiteit ? PLIdentiteit.kenteken() : ''; }
   function zelfdeKenteken(a, b) {
@@ -2641,7 +2659,12 @@
     if (!w.id) { _st.onbekend = null; zetActief(d.voertuig.id); _st.gekoppeld = d.voertuig.id; }
     delete _st.cache[d.voertuig.id];
     await ververs();
-    return voertuig(d.voertuig.id) || d.voertuig;
+    var nv = voertuig(d.voertuig.id) || d.voertuig;
+    // Kwam er een kenteken mee, dan nu het RDW erbij (apk, motor, vermogen…),
+    // niet pas bij de dagelijkse ronde: anders staat de auto na het inleren
+    // half leeg terwijl de voertuigkaart al vol is (18-11-2026).
+    if (w.kenteken && await rdwNaOpslaan(nv)) nv = voertuig(nv.id) || nv;
+    return nv;
   }
   async function inrichtTank(vid, tank) {
     if (!voertuig(vid)) throw new Error('dit voertuig staat niet in Mijn voertuigen');
@@ -3283,7 +3306,7 @@
     },
     // pure kern — voor test-garage.js
     _kern: { obdbVanzelf: obdbVanzelf, sensSoort: sensSoort, sensGroepen: sensGroepen, tekenPidZoek: tekenPidZoek, status: status, advies: advies, issueOps: issueOps, ritNieuw: ritNieuw, ritTik: ritTik, ritBinnen: ritBinnen, ritKlaar: ritKlaar, ritStand: ritStand,
-      rdwNaarProfiel: rdwNaarProfiel, rdwBijwerken: rdwBijwerken, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
+      rdwNaarProfiel: rdwNaarProfiel, rdwBijwerken: rdwBijwerken, kentekenErbij: kentekenErbij, profielUitVerbinding: profielUitVerbinding, voorinvulNieuw: voorinvulNieuw, gewogenVerbruik: gewogenVerbruik, dagenTot: dagenTot, waakTekst: waakTekst,
       waakDelen: waakDelen, labelSom: labelSom, labelSuggestie: labelSuggestie, ritExport: ritExport, waakVergelijk: waakVergelijk, akkoordVragen: akkoordVragen, bibSplits: bibSplits, cfg: CFG }
   };
 
@@ -3395,6 +3418,19 @@
     if (Object.keys(zet).length) { zet.id = v.id; await api('voertuig_opslaan', { voertuig: zet }); }
     var c = cacheVan(v.id); c.rdw = d; c.rdwFout = null; c.rdwRecall = null;
     return zet;
+  }
+  /* Meteen na een nieuw kenteken (wizard, verbinding): het RDW voor dit
+     voertuig nu, en dan telt de dagelijkse ronde hem vandaag als gedaan.
+     Mislukt het, dan neemt die ronde het over. true = er is iets bijgewerkt. */
+  async function rdwNaOpslaan(v) {
+    if (!v || !v.kenteken || isDemo() || !window.PLZonder || typeof PLZonder.haal !== 'function') return false;
+    try {
+      var zet = await rdwVoertuig(v);
+      schrijf('pl_rdw_dag_' + v.id, dagVan(Date.now()));
+      if (!Object.keys(zet).length) return false;
+      await ververs();
+      return true;
+    } catch (e) { console.warn('PLGarage: RDW na het kenteken niet opgehaald — de dagelijkse ronde probeert het opnieuw', e); return false; }
   }
   function dagVan(nu) { var d = new Date(nu); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   var _rdwBezig = false, _rdwPoging = 0;

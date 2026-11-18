@@ -1172,6 +1172,8 @@ MUTATIES=(
 "public/pidlane-garage.js@@    kmh:  { min: 0,   max: 254,@@    kmh:  { min: 0,   max: 255,@@test-garage.js@@de rand van de codering (255 km/u) telt weer als echte snelheid"
 "public/pidlane-garage.js@@    var kmh = ritGoed(r, 'kmh', ruw, t);@@    var kmh = ruw;@@test-garage.js@@een losse 255 km/u (0xFF) wordt weer de topsnelheid van een rit"
 "public/pidlane-garage.js@@    return Math.abs(v - vorig.v) <= g.sprongPerS * dt + g.marge;@@    return true;@@test-garage.js@@een sprong naar 180 km/u in twee seconden telt weer als topsnelheid"
+"public/pidlane-garage.js@@    if (w.kenteken && await rdwNaOpslaan(nv)) nv = voertuig(nv.id) || nv;@@    // RDW pas bij de dagelijkse ronde@@test-garage.js@@na het inleren staat het voertuig weer half leeg tot de dagelijkse RDW-ronde"
+"public/pidlane-garage.js@@    if (!v || String(v.kenteken || '').replace(/[^A-Za-z0-9]/g, '')) return null;@@    if (!v) return null;@@test-garage.js@@het kenteken van de verbinding overschrijft weer een kenteken dat bij het voertuig staat"
 "public/pidlane-garage.js@@    var koel = ritGoed(r, 'koel', m.koelwater, t), accu = ritGoed(r, 'accu', m.accu, t);@@    var koel = m.koelwater, accu = m.accu;@@test-garage.js@@koelwater 215 °C en accu 0 V tellen weer als uiterste van de rit"
 "public/pidlane-garage.js@@    if (ritPlausibel(soort, v, t, r.goed[soort])) { r.goed[soort] = { v: v, t: t }; return v; }@@    if (true) { r.goed[soort] = { v: v, t: t }; return v; }@@test-garage.js@@de plausibiliteitsregel doet niets meer: elke waarde telt"
 "public/pidlane-garage.js@@    if (mild) uit.brandstof = mild;@@@@test-garage.js@@een oud profiel dat hybride zegt voor een mild hybride blijft hybride na de RDW-ronde"
