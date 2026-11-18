@@ -17,6 +17,11 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 18-11-2026 — Waarom heuvelaf "telefoon niet in de houder" gaf
+
+Melding van de eigenaar: telefoon in de houder, heuvelaf rijden, en de app meldt dat de telefoon niet in de houder zit. `houderMeting()` mat de volle hoek tussen omhoog en de nulstand. Een helling kantelt de hele auto om zijn dwarsas, dus die hoek groeit met de helling mee; daar komt bij remmen de vertraging bij als 010D ouder is dan 2 s (dan trekt `opMotion()` hem er niet af). Boven 15°, 2 s lang, was het `verschoven`. Nu telt alleen wat een helling tot `HOUDER.maxHelling` (25°) níét verklaart (`afwijkingBuitenHelling()`); zijwaarts blijft de grens 15°. Wat dit niet vangt: een telefoon die in de houder alleen voorover kantelt, minder dan 25°. Die beweegt dan los van de auto, en daar is de wiebelgrens voor. Zonder bekende rijrichting (geen nulstand) geldt de volle hoek, zoals vroeger.
+
+
 ## 18-11-2026 — Waarom het voertuig na het inleren half leeg bleef
 
 Melding van de eigenaar: kenteken bij de verbinding, het profiel en het dossier lijken langs elkaar heen te werken; na het inleren staat het voertuig in Mijn voertuigen half leeg terwijl dezelfde gegevens elders (de voertuigkaart) al ingevuld zijn.

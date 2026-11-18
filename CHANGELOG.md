@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Telemetrie heuvelaf, intro-tunnel, adapterkeuze
+ ═════════════════════════════════════════════════════
+   • Telemetrie: een helling tot 25° (voorover/achterover) telt niet meer als verschoven telefoon; zijwaarts blijft 15°. Heuvelaf gaf "niet in de houder"
+   • Intro: het CSS-raster is weg; de tunnel en aura van Hyperlane in een eigen WebGL-shader, met warp bij de doorzoom. Zonder WebGL de oude rijbaan
+   • Verbinden: adapterkeuze als tegels met een chip (MX+, ELM, BLE, ?), stappen compact, de tip achter "Lukt het niet?"
+   • test-telemetrie.js, test-intro.js: negen controles, twee mutaties. Blok 5: één nieuwe proef
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Mijn voertuigen: na het inleren staat het voertuig meteen vol
  ═════════════════════════════════════════════════════
    • Leer de auto (setup-wizard) met kenteken: APK, motor, cilinderinhoud en vermogen komen meteen uit het RDW, niet pas bij de dagelijkse ronde. Eigen invoer blijft staan
