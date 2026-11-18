@@ -68,7 +68,7 @@ ok(P.tipVan([{ t: T - 5000, msg: 'Zet cruise', key: 'cruise' }, { t: T - 1000, m
 
 console.log('\n— rit-monitor —');
 const tests = [{ id: 'A', naam: 'toerental' }, { id: 'B', naam: 'laadspanning' }, { id: 'C', naam: 'koelwater' }];
-let r = P.ritModel({ tests, dekking: { A: { runs: 3, hits: 0 }, B: { runs: 2, hits: 1 } }, meldingen: 0, draait: true, mil: false, teller: 0 });
+let r = P.ritModel({ tests, dekking: { A: { runs: 3, hits: 0 }, B: { runs: 2, hits: 1 }, C: { runs: 0, hits: 0 } }, meldingen: 0, draait: true, mil: false, teller: 0 });
 ok(r.getoetst === 2 && r.totaal === 3, 'een controle die nooit draaide telt niet als getoetst', r);
 ok(r.st === 'let' && r.gezien.join() === 'laadspanning' && r.kop === 'let op' && />!</.test(P.ritHtml(r)), 'een controle die iets zag: oranje, een uitroepteken, met de naam', r);
 ok((P.ritHtml(r).match(/class="vrm-seg"/g) || []).length === 3 && /data-s="hit"/.test(P.ritHtml(r)) && /data-s="wacht"/.test(P.ritHtml(r)), 'één segment per controle, met zijn staat');
