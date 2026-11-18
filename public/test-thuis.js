@@ -35,6 +35,9 @@ eis('niet verbonden → verbinden', K.hoofdknop(K.toestand({ verbonden: false })
 eis('verbonden, nog geen check vandaag → Check mijn auto', K.hoofdknop(K.toestand({ verbonden: true, checkVandaag: false })) === 'check');
 eis('verbonden en vandaag al gecheckt → Naar Live', K.hoofdknop(K.toestand({ verbonden: true, checkVandaag: true })) === 'live');
 eis('demo gaat voor: ook "verbonden" wordt demo, met de check', K.toestand({ demo: true, verbonden: true, checkVandaag: true }) === 'demo' && K.hoofdknop('demo') === 'check');
+eis('tik op de auto met een voertuig → Mijn voertuigen, ook niet verbonden', K.autoDoel({ voertuig: true, verbonden: false }) === 'garage');
+eis('tik op de auto zonder voertuig, verbonden → Live', K.autoDoel({ voertuig: false, verbonden: true }) === 'live');
+eis('tik op de auto zonder voertuig en verbinding → Kenteken-check', K.autoDoel({ voertuig: false, verbonden: false }) === 'kenteken');
 eis('zonder adapter geen knop "Laat meekijken" (meekijken heeft een verbinding nodig)', !J(K.miniKnoppen('geen')).includes('expert'));
 eis('verbonden wél "Laat meekijken"', J(K.miniKnoppen('verbonden')).includes("PLNav.expert('deel')"));
 eis('in de demo een knop om de simulatie te stoppen', J(K.miniKnoppen('demo')).includes('PLZonder.stopDemo()'));

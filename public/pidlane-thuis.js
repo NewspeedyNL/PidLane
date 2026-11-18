@@ -174,6 +174,10 @@
   var esc = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   function melding(t) { try { if (typeof showToast === 'function') showToast(t); } catch (e) { console.warn('PLThuis: melding', e); } }
   function wie() { try { return String((window.currentUser && window.currentUser.user) || '').toLowerCase(); } catch (e) { return ''; } }
+  /* Waar een tik op de auto heen gaat (18-11-2026). Tot dan alleen naar Mijn
+     voertuigen bij rol 'klant'; elke andere rol kwam zonder verbinding op de
+     Kenteken-check uit, terwijl de kaart zijn auto toont. Een voertuig wint. */
+  function autoDoel(o) { return o.voertuig ? 'garage' : o.verbonden ? 'live' : 'kenteken'; }
   function isKlant() { try { var u = window.currentUser; return !!(u && String(u.role || '').toLowerCase() === 'klant'); } catch (e) { return false; } }
   function isDemo() { try { return typeof demoMode !== 'undefined' && !!demoMode; } catch (e) { return false; } }
   function isVerbonden() { try { return typeof connected !== 'undefined' && !!connected && !isDemo(); } catch (e) { return false; } }
@@ -499,8 +503,9 @@
     auto: function () {
       try {
         var v = window.PLGarage && PLGarage.actief && PLGarage.actief();
-        if (v && isKlant()) PLGarage.open(v.id);
-        else if (isVerbonden() || isDemo()) PLNav.tab('live');
+        var doel = autoDoel({ voertuig: !!v, verbonden: isVerbonden() || isDemo() });
+        if (doel === 'garage') PLGarage.open(v.id);
+        else if (doel === 'live') PLNav.tab('live');
         else if (window.PLZonder) PLZonder.kenteken();
       } catch (e) { console.warn('PLThuis: auto opent niet', e); }
     },
@@ -540,6 +545,6 @@
       else _form.snel = verschuif(_form.snel, i, stap);
       tekenForm();
     },
-    _kern: { BLOKKEN: BLOKKEN, SNEL: SNEL, SNEL_MAX: SNEL_MAX, BASIS: BASIS, PATROON: PATROON, toestand: toestand, hoofdknop: hoofdknop, chips: chips, ringKleur: ringKleur, kandidaten: kandidaten, indeling: indeling, naarLijst: naarLijst, verschuif: verschuif, miniKnoppen: miniKnoppen }
+    _kern: { BLOKKEN: BLOKKEN, SNEL: SNEL, SNEL_MAX: SNEL_MAX, BASIS: BASIS, PATROON: PATROON, toestand: toestand, hoofdknop: hoofdknop, chips: chips, ringKleur: ringKleur, kandidaten: kandidaten, indeling: indeling, naarLijst: naarLijst, verschuif: verschuif, miniKnoppen: miniKnoppen, autoDoel: autoDoel }
   };
 })();
