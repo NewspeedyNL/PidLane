@@ -3386,6 +3386,16 @@
     RDW_LEEG_ALLEEN.forEach(function (k) { if (p[k] != null && p[k] !== '' && (v[k] == null || v[k] === '')) uit[k] = p[k]; });
     return uit;
   }
+  /* Eén voertuig bij het RDW naleggen: haalt, slaat op wat rdwBijwerken()
+     zegt, en zet het antwoord in de cache. Gooit door bij een fout. */
+  async function rdwVoertuig(v) {
+    var d = await PLZonder.haal(v.kenteken);
+    if (!(d && d.rij)) return {};
+    var zet = rdwBijwerken(v, rdwNaarProfiel(d.rij, d.bs), typeof aandrijfUitRdw === 'function' ? aandrijfUitRdw(d.bs || [], d.rij && d.rij.merk) : null);
+    if (Object.keys(zet).length) { zet.id = v.id; await api('voertuig_opslaan', { voertuig: zet }); }
+    var c = cacheVan(v.id); c.rdw = d; c.rdwFout = null; c.rdwRecall = null;
+    return zet;
+  }
   function dagVan(nu) { var d = new Date(nu); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
   var _rdwBezig = false, _rdwPoging = 0;
   async function rdwDagelijks() {
@@ -3400,12 +3410,7 @@
       for (var i = 0; i < lijst.length; i++) {
         var v = lijst[i];
         try {
-          var d = await PLZonder.haal(v.kenteken);
-          if (d && d.rij) {
-            var zet = rdwBijwerken(v, rdwNaarProfiel(d.rij, d.bs), typeof aandrijfUitRdw === 'function' ? aandrijfUitRdw(d.bs || [], d.rij && d.rij.merk) : null);
-            if (Object.keys(zet).length) { zet.id = v.id; await api('voertuig_opslaan', { voertuig: zet }); }
-            var c = cacheVan(v.id); c.rdw = d; c.rdwFout = null; c.rdwRecall = null;
-          }
+          await rdwVoertuig(v);
           schrijf('pl_rdw_dag_' + v.id, vandaag);
         } catch (e) { console.warn('PLGarage: RDW van ' + (v.naam || v.id) + ' niet ververst — morgen of over een uur opnieuw', e); }
       }
