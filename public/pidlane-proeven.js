@@ -53,6 +53,7 @@ const PROEVEN_B5 = [
       if (!(dwars > T.HOUDER.maxAfwijking)) return { staat: 'FOUT', detail: '20° zijwaarts telt niet meer als verschoven (' + dwars.toFixed(1) + '°)' };
       if (!window.PLIntro || typeof PLIntro.tunnelStand !== 'function') return { staat: 'FOUT', detail: 'PLIntro.tunnelStand ontbreekt — pidlane-intro.js niet bijgewerkt (herladen?)' };
       if (PLIntro.tunnelStand(2.7).W !== 1) return { staat: 'FOUT', detail: 'de intro-tunnel warpt niet bij de doorzoom' };
+      if (typeof PLIntro.deurStand !== 'function' || PLIntro.deurStand(PLIntro.DEUR_MS, false).beweegt) return { staat: 'FOUT', detail: 'de tunnel achter inloggen staat na DEUR_MS niet stil' };
       return { staat: 'ok', detail: 'heuvelaf ' + langs.toFixed(1) + '°, zijwaarts ' + dwars.toFixed(1) + '°; tunnel warpt' };
     }
   },

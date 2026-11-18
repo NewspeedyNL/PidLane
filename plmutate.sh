@@ -1591,6 +1591,7 @@ MUTATIES=(
 "public/pidlane-intro.js@@    if (ev && ev.type === 'pointerdown') { ev.preventDefault(); ev.stopPropagation(); }@@@@test-intro.js@@de tik die de intro overslaat drukt ook de knop eronder in, bijvoorbeeld de demo"
 "public/pidlane-intro.js@@  var DUUR_MS = 3100;@@  var DUUR_MS = 2600;@@test-intro.js@@de JS-timer ruimt de intro op midden in de doorzoom: het logo verdwijnt met een knip"
 "public/pidlane-intro.js@@    return { Z: t * .55 + w * w * 2.2, W: w, D: d };@@    return { Z: t * .55, W: w, D: d };@@test-intro.js@@de tunnel versnelt niet meer bij de doorzoom: geen warp"
+"public/pidlane-intro.js@@    return { Z: t * .22, D: Math.min(1, .35 + t / 1.2), beweegt: !rust && ms < DEUR_MS };@@    return { Z: t * .22, D: Math.min(1, .35 + t / 1.2), beweegt: !rust };@@test-intro.js@@de tunnel achter inloggen blijft eindeloos bewegen en kost accu"
 "public/pidlane.css@@#plIntro:not(.pli-speel){ animation:pliNood .01s@@#plIntro:not(.pli-speel){ animation:pliKlaar .01s@@test-intro.js@@noodrem en eindregel delen één keyframe: Chromium telt de 2,85 s dan vanaf het laden en de intro valt midden in het beeld weg"
 "public/pidlane.css@@#plIntro.pli-speel .pli-logo{ animation:pliOverend @@#plIntro.pli-speel .pli-logo{ animation:pliOverEnd @@bproef-intro.js@@een verschreven keyframe-naam: geen fout in de console, maar het logo blijft de hele intro onzichtbaar"
 # ── #297: het log staat in D1, en het scherm zegt dat ──

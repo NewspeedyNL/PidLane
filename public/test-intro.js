@@ -202,5 +202,15 @@ console.log('\nDe tunnel (18-11-2026): rustig in, warp bij de doorzoom, uit met 
   toets('het CSS-raster is weg', /pli-bg::after/.test(CSS), false);
 }
 
+console.log('\nDe deur: dezelfde tunnel achter inloggen en verbinden, maar zuinig');
+{
+  const s = bouw();
+  const D = s.PLIntro.deurStand, M = s.PLIntro.DEUR_MS;
+  toets('beweegt zolang hij net in beeld is', D(1000, false).beweegt, true);
+  toets('staat stil na DEUR_MS (hoogstens twee minuten)', [D(M, false).beweegt, M <= 120000], [false, true]);
+  toets('daarna geen verdere verschuiving', D(M * 3, false).Z, D(M, false).Z);
+  toets('minder beweging: meteen stil, wel een volledig beeld', [D(0, true).beweegt, D(5000, true).D], [false, 1]);
+}
+
 console.log('\n' + (fout ? fout + ' van ' + n + ' FOUT' : n + ' toetsen, allemaal goed'));
 process.exit(fout ? 1 : 0);

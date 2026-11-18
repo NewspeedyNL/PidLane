@@ -13,6 +13,7 @@
  18-11-2026 — Telemetrie heuvelaf, intro-tunnel, adapterkeuze
  ═════════════════════════════════════════════════════
    • Telemetrie: een helling tot 25° (voorover/achterover) telt niet meer als verschoven telefoon; zijwaarts blijft 15°. Heuvelaf gaf "niet in de houder"
+   • Inloggen en verbinden: dezelfde WebGL-tunnel in plaats van het CSS-raster; hoogstens een minuut beweging per keer in beeld, daarna stil (accu)
    • Intro: het CSS-raster is weg; de tunnel en aura van Hyperlane in een eigen WebGL-shader, met warp bij de doorzoom. Zonder WebGL de oude rijbaan
    • Verbinden: adapterkeuze als tegels met een chip (MX+, ELM, BLE, ?), stappen compact, de tip achter "Lukt het niet?"
    • test-telemetrie.js, test-intro.js: negen controles, twee mutaties. Blok 5: één nieuwe proef
