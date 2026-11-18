@@ -8,7 +8,12 @@
 // erbij. Daaronder een receptenlijst: een reeks stappen per merk, model en
 // module die je zelf bewaart nadat je hem geverifieerd hebt.
 //
-// WAT HET NIET IS. De app levert geen recepten mee. Een reset van een
+// SJABLONEN (18-11-2026). Een sjabloon vult alleen het formulier "Recept
+// bewaren" in; het draait niet en staat niet in de lijst. Je past het aan
+// en bewaart het zelf. Een bewaard recept kun je met ✎ terug in het
+// formulier zetten en bijwerken (zelfde id = vervangen).
+//
+// WAT HET NIET IS. De app levert geen kant-en-klare recepten mee. Een reset van een
 // airbagmodule vraagt bijna altijd een beveiligingssleutel van de fabrikant
 // (0x27 seed/key); die zit hier niet in en wordt niet verzonnen. Alles
 // hiervoor was lezend (pidlane-uds.js: "Alles hier is lezend"); dit is de
@@ -146,6 +151,24 @@
       'onbruikbaar maken; controleer na afloop zelf de waarschuwingslampjes. Versturen?';
   }
 
+  /* ── Sjablonen: vullen het formulier, draaien nooit zelf ───────────────
+     Ongeverifieerd: elk sjabloon zegt dat in zijn notitie. Hyundai i20 (PB,
+     SRS 95910-1J400): KWP2000 of UDS is per module niet zeker, dus twee. */
+  var SJABLONEN = [
+    { naam: 'Airbag foutcodes wissen (UDS)', merk: 'Hyundai', model: 'i20 (PB) 2009', module: 'Airbag (SRS) 95910-1J400', hdr: '7D0',
+      stappen: ['10 03', '14 FF FF FF', '19 02 FF'],
+      notitie: 'SJABLOON, ongeverifieerd. Wist alleen opgeslagen codes; eerst de oorzaak herstellen. Crashdata gaat niet via OBD. 7F 14 33 = sleutel nodig (0x27).' },
+    { naam: 'Airbag foutcodes wissen (KWP)', merk: 'Hyundai', model: 'i20 (PB) 2009', module: 'Airbag (SRS) 95910-1J400', hdr: '7D0',
+      stappen: ['10 81', '14 FF 00', '18 00 FF 00'],
+      notitie: 'SJABLOON, ongeverifieerd. KWP2000-variant voor als 10 03 geweigerd wordt. Crashdata gaat niet via OBD.' },
+    { naam: '', merk: '', model: '', module: '', hdr: '', stappen: [], notitie: '', leeg: true }
+  ];
+  function sjabloon(i) {
+    var t = SJABLONEN[i];
+    if (!t) return null;
+    return { id: '', naam: t.naam, merk: t.merk, model: t.model, module: t.module, hdr: t.hdr, stappen: t.stappen.join('\n'), notitie: t.notitie };
+  }
+
   /* ── Recepten (puur op een lijst; opslag apart) ────────────────────── */
   function receptKeur(r) {
     r = r || {};
@@ -261,7 +284,7 @@
     return '<div style="display:flex;justify-content:space-between;align-items:center"><b>🧰 Modulecommando\'s</b>' +
       '<button type="button" onclick="PLModuleCmd.sluit()" style="background:none;border:0;color:var(--tx);font-size:20px">✕</button></div>' +
       '<p style="font-size:12px;color:var(--tx2)">Schrijvende commando\'s gaan alleen bij stilstand met de motor uit, na bevestiging. Alles komt in het logboek. ' +
-      'De app levert geen recepten mee: een airbag-reset vraagt meestal een fabriekssleutel (0x27).</p>' +
+      'De app levert geen kant-en-klare recepten mee: een sjabloon vult alleen het formulier, jij past het aan en bewaart het. Een airbag-reset vraagt meestal een fabriekssleutel (0x27).</p>' +
       '<div style="display:grid;grid-template-columns:80px 1fr;gap:6px">' +
       '<input id="mcHdr" ' + veld + ' placeholder="7D0" maxlength="3">' +
       '<input id="mcBytes" ' + veld + ' placeholder="bytes, bv. 22 F1 90">' + '</div>' +
@@ -275,9 +298,14 @@
           esc([r.merk, r.model, r.module].filter(Boolean).join(' · ')) + ' — <b>' + esc(r.naam) + '</b> <code>' + esc(r.hdr) + ': ' + esc(r.stappen.join(' | ')) + '</code>' +
           (r.notitie ? '<br><small>' + esc(r.notitie) + '</small>' : '') + '</span>' +
           knop('PLModuleCmd.receptDraai(this.dataset.id)', '▶', '" data-id="' + esc(r.id)) +
+          knop('PLModuleCmd.receptVul(this.dataset.id)', '✎', '" data-id="' + esc(r.id)) +
           knop('PLModuleCmd.receptWis(this.dataset.id)', '🗑', '" data-id="' + esc(r.id)) + '</div>';
       }).join('') : '<p style="font-size:12px;color:var(--tx2)">Nog geen recepten.</p>') +
-      '<details><summary>Recept bewaren</summary><div style="display:grid;gap:6px;margin-top:6px">' +
+      '<details id="mcRForm"><summary>Recept bewaren</summary><div style="display:grid;gap:6px;margin-top:6px">' +
+      '<div style="display:flex;gap:6px"><select id="mcSjabloon" ' + veld + '>' +
+      SJABLONEN.map(function (t, i) { return '<option value="' + i + '">' + esc(t.leeg ? 'Leeg formulier' : t.merk + ' ' + t.model + ' — ' + t.naam) + '</option>'; }).join('') +
+      '</select>' + knop('PLModuleCmd.sjabloonVul(document.getElementById(\'mcSjabloon\').value)', 'Vul in') + '</div>' +
+      '<input id="mcRId" type="hidden">' +
       ['mcRNaam|naam, bv. Airbag reset', 'mcRMerk|merk, bv. Hyundai', 'mcRModel|model, bv. i20 2011', 'mcRModule|module, bv. Airbag (SRS)', 'mcRHdr|adres, bv. 7D0']
         .map(function (x) { var p = x.split('|'); return '<input id="' + p[0] + '" ' + veld + ' placeholder="' + p[1] + '">'; }).join('') +
       '<textarea id="mcRStappen" ' + veld + ' rows="3" placeholder="één stap per regel, bv.&#10;10 03&#10;11 01"></textarea>' +
@@ -330,20 +358,32 @@
   }
   function receptBewaar() {
     var u = receptBij(leesRecepten(), { naam: waarde('mcRNaam'), merk: waarde('mcRMerk'), model: waarde('mcRModel'), module: waarde('mcRModule'),
-      hdr: waarde('mcRHdr'), stappen: waarde('mcRStappen'), notitie: waarde('mcRNotitie') });
+      hdr: waarde('mcRHdr'), stappen: waarde('mcRStappen'), notitie: waarde('mcRNotitie'), id: waarde('mcRId') });
     if (!u.ok) { _v.fout = 'recept niet bewaard: ' + u.fout; teken(); return false; }
     _v.fout = schrijfRecepten(u.lijst) ? '' : 'recept niet bewaard: opslag weigert';
     if (!_v.fout) log('🧰 Recept bewaard: ' + u.recept.naam + ' (' + u.recept.hdr + ': ' + u.recept.stappen.join(' | ') + ')', 'info');
     teken();
     return !_v.fout;
   }
+  /* Zet een recept (sjabloon of bewaard) in het formulier; draait niets. */
+  function vulFormulier(r) {
+    if (typeof document === 'undefined' || !r) return false;
+    var f = document.getElementById('mcRForm');
+    if (f) f.open = true;
+    [['mcRId', r.id], ['mcRNaam', r.naam], ['mcRMerk', r.merk], ['mcRModel', r.model], ['mcRModule', r.module], ['mcRHdr', r.hdr],
+      ['mcRStappen', Array.isArray(r.stappen) ? r.stappen.map(function (b) { return b.replace(/(..)/g, '$1 ').trim(); }).join('\n') : r.stappen],
+      ['mcRNotitie', r.notitie]].forEach(function (x) { var e = document.getElementById(x[0]); if (e) e.value = x[1] || ''; });
+    return true;
+  }
+  function sjabloonVul(i) { return vulFormulier(sjabloon(parseInt(i, 10))); }
+  function receptVul(id) { return vulFormulier(leesRecepten().filter(function (x) { return x.id === id; })[0]); }
   function receptWis(id) {
     if (typeof confirm === 'function' && !confirm('Dit recept weghalen?')) return;
     schrijfRecepten(receptWeg(leesRecepten(), id)); teken();
   }
 
   window.PLModuleCmd = {
-    CFG: CFG, DIENSTEN: DIENSTEN, NRC: NRC,
+    CFG: CFG, DIENSTEN: DIENSTEN, NRC: NRC, SJABLONEN: SJABLONEN, sjabloon: sjabloon, sjabloonVul: sjabloonVul, receptVul: receptVul,
     keur: keur, keurAdres: keurAdres, dienst: dienst, schrijft: schrijft, oordeel: oordeel, poortOordeel: poortOordeel,
     bevestigTekst: bevestigTekst, receptKeur: receptKeur, receptBij: receptBij, receptWeg: receptWeg, voerUit: voerUit,
     open: open, sluit: sluit, stuurVeld: stuurVeld, receptDraai: receptDraai, receptBewaar: receptBewaar, receptWis: receptWis

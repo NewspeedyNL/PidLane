@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Modulecommando's: sjablonen en recepten bewerken
+ ═════════════════════════════════════════════════════
+   • "Recept bewaren" heeft een sjabloonkeuze: Hyundai i20 (PB) airbag foutcodes wissen, UDS (10 03 / 14 FF FF FF / 19 02 FF) en KWP (10 81 / 14 FF 00 / 18 00 FF 00), of leeg. Een sjabloon vult alleen het formulier; het draait pas als je het zelf bewaart
+   • ✎ bij een bewaard recept zet het terug in het formulier; bewaren vervangt het (zelfde id)
+   • Beide sjablonen dragen "ongeverifieerd" in de notitie. Crashdata wissen kan niet via OBD
+   • test-modulecmd.js (+7), één mutatie
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Caravan: terugschakelen bergop, homekaart naar Mijn voertuigen
  ═════════════════════════════════════════════════════
    • Caravanrit: op een klim met vol gas (belasting ≥ 80% of pedaal ≥ 70%) en wegzakkende snelheid zegt het advies "Terug naar N", als het toerental daarna onder 4500 (diesel 3500) blijft. Bergop nooit opschakelen. Eén bron: PLBerekend.schakelTrek(), met de echte versnelling uit PLGear

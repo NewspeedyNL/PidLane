@@ -233,6 +233,7 @@ MUTATIES=(
 "public/pidlane-modulecmd.js@@    if (schrijvend && !(await vraag(@@    if (false && !(await vraag(@@test-modulecmd.js@@schrijvend zonder bevestiging (modulecmd)"
 "public/pidlane-modulecmd.js@@          if (o.staat !== 'ok') { res.staat@@          if (o.staat === 'fout') { res.staat@@test-modulecmd.js@@een weigering stopt de reeks niet: na 7F 27 33 gaat 11 01 toch (modulecmd)"
 "public/pidlane-modulecmd.js@@    if (!/^[0-9A-F]+$/.test(b)) return@@    if (false) return@@test-modulecmd.js@@AT-commando's komen door de keuring (modulecmd)"
+"public/pidlane-modulecmd.js@@stappen: t.stappen.join('\\n'), notitie@@stappen: t.stappen.join(' '), notitie@@test-modulecmd.js@@een sjabloon plakt zijn stappen tot één regel (modulecmd)"
 "public/pidlane-rijsituatie.js@@if(q.status==='ok'){ ok++; updPID(pid,val); } else onzin++;@@updPID(pid,val);\n      if(q.status==='ok') ok++; else onzin++;@@test-healthherziening.js@@de gezondheidscheck stempelt de versheidsbron vóór het oordeel"
 "public/pidlane-testrun.js@@    s.src = 'pidlane-proeven.js';@@    s.src = 'pidlane-proevn.js';@@bproef-meetkamer.js@@de testrun laadt de proeven van blok 5 niet meer: blok 5 en de meetkamer hebben geen lijst (#690)"
 "public/pidlane-testrun.js@@    id: 'achtergrond',@@    id: 'achtergrondproef',@@test-begeleid.js@@een stap van de begeleide rit is hernoemd zonder de volgorderegel mee te nemen"

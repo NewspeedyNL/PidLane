@@ -113,6 +113,16 @@ const bus = (n, f) => f();
   toets('zonder naam geweigerd', !M.receptBij([], { hdr: '7D0', stappen: '1003' }).ok);
   toets('weghalen', M.receptWeg(l.lijst, 'a').length === 0);
 
+  console.log('\n7. Sjablonen');
+  const sj = M.SJABLONEN.map((t, i) => M.sjabloon(i)).filter((t, i) => !M.SJABLONEN[i].leeg);
+  toets('er is een i20-airbagsjabloon op 7D0', sj.some((t) => /i20/.test(t.model) && t.hdr === '7D0'));
+  toets('elk sjabloon komt door de receptkeuring', sj.every((t) => M.receptKeur(t).ok), JSON.stringify(sj.map((t) => M.receptKeur(t))));
+  toets('elk sjabloon zegt dat het ongeverifieerd is', sj.every((t) => /ongeverifieerd/i.test(t.notitie)));
+  toets('een sjabloon heeft geen id (bewaren maakt een nieuw recept)', sj.every((t) => t.id === ''));
+  toets('het lege formulier is geen geldig recept', !M.receptKeur(M.sjabloon(M.SJABLONEN.length - 1)).ok);
+  toets('geen sjabloon buiten de lijst', M.sjabloon(99) === null);
+  toets('een sjabloon wist met 14 en is dus schrijvend', sj.every((t) => M.receptKeur(t).recept.stappen.some((b) => b.slice(0, 2) === '14' && M.schrijft(b))));
+
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
 })().catch((e) => { console.log('FOUT  test gooide: ' + (e.stack || e)); process.exit(1); });
