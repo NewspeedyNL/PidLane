@@ -2666,6 +2666,7 @@ MUTATIES=(
 "public/pidlane-telemetrie.js@@  const vMs=typeof o.verschovenMs==='number' ? o.verschovenMs : Infinity;@@  const vMs=Infinity;@@test-telemetrie.js@@een remstoot of drempel maakt de kanteling meteen grijs: verschoven telt zonder dat hij aanhoudt"
 "public/pidlane-telemetrie.js@@  const aD=(versD && typeof kmh==='number')@@  const aD=(vers && typeof kmh==='number')@@test-telemetrie.js@@een bocht op een volle bus (010D ouder dan 2 s) geeft weer een schijnkanteling en grijs"
 "public/pidlane-telemetrie.js@@        _houderS.redenMs[hz.reden]=(_houderS.redenMs[hz.reden]||0)+dt;\n@@@@test-telemetrie.js@@het verslag zegt niet meer waaróm de telefoon niet vast was: de volgende rit bewijst niets"
+"public/pidlane-telemetrie.js@@  const rest=p-Math.max(-m, Math.min(m, p));@@  const rest=p;@@test-telemetrie.js@@heuvelaf telt de helling weer als een verschoven telefoon"
 # ── de beheerdersdemo (#409) ──
 "public/pidlane-demo.js@@    try { return typeof window.isAdmin === 'function' && !!window.isAdmin(); }@@    try { return true; }@@test-demozandbak.js@@elke demo is een beheerdersdemo: een reviewer zonder login laat de echte AI rekenen — #409"
 "public/pidlane-demo.js@@    if (!isDemo()) return false;\n    try { return typeof window.isAdmin@@    try { return typeof window.isAdmin@@test-demozandbak.js@@een beheerder buiten de demo telt als beheerdersdemo — #409"

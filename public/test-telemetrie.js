@@ -227,6 +227,15 @@ console.log('\n— kanteling grijs bij een drempel (02-11-2026) —');
 ok(H({ afwijking: 20, verschovenMs: 500 }).vast, '20° afwijking die net begint: nog vast (een remstoot is geen schoot)');
 ok(H({ afwijking: 20, verschovenMs: 2500 }).reden === 'verschoven', '20° die 2,5 s aanhoudt: verschoven');
 ok(H({ afwijking: 20 }).reden === 'verschoven', 'zonder duur (oude aanroep): meteen verschoven');
+// Heuvelaf (18-11-2026): een helling kantelt de auto om zijn dwarsas; dat is geen verschoven telefoon.
+{
+  const A = T.afwijkingBuitenHelling, R = Math.PI / 180, nul = [0, 0, 1], voor = [0, 1, 0];
+  const om = (d, as) => as === 'langs' ? [0, Math.sin(d * R), Math.cos(d * R)] : [Math.sin(d * R), 0, Math.cos(d * R)];
+  ok(A(om(-20, 'langs'), nul, voor, 25) < 0.5, '20° voorover (heuvelaf met remmen): geen afwijking', A(om(-20, 'langs'), nul, voor, 25));
+  ok(Math.abs(A(om(40, 'langs'), nul, voor, 25) - 15) < 0.5, '40° voorover: wat boven de 25° uitkomt telt (15°)');
+  ok(Math.abs(A(om(20, 'dwars'), nul, voor, 25) - 20) < 0.5, '20° zijwaarts telt gewoon: dat is geen helling');
+  ok(Math.abs(A(om(20, 'langs'), nul, null, 25) - 20) < 0.5, 'zonder rijrichting: de volle hoek, zoals vroeger');
+}
 rij(300, [0, G, 0], 0, 0);   // vlak en stil; de nulstand en vooruit van hierboven blijven
 // Hard remmen voor een drempel, 3 s 5 m/s², terwijl 010D al 3 s niet ververst is
 ctx.pidHist['010D'] = [{ t: klok - 3000, v: 50 }];
