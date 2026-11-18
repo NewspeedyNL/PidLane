@@ -13,6 +13,14 @@
 // en bewaart het zelf. Een bewaard recept kun je met ✎ terug in het
 // formulier zetten en bijwerken (zelfde id = vervangen).
 //
+// AI ZOEKT, DE AUTO BEWIJST (18-11-2026). zoekAi() vraagt met merk, model,
+// bouwjaar, motor en de idents van de module om recepten die de AI uit een
+// benoembare bron kent. Kenteken en VIN gaan niet mee. leesAiRecepten() keurt
+// het antwoord: zonder bron, met zekerheid "laag" of met een dienst buiten
+// AI_DIENSTEN (dus geen 27, 2E, 31, 34–3D) valt een voorstel weg. Een
+// voorstel is nooit "bewezen": dat wordt een recept pas als het op een auto
+// van begin tot eind positief beantwoord is (bewijs(), bij elke ▶).
+//
 // WAT HET NIET IS. De app levert geen kant-en-klare recepten mee. Een reset van een
 // airbagmodule vraagt bijna altijd een beveiligingssleutel van de fabrikant
 // (0x27 seed/key); die zit hier niet in en wordt niet verzonnen. Alles
@@ -184,7 +192,8 @@
     }
     var kort = function (x) { return String(x || '').trim().slice(0, 60); };
     return { ok: true, recept: { id: String(r.id || ('r' + Date.now().toString(36))), naam: naam, merk: kort(r.merk), model: kort(r.model),
-      module: kort(r.module), hdr: a.hdr, stappen: regels, notitie: String(r.notitie || '').trim().slice(0, 300) } };
+      module: kort(r.module), hdr: a.hdr, stappen: regels, notitie: String(r.notitie || '').trim().slice(0, 300),
+      ai: !!r.ai, bron: String(r.bron || '').trim().slice(0, 120), bewezen: r.bewezen || null, laatst: r.laatst || null } };
   }
   function receptBij(lijst, r) {
     var k = receptKeur(r);
@@ -193,6 +202,72 @@
     uit.sort(function (a, b) { return (a.merk + a.model + a.naam).localeCompare(b.merk + b.model + b.naam); });
     return { ok: true, lijst: uit, recept: k.recept };
   }
+  /* bewijs(lijst, id, uitkomst, wanneer) → nieuwe lijst. Alleen een reeks die
+     van begin tot eind positief beantwoord is (staat 'ok') maakt een recept
+     bewezen; elke uitkomst komt in `laatst`. Afgebroken vóór het versturen
+     telt niet: er is niets gemeten. Een latere weigering haalt "bewezen" niet
+     weg — het werkte ooit — maar `laatst` laat de weigering zien. */
+  function bewijs(lijst, id, res, wanneer) {
+    if (!res || res.staat === 'afgebroken') return lijst || [];
+    return (lijst || []).map(function (x) {
+      if (x.id !== id) return x;
+      var y = {}; for (var k in x) y[k] = x[k];
+      y.laatst = { staat: res.staat, tekst: String(res.tekst || '').slice(0, 120), datum: wanneer };
+      if (res.staat === 'ok') y.bewezen = { datum: wanneer };
+      return y;
+    });
+  }
+
+  /* ── AI-zoektocht (puur, behalve zoekAi) ─────────────────────────── */
+  var AI_DIENSTEN = { '03': 1, '04': 1, '10': 1, '11': 1, '14': 1, '18': 1, '19': 1, '1A': 1, '21': 1, '22': 1, '3E': 1 };
+  var AI_SYSTEEM = 'Je bent een specialist in voertuigdiagnose (ISO 14229 UDS en KWP2000 op CAN). ' +
+    'Geef alleen diagnoserecepten die je kent uit een benoembare bron: werkplaatshandboek, documentatie van een diagnosetool, OBDb, of een forumdraad waarin het resultaat bevestigd is. ' +
+    'Verzin niets; ken je niets, geef dan een lege lijst. Geen beveiligingstoegang (27), geen schrijven (2E, 3B, 3D), geen routines (31), geen programmeren (34–37). ' +
+    'Antwoord uitsluitend met JSON: {"recepten":[{"naam":"","module":"","hdr":"7D0","stappen":["10 03","14 FF FF FF"],"bron":"","zekerheid":"hoog|middel|laag","uitleg":""}]}. ' +
+    'hdr is het 11-bit CAN-adres van de module; elke stap hoogstens 7 bytes hex; hoogstens 8 stappen.';
+  function zoekPrompt(v, idents, vraag) {
+    v = v || {};
+    var r = function (l, w) { return w == null || w === '' ? '' : l + ': ' + String(w).slice(0, 80) + '\n'; };
+    return 'Voertuig\n' + r('Merk', v.merk) + r('Model', v.model) + r('Bouwjaar', v.bouwjaar) + r('Motor', v.motor) + r('Brandstof', v.brandstof) + r('Transmissie', v.transmissie) +
+      r('Idents van de module', idents) + '\nGezocht: ' + (String(vraag || '').trim().slice(0, 200) || 'recepten om foutcodes te lezen en te wissen per module') + '\n';
+  }
+  function leesAiRecepten(tekst, v) {
+    v = v || {};
+    var t = String(tekst || ''), a = t.indexOf('{'), b = t.lastIndexOf('}');
+    var j;
+    try { j = JSON.parse(t.slice(a, b + 1)); }
+    catch (e) { console.warn('PLModuleCmd: AI-antwoord is geen JSON', e); return { ok: false, fout: 'het AI-antwoord was geen leesbare lijst', recepten: [], weg: [] }; }
+    var uit = [], weg = [];
+    ((j && Array.isArray(j.recepten)) ? j.recepten : []).slice(0, 12).forEach(function (x, i) {
+      x = x || {};
+      var naam = String(x.naam || ('voorstel ' + (i + 1))).slice(0, 80);
+      var zeker = String(x.zekerheid || '').toLowerCase();
+      if (!String(x.bron || '').trim()) { weg.push({ naam: naam, reden: 'geen bron' }); return; }
+      if (zeker !== 'hoog' && zeker !== 'middel') { weg.push({ naam: naam, reden: 'zekerheid ' + (zeker || 'onbekend') }); return; }
+      var stappen = (Array.isArray(x.stappen) ? x.stappen : []).map(hexSchoon);
+      var buiten = stappen.filter(function (st) { return !AI_DIENSTEN[st.slice(0, 2)]; });
+      if (buiten.length) { weg.push({ naam: naam, reden: 'dienst ' + buiten[0].slice(0, 2) + ' niet toegestaan' }); return; }
+      var k = receptKeur({ id: 'ai' + i + '-' + Date.now().toString(36), naam: naam, merk: v.merk, model: [v.model, v.bouwjaar].filter(Boolean).join(' '),
+        module: x.module, hdr: x.hdr, stappen: stappen, ai: true, bron: x.bron,
+        notitie: 'AI-voorstel, niet bewezen (' + zeker + '). Bron: ' + String(x.bron).trim() + (x.uitleg ? '. ' + String(x.uitleg).trim() : '') });
+      if (!k.ok) { weg.push({ naam: naam, reden: k.fout }); return; }
+      uit.push(k.recept);
+    });
+    return { ok: true, recepten: uit, weg: weg };
+  }
+  /* zoekAi(v, idents, vraag, opt) → Promise<leesAiRecepten-uitkomst>.
+     opt.ai(prompt, systeem) vervangt apiFetch (test). */
+  async function zoekAi(v, idents, vraag, opt) {
+    opt = opt || {};
+    var ai = opt.ai || (typeof apiFetch === 'function' ? function (p, sys) { return apiFetch(p, 1500, sys, null, { meet: false }); } : null);
+    if (!ai) return { ok: false, fout: 'AI niet beschikbaar', recepten: [], weg: [] };
+    var u = leesAiRecepten(await ai(zoekPrompt(v, idents, vraag), AI_SYSTEEM), v);
+    log('🧰 AI-receptzoektocht ' + [v && v.merk, v && v.model].filter(Boolean).join(' ') + ': ' + u.recepten.length + ' voorstel(len), ' + u.weg.length + ' afgekeurd', 'info');
+    return u;
+  }
+  /* Een voorstel bewaren of het bewijs bijwerken: één plek die opslaat. */
+  function bewaarRecept(r) { var u = receptBij(leesRecepten(), r); if (u.ok && !schrijfRecepten(u.lijst)) return { ok: false, fout: 'opslag weigert' }; return u; }
+
   function receptWeg(lijst, id) { return (lijst || []).filter(function (x) { return x.id !== id; }); }
 
   function leesRecepten() {
@@ -297,6 +372,7 @@
         return '<div style="display:flex;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap"><span style="flex:1;min-width:0">' +
           esc([r.merk, r.model, r.module].filter(Boolean).join(' · ')) + ' — <b>' + esc(r.naam) + '</b> <code>' + esc(r.hdr) + ': ' + esc(r.stappen.join(' | ')) + '</code>' +
           (r.notitie ? '<br><small>' + esc(r.notitie) + '</small>' : '') + '</span>' +
+          (r.bewezen ? '<span title="positief beantwoord op ' + esc(r.bewezen.datum) + '">✅</span>' : '<span title="nog niet bewezen">⚪</span>') +
           knop('PLModuleCmd.receptDraai(this.dataset.id)', '▶', '" data-id="' + esc(r.id)) +
           knop('PLModuleCmd.receptVul(this.dataset.id)', '✎', '" data-id="' + esc(r.id)) +
           knop('PLModuleCmd.receptWis(this.dataset.id)', '🗑', '" data-id="' + esc(r.id)) + '</div>';
@@ -354,7 +430,11 @@
     var r = leesRecepten().filter(function (x) { return x.id === id; })[0];
     if (!r) { _v.fout = 'recept niet gevonden'; teken(); return null; }
     _v.uit.push('— recept: ' + r.naam + ' (' + r.hdr + ')');
-    return draai(r.hdr, r.stappen);
+    return draai(r.hdr, r.stappen).then(function (res) {
+      if (res && !schrijfRecepten(bewijs(leesRecepten(), id, res, new Date().toISOString()))) log('🧰 uitkomst van het recept niet bewaard', 'warn');
+      teken();
+      return res;
+    });
   }
   function receptBewaar() {
     var u = receptBij(leesRecepten(), { naam: waarde('mcRNaam'), merk: waarde('mcRMerk'), model: waarde('mcRModel'), module: waarde('mcRModule'),
@@ -383,7 +463,8 @@
   }
 
   window.PLModuleCmd = {
-    CFG: CFG, DIENSTEN: DIENSTEN, NRC: NRC, SJABLONEN: SJABLONEN, sjabloon: sjabloon, sjabloonVul: sjabloonVul, receptVul: receptVul,
+    CFG: CFG, DIENSTEN: DIENSTEN, NRC: NRC, AI_DIENSTEN: AI_DIENSTEN, AI_SYSTEEM: AI_SYSTEEM, bewijs: bewijs, zoekPrompt: zoekPrompt,
+    leesAiRecepten: leesAiRecepten, zoekAi: zoekAi, bewaarRecept: bewaarRecept, leesRecepten: leesRecepten, SJABLONEN: SJABLONEN, sjabloon: sjabloon, sjabloonVul: sjabloonVul, receptVul: receptVul,
     keur: keur, keurAdres: keurAdres, dienst: dienst, schrijft: schrijft, oordeel: oordeel, poortOordeel: poortOordeel,
     bevestigTekst: bevestigTekst, receptKeur: receptKeur, receptBij: receptBij, receptWeg: receptWeg, voerUit: voerUit,
     open: open, sluit: sluit, stuurVeld: stuurVeld, receptDraai: receptDraai, receptBewaar: receptBewaar, receptWis: receptWis

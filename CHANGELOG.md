@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 18-11-2026 — Mijn voertuigen: tab Recepten met AI-zoektocht (admin)
+ ═════════════════════════════════════════════════════
+   • Nieuwe tab Recepten naast Sensoren, alleen voor admin: de bewaarde modulerecepten van dit merk, met ✅ bewezen of ⚪ niet bewezen en de laatste uitkomst
+   • 🔎 Zoek recepten: de AI krijgt merk, model, bouwjaar, motor, brandstof en transmissie, plus de idents en de vraag die je invult. Kenteken en VIN gaan niet mee. Een voorstel zonder bron, met zekerheid "laag" of met een dienst buiten 03/04/10/11/14/18/19/1A/21/22/3E (dus geen 27, 2E, 31, 34–3D) valt weg
+   • "Bewezen" komt niet van de AI: een recept wordt bewezen als ▶ in Modulecommando's de hele reeks positief beantwoord krijgt
+   • test-modulecmd.js (+17), bproef-garage.js (+6), vijf mutaties
+
+ ═════════════════════════════════════════════════════
  18-11-2026 — Modulecommando's: sjablonen en recepten bewerken
  ═════════════════════════════════════════════════════
    • "Recept bewaren" heeft een sjabloonkeuze: Hyundai i20 (PB) airbag foutcodes wissen, UDS (10 03 / 14 FF FF FF / 19 02 FF) en KWP (10 81 / 14 FF 00 / 18 00 FF 00), of leeg. Een sjabloon vult alleen het formulier; het draait pas als je het zelf bewaart
