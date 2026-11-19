@@ -118,7 +118,16 @@ function trekModel(i){
   const voet=[];
   if(i.verbruik && getal(i.verbruik.v)!==null) voet.push('⛽ '+komma(Number(i.verbruik.v), 1)+' '+(i.verbruik.eenheid||''));
   if(getal(i.laaddruk)!==null) voet.push('turbo '+(i.laaddruk>0.04 ? '+' : '')+komma(Number(i.laaddruk), 2)+' bar');
-  return { terrein:terrein, schakel:schakel, last:last, temps:temps, voet:voet, tip:tipVan(i.coach, i.nu) };
+  return { terrein:terrein, schakel:schakel, last:last, temps:temps, voet:voet, tip:tipVan(i.coach, i.nu), caravan:caravanModel(i.caravan) };
+}
+/* De caravanrit onderin het paneel (19-11-2026): loopt hij, hoe lang, hoe
+   ver, en de limiet als knop. null = geen caravan (alleen beladen). */
+function caravanModel(c){
+  if(!c) return null;
+  const sec=Math.max(0, Math.floor(getal(c.sec)||0)), km=getal(c.km);
+  return { actief:!!c.actief, limiet:getal(c.limiet)||100,
+           tekst:c.actief ? Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0')+(km!==null ? ' · '+komma(km, 1)+' km' : '')
+                          : 'start zodra de adapter klaar is' };
 }
 
 // De combinatie op de weg: een caravan met een auto ervoor, naar rechts.
@@ -162,7 +171,14 @@ function trekHtml(m){
     (m.temps.length ? '<div class="vtp-temps">'+m.temps.map(tempHtml).join('')+'</div>' : '')+
     (m.voet.length ? '<div class="vtp-voet">'+m.voet.map(esc).join('<span aria-hidden="true">·</span>')+'</div>' : '')+
     (m.tip ? '<div class="vtp-tip" data-level="'+m.tip.level+'">'+esc(m.tip.tekst)+'</div>' : '')+
+    (m.caravan ? caravanHtml(m.caravan) : '')+
     '</div>';
+}
+function caravanHtml(c){
+  return '<div class="vtp-rit" data-actief="'+(c.actief ? '1' : '0')+'">'+
+    '<span class="vtp-rit-tx"><b>🚐 Caravanrit</b><small>'+esc(c.tekst)+'</small></span>'+
+    '<button type="button" class="vtp-limiet" onclick="PLVisueel.limiet()" aria-label="Snelheidslimiet met caravan: '+c.limiet+' km/u. Tik voor de volgende.">'+
+      '<b>'+c.limiet+'</b><small>max km/u</small></button></div>';
 }
 
 /* Het model van de rit-monitor. i = { tests:PLWatch.tests, dekking:PLWatch._dekking,
@@ -208,5 +224,5 @@ function ritHtml(m){
 
 window.PLVisPaneel = { TEMP:TEMP, ZWAAR:ZWAAR, HELLING_BEELD:HELLING_BEELD, TIP_MS:TIP_MS,
   tempFrac:tempFrac, procent:procent, hellingTekst:hellingTekst, hellingBeeld:hellingBeeld, zwaarAandeel:zwaarAandeel,
-  tipKort:tipKort, tipVan:tipVan, trekModel:trekModel, trekHtml:trekHtml, ritModel:ritModel, ritHtml:ritHtml };
+  tipKort:tipKort, tipVan:tipVan, caravanModel:caravanModel, trekModel:trekModel, trekHtml:trekHtml, ritModel:ritModel, ritHtml:ritHtml };
 })();

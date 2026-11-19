@@ -3843,6 +3843,16 @@ body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vtp-voet { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--tx2); font-variant-numeric:tabular-nums; }
 .vtp-tip { padding:7px 10px; border-left:3px solid var(--gn); border-radius:0 8px 8px 0; background:var(--sur2); font-size:13px; font-weight:600; color:var(--tx); }
 .vtp-tip[data-level="warn"] { border-left-color:var(--or); }
+.vtp-rit { display:flex; align-items:center; gap:10px; padding-top:8px; border-top:1px solid var(--bd); }
+.vtp-rit-tx { flex:1; display:flex; flex-direction:column; min-width:0; }
+.vtp-rit-tx b { font-size:13px; }
+.vtp-rit-tx small { font-size:11.5px; color:var(--tx2); font-variant-numeric:tabular-nums; }
+.vtp-rit[data-actief="0"] .vtp-rit-tx small { color:var(--tx3); }
+.vtp-limiet { flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; width:58px; height:58px; border-radius:50%;
+  border:3px solid var(--rd); background:#fff; color:#111; font-family:var(--f); cursor:pointer; line-height:1; }
+.vtp-limiet b { font-size:20px; font-weight:900; }
+.vtp-limiet small { font-size:8px; font-weight:700; color:#555; margin-top:1px; }
+.vtp-limiet:active { transform:scale(.94); }
 body.pl-vis-vol .vtp-cel b { font-size:22px; } body.pl-vis-vol .vtp-rad { width:72px; height:72px; } body.pl-vis-vol .vtp-rad b { font-size:32px; }
 
 /* De rit-monitor: één segment per controle op een ring. */

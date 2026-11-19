@@ -33,7 +33,10 @@ let caravanCooldown     = {};     // per-regel laatste-vuur-timestamp
 let caravanSchakelSinds  = { adv:'', t:0 };   // sinds wanneer het schakeladvies hetzelfde is
 let caravanKm           = 0;      // geïntegreerde afstand
 let caravanLiters       = 0;      // geïntegreerd verbruik
-let caravanSpeedLimit   = 100;    // instelbaar; caravan-snelweglimiet
+let caravanSpeedLimit   = _carLimietGelezen();   // instelbaar; caravan-snelweglimiet (pl_caravan_limiet)
+let caravanAuto         = false;  // gestart door de rijsituatie caravan (19-11-2026)
+let caravanHandUit      = false;  // met de hand gestopt terwijl de rijsituatie aanstond: niet meteen weer starten
+let caravanStarten      = false;  // startCaravan() loopt (async)
 let caravanClimbSecs    = { klim:0, afdaling:0, vlak:0 };
 let caravanTerreinBron  = { helling:0, obd:0 };   // seconden per bron van het terreinoordeel
 let caravanPeak         = { lkm:0, coolant:0, load:0, power:0 };
@@ -56,13 +59,74 @@ function _carLaad(volt, rpm){
   catch(e){ console.warn('caravan: laadoordeel', e); return volt<13.0 ? 'fout' : 'ok'; }
 }
 
-// ═══════════════════ OPEN / RESET ═══════════════════
+// ═══════════════════ LIMIET (19-11-2026) ═══════════════════
+// De keuze stond in een invoerveld van het oude caravandashboard en werd niet
+// bewaard. Nu één tik in het trekpaneel van Slim visueel: de volgende stap uit
+// CARAVAN_LIMIETEN, bewaard per toestel.
+const CARAVAN_LIMIETEN = [80, 90, 100, 110];
+const CARAVAN_LIMIET_SLEUTEL = 'pl_caravan_limiet';
+function _carLimietGelezen(){
+  try{ const n=parseInt(localStorage.getItem('pl_caravan_limiet'), 10); return (n>=50 && n<=140) ? n : 100; }
+  catch(e){ console.warn('caravan: limiet niet gelezen — 100', e); return 100; }
+}
+/* De volgende limiet in de rij. Puur. */
+function caravanLimietVolgende(nu){
+  const i=CARAVAN_LIMIETEN.indexOf(nu);
+  return CARAVAN_LIMIETEN[(i+1)%CARAVAN_LIMIETEN.length];
+}
+function caravanLimietWissel(){
+  caravanSpeedLimit=caravanLimietVolgende(caravanSpeedLimit);
+  try{ localStorage.setItem(CARAVAN_LIMIET_SLEUTEL, String(caravanSpeedLimit)); }
+  catch(e){ console.warn('caravan: limiet niet bewaard — geldt tot de app sluit', e); }
+  return caravanSpeedLimit;
+}
+window.caravanLimietWissel=caravanLimietWissel;
+
+// ═══════════════════ STARTEN VIA DE RIJSITUATIE (19-11-2026) ═══════════════════
+// Het eigen dashboard met zijn startknop is weg. De rijsituatie "caravan" is
+// de schakelaar: aan + adapter klaar = de rit loopt, uit = stoppen met
+// rapport. Wie hem met de hand stopt (run-paneel) terwijl de situatie nog
+// aanstaat, krijgt hem niet meteen terug; pas na uit en weer aan.
+function _carSituatie(){
+  try{ return typeof situatieActief==='function' && situatieActief().some(function(x){ return x && x.id==='caravan'; }); }
+  catch(e){ console.warn('caravan: rijsituatie onleesbaar', e); return false; }
+}
+/* Wat de wachter doet. Puur: 'start' | 'stop' | null. */
+function caravanAutoBesluit(o){
+  if(o.situatie && !o.actief && !o.bezig && o.klaar && !o.handUit) return 'start';
+  if(!o.situatie && o.actief && o.auto) return 'stop';
+  return null;
+}
+function caravanWacht(){
+  const situatie=_carSituatie();
+  if(!situatie) caravanHandUit=false;
+  const demo=(typeof demoMode!=='undefined' && demoMode);
+  const klaar=demo || ((typeof connected!=='undefined' && connected) && !!window._connReady);
+  const b=caravanAutoBesluit({ situatie, actief:caravanActive, bezig:caravanStarten, klaar, handUit:caravanHandUit, auto:caravanAuto });
+  if(b==='start'){
+    caravanStarten=true;
+    Promise.resolve(startCaravan({ auto:true })).catch(function(e){ console.warn('caravan: automatisch starten mislukt', e); })
+      .then(function(){ caravanStarten=false; });
+  } else if(b==='stop'){
+    Promise.resolve(stopCaravan()).catch(function(e){ console.warn('caravan: automatisch stoppen mislukt', e); });
+  }
+}
+(function(){
+  const tik=function(){ try{ caravanWacht(); }catch(e){ console.warn('caravan: wachter', e); } };
+  if(typeof window!=='undefined' && window.PLRust) PLRust.elke(2000, tik, 'caravanwachter'); else setInterval(tik, 2000);
+})();
+
+/* De oude ingang (wizard, startkaart): naar Slim visueel, met de rijsituatie
+   caravan aan. De rit start vanzelf zodra de adapter klaar is. */
 function openCaravan(){
-  const w=document.getElementById('welcomeScreen'); if(w) w.classList.add('hidden');
-  try{ closeLades(); }catch(e){ console.warn('closeLades mislukt:', e); }
-  const ov=document.getElementById('caravanDash'); if(!ov) return;
-  ov.style.display='block';
-  caravanResetUI();
+  try{ if(!_carSituatie() && typeof toggleSituatie==='function') toggleSituatie('caravan'); }
+  catch(e){ console.warn('caravan: rijsituatie niet aangezet', e); }
+  try{ if(window.PLNav && PLNav.tab) PLNav.tab('live'); }catch(e){ console.warn('caravan: naar Live mislukt', e); }
+  try{ if(typeof setPidView==='function') setPidView('visueel'); }catch(e){ console.warn('caravan: Slim visueel openen mislukt', e); }
+  const demo=(typeof demoMode!=='undefined' && demoMode);
+  if(!caravanActive && !demo && !(typeof connected!=='undefined' && connected)){
+    try{ showToast('🚐 Caravanrit staat klaar — hij start zodra de adapter verbonden is'); }catch(e){ console.warn('caravan: melding', e); }
+  }
 }
 window.openCaravan=openCaravan;
 
@@ -81,11 +145,13 @@ function caravanResetUI(){
 }
 
 // ═══════════════════ START ═══════════════════
-async function startCaravan(){
+async function startCaravan(o){
   if(caravanActive) return;                       // guard tegen dubbel starten
   window._didCaravan=true;
   if(!connected && !demoMode){ showToast('Verbind eerst een adapter'); return; }
   if(!(await preAnalysisCheck())) return;
+  caravanAuto=!!(o && o.auto);
+  caravanHandUit=false;
 
   // snelheidslimiet overnemen uit het invoerveld
   const li=parseInt(document.getElementById('carLimit')?.value,10);
@@ -116,7 +182,8 @@ async function startCaravan(){
   if(live)  live.style.display='block';
   const st=document.getElementById('carStatus'); if(st) st.textContent='Rit loopt — rij normaal';
   _carRenderCoach();
-  log('🚐 Caravan-rittracker gestart','ok');
+  log('🚐 Caravan-rittracker gestart'+(caravanAuto?' (rijsituatie caravan)':''),'ok');
+  try{ showToast('🚐 Caravanrit loopt — limiet '+caravanSpeedLimit+' km/u'); }catch(e){ console.warn('caravan: melding', e); }
 
   // één gecombineerde tick per seconde (timer + integratie + coaching + UI)
   caravanTimer=setInterval(caravanTick,1000);
@@ -128,6 +195,9 @@ window.startCaravan=startCaravan;
 async function stopCaravan(){
   if(!caravanActive) return;
   caravanActive=false;
+  // Met de hand gestopt terwijl de rijsituatie nog aanstaat: niet meteen weer starten.
+  caravanHandUit=_carSituatie();
+  caravanAuto=false;
   if(caravanTimer){ clearInterval(caravanTimer); caravanTimer=null; caravanTickInterval=null; }
   _removeCaravanPill();
   const st=document.getElementById('carStatus'); if(st) st.textContent='Rit gestopt — rapport wordt gemaakt…';

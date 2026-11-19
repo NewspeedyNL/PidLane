@@ -1943,7 +1943,28 @@ function trekInvoer(ind, nu){
            last:lastRij && load!==null ? { v:load, st:oordeel(lastRij.pid, load) } : null, lastHist:lastRij ? H[lastRij.pid] : null,
            temps:temps, verbruik:vr && vers(vr.pid)!==null ? { v:vers(vr.pid), eenheid:vr.pid==='CA03' ? 'l/100' : 'l/u' } : null,
            laaddruk:lr ? vers(lr.pid) : null,
-           coach:(typeof caravanActive!=='undefined' && caravanActive && typeof caravanCoach!=='undefined') ? caravanCoach : null, nu:nu };
+           coach:(typeof caravanActive!=='undefined' && caravanActive && typeof caravanCoach!=='undefined') ? caravanCoach : null,
+           caravan:caravanInvoer(nu), nu:nu };
+}
+/* De caravanrit voor het paneel: alleen met de rijsituatie caravan of een
+   lopende rit; beladen alleen krijgt geen ritregel. */
+function caravanInvoer(nu){
+  const loopt=caravanLoopt();
+  let sit=false;
+  try{ sit=(typeof situatieActief==='function') && situatieActief().some(function(x){ return x && x.id==='caravan'; }); }
+  catch(e){ console.warn('PLVisueel: rijsituatie onleesbaar', e); }
+  if(!loopt && !sit) return null;
+  return { actief:loopt,
+           sec:(loopt && typeof caravanStartTime!=='undefined') ? (nu-caravanStartTime)/1000 : 0,
+           km:(loopt && typeof caravanKm!=='undefined') ? caravanKm : null,
+           limiet:(typeof caravanSpeedLimit!=='undefined') ? caravanSpeedLimit : null };
+}
+/* Tik op de limiet: de volgende uit de rij (pidlane-caravan.js). */
+function limiet(){
+  try{ if(typeof caravanLimietWissel==='function') caravanLimietWissel(); }
+  catch(e){ console.warn('PLVisueel: limiet wisselen mislukt', e); }
+  const e=el('visTrek'); if(e) e._sleutel='';
+  trekBij();
 }
 function trekBij(){
   const ind=_staat.ind, e=el('visTrek'), P=VP();
@@ -2235,7 +2256,7 @@ window.PLVisueel = {
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
   indeling:indeling, gebruiktePids:gebruiktePids, herbouwKeuze:herbouwKeuze, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel, wisselSchakel:wisselSchakel, schakelAan:schakelAan, schakelStand:schakelStand, schakelMenu:schakelMenu, SCHAKEL_SLEUTEL:SCHAKEL_SLEUTEL,
-  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan, snelheidTrend:snelheidTrend, schakelStabiel:schakelStabiel, popKies:popKies, popTik:popTik, popWeg:popWeg,
+  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan, snelheidTrend:snelheidTrend, schakelStabiel:schakelStabiel, popKies:popKies, popTik:popTik, popWeg:popWeg, limiet:limiet,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },

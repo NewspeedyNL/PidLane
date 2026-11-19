@@ -265,7 +265,7 @@ var KRITIEK = [
   'plEigenDefs',
   // Slim visueel zet de trekstrook aan bij rijsituatie caravan of beladen
   // (27-09-2026). Valt hij weg, dan blijft de strook stil weg.
-  'situatieActief',
+  'situatieActief','toggleSituatie',
   // Alle AI-rapporten lopen via apiFetch (pidlane-fuel.js). Valt hij weg,
   // dan doet geen enkele analyseknop nog iets.
   'apiFetch',
@@ -324,7 +324,7 @@ var KRITIEK = [
   // Erbij op 14-10-2026. De rijmodus (pidlane-rijmodus.js) leest het advies
   // van de caravancoach achter een guard: ontbreekt een van deze, dan blijft
   // het radertje of de verbruiksbalk leeg zonder dat iets het zegt.
-  'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanSchakelAdvies','caravanVerbruikNiveau',
+  'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanLimietWissel','caravanSchakelAdvies','caravanVerbruikNiveau',
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.
