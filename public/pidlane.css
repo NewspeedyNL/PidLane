@@ -3785,6 +3785,55 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
     bottom:calc(var(--pl-sab, 0px) + 6.5vh); max-height:58vh; overflow:auto; }
   body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }
 }
+/* ══ RIT-ANALYSE (19-11-2026): ring per fase, zelfde vormtaal als het trekpaneel ══ */
+.rit-ov { position:fixed; inset:0; z-index:var(--z-modal); background:rgba(4,8,16,.88); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:var(--tx); }
+html:not(.dark) .rit-ov { background:rgba(240,244,250,.94); }
+.rit-paneel { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; max-width:640px; margin:0 auto; box-sizing:border-box;
+  padding:calc(16px + var(--pl-sat, 0px)) 16px calc(16px + var(--pl-sab, 0px)); }
+.rit-kop { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-shrink:0; }
+.rit-kop b { display:block; font-size:18px; }
+.rit-kop small { display:block; font-size:12px; color:var(--tx2); margin-top:2px; }
+.rit-kop-knoppen { display:flex; gap:8px; }
+.rit-knop { height:40px; padding:0 14px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font:700 13px var(--f); cursor:pointer; }
+.rit-ring { display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0; }
+.rit-ring-svg { width:min(62vw, 34vh, 240px); height:auto; }
+.rit-seg, .rit-voortgang { fill:none; stroke-linecap:round; }
+.rit-seg { stroke-width:12; stroke:var(--sur2); }
+.rit-seg-bezig { stroke:var(--bls); animation:rit-adem 1.6s ease-in-out infinite; }
+.rit-seg-ok { stroke:var(--gn); opacity:.45; }
+.rit-seg-let { stroke:var(--or); opacity:.6; }
+.rit-voortgang { stroke-width:4; stroke:var(--bl); }
+@keyframes rit-adem { 50% { opacity:.55; } }
+.rit-tijd { font:800 38px var(--f); fill:var(--tx); font-variant-numeric:tabular-nums; }
+.rit-tot { font:600 12px var(--f); fill:var(--tx3); }
+.rit-fasen { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+.rit-fase { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; border:1px solid var(--bd); background:var(--sur); font-size:11.5px; color:var(--tx2); }
+.rit-fase i { font-style:normal; }
+.rit-fase[data-staat="bezig"] { border-color:var(--bl); color:var(--tx); font-weight:700; }
+.rit-fase[data-staat="ok"] { border-color:var(--gn); color:var(--gn); }
+.rit-fase[data-staat="let"] { border-color:var(--or); color:var(--or); }
+.rit-nu { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:14px; border:1px solid var(--bd); background:var(--sur); flex-shrink:0; }
+.rit-nu small, .rit-sectie { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
+.rit-nu b { font-size:15px; }
+.rit-nu span { font-size:12px; color:var(--tx2); }
+.rit-resultaten { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.rit-lijst { display:flex; flex-direction:column; gap:8px; }
+.rit-kaart { padding:10px 12px; border-radius:14px; border:1px solid var(--bd); border-left:4px solid var(--gn); background:var(--sur); }
+.rit-kaart.let { border-left-color:var(--or); }
+.rit-kaart > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.rit-kaart-kop { font-size:13.5px; }
+.rit-kaart-oordeel { font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:var(--gns); color:var(--gn); }
+.rit-kaart.let .rit-kaart-oordeel { background:var(--ors); color:var(--or); }
+.rit-waarde { font-size:12px; padding:3px 8px; border-radius:8px; background:var(--sur2); color:var(--tx2); }
+.rit-waarde.let { background:var(--ors); color:var(--or); font-weight:700; }
+.rit-duiding { font-size:12px; color:var(--tx2); line-height:1.45; }
+.rit-voet { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+.rit-voet-knoppen { display:flex; gap:8px; }
+.rit-start, .rit-stop { flex:1; height:48px; border-radius:12px; font:800 15px var(--f); cursor:pointer; }
+.rit-start { border:0; background:var(--bl); color:#fff; }
+.rit-stop { border:1px solid var(--rd); background:var(--rds); color:var(--rd); }
+@media (prefers-reduced-motion:reduce) { .rit-seg-bezig { animation:none; } }
+
 /* ══ ONDER DE METER (19-11-2026): trekpaneel en rit-monitor ══════════
    pidlane-vispaneel.js tekent, pidlane-visueel.js vult. Eén kolom onder de
    meter; liggend op het volle scherm rechts ernaast (zie hierboven). */

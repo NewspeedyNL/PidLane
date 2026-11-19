@@ -101,7 +101,9 @@ console.log('\n2. Een venster in index.html (rittracker; de HUD is weg sinds 19-
   const iRit = html.indexOf('id="ritDash"');
   toets('ritDash gevonden', iRit >= 0);
   if (iRit >= 0) {
-    const stuk = html.slice(iRit, iRit + 500);
+    // Sinds 19-11-2026 staat de opmaak in pidlane.css (.rit-paneel), niet inline.
+    const css = wortel('public/pidlane.css'), i = css.indexOf('.rit-paneel {');
+    const stuk = i >= 0 ? css.slice(i, i + 400) : html.slice(iRit, iRit + 500);
     toets('ritDash gebruikt --pl-sat en --pl-sab', /var\(--pl-sat/.test(stuk) && /var\(--pl-sab/.test(stuk));
   }
 

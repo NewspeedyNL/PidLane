@@ -63,6 +63,52 @@ let ritFaseEind=0, ritPauzeSinds=0, ritPauzeTotaal=0;
    Hij telt ook: ritOnderbrekingen was een tweede teller van precies deze
    lengte, en twee tellers van hetzelfde lopen hier vroeg of laat uit de pas. */
 let ritPauzeLog=[];
+let _ritRingSec=0;
+let ritFaseStatus={};   // idx → 'ok' | 'let' na de analyse van die fase (19-11-2026, de ring)
+
+/* ── DE RING (19-11-2026) ─────────────────────────────────────────
+   Tot deze datum een dunne balk met "0 min … 10 min" eronder en een grote
+   lege vlakte. Nu een ring: één segment per fase, zo lang als die fase duurt,
+   met haar staat (wacht · bezig · ok · afwijking), de verstreken tijd erover
+   en de klok in het midden. Daaronder de fasen als rij. Puur: model in, HTML uit. */
+function ritRingModel(fasen, sec, idx, status, actief){
+  const tot=fasen.reduce(function(a,f){ return a+f.duur; },0)||1;
+  let van=0;
+  const seg=fasen.map(function(f,i){
+    const s={ naam:f.naam, icon:f.icon, duur:f.duur, van:van/tot, tot:(van+f.duur)/tot,
+              staat:status[i] ? status[i] : (actief && i===idx ? 'bezig' : 'wacht') };
+    van+=f.duur; return s;
+  });
+  const t=Math.max(0, Math.min(tot, sec||0));
+  return { seg:seg, frac:t/tot, tijd:Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0'),
+           totaal:Math.round(tot/60)+':00', klaar:seg.filter(function(x){ return x.staat==='ok'||x.staat==='let'; }).length };
+}
+function ritRingHtml(m){
+  const R=88, O=2*Math.PI*R, gat=m.seg.length>1 ? 5 : 0;
+  const boog=function(van, tot, cls){
+    const len=Math.max(0, (tot-van)*O-gat);
+    return '<circle class="'+cls+'" cx="110" cy="110" r="'+R+'" stroke-dasharray="'+len.toFixed(1)+' '+(O-len).toFixed(1)+'"'+
+      ' stroke-dashoffset="'+(-(van*O)).toFixed(1)+'" transform="rotate(-90 110 110)"/>';
+  };
+  const esc=function(x){ return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;'); };
+  return '<svg class="rit-ring-svg" viewBox="0 0 220 220" aria-hidden="true">'+
+      m.seg.map(function(x){ return boog(x.van, x.tot, 'rit-seg rit-seg-'+x.staat); }).join('')+
+      (m.frac>0 ? boog(0, m.frac, 'rit-voortgang') : '')+
+      '<text class="rit-tijd" x="110" y="112" text-anchor="middle">'+m.tijd+'</text>'+
+      '<text class="rit-tot" x="110" y="136" text-anchor="middle">van '+m.totaal+'</text></svg>'+
+    '<div class="rit-fasen">'+m.seg.map(function(x){
+      return '<span class="rit-fase" data-staat="'+x.staat+'"><i>'+x.icon+'</i>'+esc(x.naam)+'</span>';
+    }).join('')+'</div>';
+}
+function ritRingBij(){
+  const el=document.getElementById('ritRing'); if(!el) return;
+  const stil=ritPauzeTotaal+(ritPauzeSinds?Date.now()-ritPauzeSinds:0);
+  // Na het stoppen blijft de laatste tijd staan; resetRitUI zet hem terug op 0.
+  if(ritActive && ritStartTime) _ritRingSec=(Date.now()-ritStartTime-stil)/1000;
+  const sec=_ritRingSec;
+  const h=ritRingHtml(ritRingModel(RIT_FASEN_ACTIEF, sec, ritFaseIdx, ritFaseStatus, ritActive));
+  if(el._h!==h){ el.innerHTML=h; el._h=h; }
+}
 
 function openRitAnalyse(mode='10min'){
   document.getElementById('welcomeScreen')?.classList.add('hidden');
@@ -72,6 +118,7 @@ function openRitAnalyse(mode='10min'){
   document.getElementById('ritDash').style.display='block';
   resetRitUI();
 }
+window.ritRingModel=ritRingModel; window.ritRingHtml=ritRingHtml;
 function closeRitAnalyse(){
   if(ritActive) stopRitAnalyse();
   document.getElementById('ritDash').style.display='none';
@@ -121,7 +168,6 @@ function isHybrideOfEV(){
 
 function resetRitUI(){
   const totMin = Math.round(RIT_TOTAAL/60);
-  document.getElementById('ritProgress').style.width='0%';
   document.getElementById('ritTimer').textContent='0:00';
   document.getElementById('ritStatus').textContent = ritMode==='2min'
     ? 'Snelle technische check — ca. 2 minuten'
@@ -138,8 +184,9 @@ function resetRitUI(){
         ⚠️ Hybride/elektrisch voertuig gedetecteerd. Zorg dat de <strong>verbrandingsmotor meeloopt</strong> tijdens de analyse — anders worden alleen gegevens van de elektrische aandrijving gemeten en niet van de verbrandingsmotor.
       </div>`;
   }
-  ritLogs=[]; ritFaseData={}; ritFaseIdx=0;
+  ritLogs=[]; ritFaseData={}; ritFaseIdx=0; ritFaseStatus={}; _ritRingSec=0;
   ritFaseEind=0; ritPauzeSinds=0; ritPauzeTotaal=0; ritPauzeLog=[];
+  ritRingBij();
 }
 
 // 10-min uitgebreide analyse: lees ALLE ondersteunde sensoren één keer uit en
@@ -233,8 +280,7 @@ async function startRitAnalyse(){
     const elapsed=Math.floor((Date.now()-ritStartTime-stil)/1000);
     const mins=Math.floor(elapsed/60), secs=elapsed%60;
     document.getElementById('ritTimer').textContent=`${mins}:${secs.toString().padStart(2,'0')}`;
-    const pct=Math.min(100,(elapsed/RIT_TOTAAL)*100);
-    document.getElementById('ritProgress').style.width=pct+'%';
+    ritRingBij();
     _updateRitPill();   // houd de zwevende pill bij als de rit geminimaliseerd is
     if(elapsed>=RIT_TOTAAL) stopRitAnalyse();
   },1000);
@@ -249,6 +295,7 @@ function startRitFase(idx){
   ritFaseEind=Date.now()+fase.duur*1000;
   document.getElementById('ritPhaseName').textContent=`${fase.icon} ${fase.naam}`;
   document.getElementById('ritPhaseDesc').textContent=fase.desc+` — ${fase.duur} seconden`;
+  ritRingBij();
   log(`Fase ${idx+1}: ${fase.naam}`,'info');
 
   // Init data buffer voor deze fase
@@ -362,20 +409,21 @@ async function analyseRitFase(idx){
 
   // Toon fase kaart
   const card=document.createElement('div');
-  card.style.cssText='background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:12px;';
+  card.className='rit-kaart'+(Object.values(stats).some(s=>!s.ok)?' let':'');
   const hasProbleem=Object.values(stats).some(s=>!s.ok);
+  ritFaseStatus[idx]=hasProbleem?'let':'ok'; ritRingBij();
   card.innerHTML=`
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:#fff">${fase.icon} ${fase.naam}</div>
-      <div style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:4px;background:${hasProbleem?'rgba(255,0,110,.15)':'rgba(0,255,200,.1)'};color:${hasProbleem?'#ff6464':'#00ffc8'}">${hasProbleem?'⚠ AFWIJKING':'✅ OK'}</div>
+      <b class="rit-kaart-kop">${fase.icon} ${fase.naam}</b>
+      <span class="rit-kaart-oordeel">${hasProbleem?'afwijking':'in orde'}</span>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
       ${Object.values(stats).map(s=>`
-        <div style="font-size:12px;padding:3px 8px;border-radius:5px;background:${s.ok?'rgba(255,255,255,.05)':'rgba(255,0,110,.1)'};color:${s.ok?'rgba(255,255,255,.6)':'#ff6464'}">
+        <div class="rit-waarde${s.ok?'':' let'}">
           ${s.name}: ${fv(s.avg)} ${s.unit} ${s.trend>5?'↑':s.trend<-5?'↓':'→'}
         </div>`).join('')}
     </div>
-    <div style="font-size:12px;color:rgba(255,255,255,.45)" id="rit-ai-${idx}"></div>
+    <div class="rit-duiding" id="rit-ai-${idx}"></div>
   `;
   document.getElementById('ritPhaseResults').prepend(card);
 
