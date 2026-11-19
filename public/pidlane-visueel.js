@@ -236,6 +236,9 @@ function trekIndeling(mag, turbo, defs){
   });
   return uit;
 }
+/* Een temperatuurrij in het trekpaneel: alleen met een sensor, behalve
+   koelwater (#748). Puur. */
+function trekRijTonen(rol, pid){ return !!pid || rol==='koel'; }
 /* De snelheidstrend in km/u per s over de laatste ~5 s uit pidHist, of null. */
 function snelheidTrend(hist, nu){
   if(!Array.isArray(hist) || hist.length<2) return null;
@@ -1695,7 +1698,7 @@ function bouw(g, reden){
       '<div class="vis-meldingen" id="visMeld"></div>'+
       '</div>';
     _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
-    meldBij(); lampjesBij(); trekBij(); ritMonBij();
+    meldBij(); lampjesBij(); trekBij(); ritMonBij(); volPas();
     veegAan(g.querySelector('.vis'));
     // Tik op een plek: zelf een sensor kiezen (06-10-2026). Eén luisteraar op
     // het vak; de plekken dragen hun rol in hun id (vpf-p-<rol>).
@@ -1749,7 +1752,7 @@ function bouw(g, reden){
   // niet eerst een lege meter te laten zien.
   _staat.gebruik.forEach(function(p){ if(typeof pidVals!=='undefined' && pidVals[p]!==undefined) bij(p, pidVals[p]); });
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); ritMonBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
+  meldBij(); lampjesBij(); trekBij(); ritMonBij(); volPas(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
   themaBij(g);   // de basismeter krijgt daar geen thema: de schil kleurt hem (PLVisThema.pas)
   try{ if(window.PLHyperlane) PLHyperlane.wek(g); }catch(e){ console.warn('PLVisueel: Hyperlane-schil starten mislukt', e); }
   // De banden gaan niet de pollus in (#396): één keer per verbinding vragen.
@@ -1926,6 +1929,9 @@ function trekInvoer(ind, nu){
   const temps=[];
   ['koel','olie','inlaat','atf'].forEach(function(rol){
     const t=rij(rol); if(!t) return;
+    // Een sensor die de auto niet heeft is geen rij met een streep (#748): weg,
+    // behalve koelwater, dat er altijd hoort te staan.
+    if(!trekRijTonen(rol, t.pid)) return;
     const x={ rol:rol, naam:t.naam, v:vers(t.pid), st:'geen', trend:null };
     if(x.v!==null) x.st=oordeel(t.pid, x.v);
     if(t.trend && t.pid){
@@ -1974,6 +1980,39 @@ function trekBij(){
   if(!ind || !ind.trek || !e || !P) return;
   const h=P.trekHtml(P.trekModel(trekInvoer(ind, Date.now())));
   if(e._sleutel!==h){ e.innerHTML=h; e._sleutel=h; }
+}
+/* Het volle scherm staand passend maken (19-11-2026). Loopt de inhoud
+   onder de onderrand (trekpaneel + meter, grote letters op het toestel),
+   dan krimpt de meter via --vis-pas tot alles in beeld staat; is er weer
+   ruimte, dan groeit hij terug. In stapjes, zodat hij niet heen en weer
+   springt. Puur: volPasStap(nu, over, bakHoogte in beeld). */
+const VOL_PAS = { min:0.55, marge:8 };
+function volPasStap(nu, over, bakH){
+  if(!(bakH>0)) return nu;
+  let z=nu;
+  if(over>1) z=nu*(bakH-over-VOL_PAS.marge)/bakH;
+  else if(over<-24 && nu<1) z=nu*(bakH+Math.min(-over-VOL_PAS.marge, bakH*0.2))/bakH;
+  return Math.round(Math.max(VOL_PAS.min, Math.min(1, z))*1000)/1000;
+}
+function volPas(){
+  try{
+    const v=document.querySelector('.vis'), b=v && v.querySelector(':scope > .vis-bak');
+    if(!v || !b) return;
+    const aan=document.body.classList.contains('pl-vis-vol') && innerHeight>innerWidth && !v.querySelector('.vpf-hyper');
+    const nu=parseFloat(v.style.getPropertyValue('--vis-pas'))||1;
+    if(!aan){ if(nu!==1) v.style.removeProperty('--vis-pas'); return; }
+    // Gemeten tegen de veilige onderrand, niet tegen scrollHeight: in een
+    // flexkolom telt de opvulling onderaan (de navigatiebalk) niet mee, dus
+    // "niets te scrollen" kon toch onder de balk liggen (bproef-volscherm).
+    const sab=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pl-sab'))||0;
+    let laagst=0;
+    v.querySelectorAll(':scope > .vis-bak, :scope > .vis-onder, :scope > .vis-meldingen').forEach(function(k){
+      const r=k.getBoundingClientRect(); if(r.height>0) laagst=Math.max(laagst, r.bottom);
+    });
+    const over=Math.max(v.scrollHeight-v.clientHeight, Math.round(laagst-(v.clientHeight-sab-8)));
+    const z=volPasStap(nu, over, b.getBoundingClientRect().height);   // de hoogte zoals hij nu in beeld staat
+    if(z!==nu) v.style.setProperty('--vis-pas', String(z));
+  }catch(e){ console.warn('PLVisueel: volle scherm passend maken mislukt', e); }
 }
 /* De rit-monitor onder de meter: alleen als hij aanstaat. */
 function ritMonBij(){
@@ -2207,7 +2246,7 @@ function tik(){
   }
   if(I.profiel) energieProfielBij();
   ritBij();
-  meldBij(); lampjesBij(); trekBij(); ritMonBij(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
+  meldBij(); lampjesBij(); trekBij(); ritMonBij(); volPas(); gearBij(); bandenBij(); schakelBij(); schakelMenu();
 }
 
 // De bevindingenbalk bovenaan de live view verhuist naar het meldingenvak
@@ -2259,7 +2298,7 @@ window.PLVisueel = {
   wijzerplaat:wijzerplaat, boogPad:boogPad, hoekPlek:hoekPlek, boogHoeken:boogHoeken,
   indeling:indeling, gebruiktePids:gebruiktePids, herbouwKeuze:herbouwKeuze, gemetenTempo:gemetenTempo, beoordeelTempo:beoordeelTempo,
   meldingen:meldingen, schakel:schakel, wisselSchakel:wisselSchakel, schakelAan:schakelAan, schakelStand:schakelStand, schakelMenu:schakelMenu, SCHAKEL_SLEUTEL:SCHAKEL_SLEUTEL,
-  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan, snelheidTrend:snelheidTrend, schakelStabiel:schakelStabiel, popKies:popKies, popTik:popTik, popWeg:popWeg, limiet:limiet,
+  TREK:TREK, TREK_SITUATIES:TREK_SITUATIES, trekIndeling:trekIndeling, koelTrend:koelTrend, trekAan:trekAan, snelheidTrend:snelheidTrend, schakelStabiel:schakelStabiel, volPasStap:volPasStap, volPas:volPas, trekRijTonen:trekRijTonen, popKies:popKies, popTik:popTik, popWeg:popWeg, limiet:limiet,
   nodigePids:nodigePids, zorgPids:zorgPids, bandenBij:bandenBij, gearTekst:gearTekst, logoZien:logoZien,
   sessie:sessie, ritOordeel:ritOordeel, trekOordeel:trekOordeel, rustOordeel:rustOordeel, herbouwKlant:herbouwKlant, maat:maat,
   rijVenster:rijVenster, VENSTER_MS:VIS_VENSTER_MS, koelAlarm:koelAlarm, ALARM_MS:ALARM_MS, _nieuweSessie:function(){ _sessie=leegSessie(); _laatsteAlarm=0; },

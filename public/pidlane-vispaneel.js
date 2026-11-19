@@ -103,7 +103,7 @@ function trekModel(i){
   const schakel={ advies:s ? s.advies : null, doel:s && getal(s.doel)!==null ? s.doel : null, gear:g!==null && g>=1 ? g : null };
   schakel.tekst = schakel.advies==='terug' ? (schakel.doel ? 'terug naar '+schakel.doel : 'schakel terug')
                : schakel.advies==='op' ? (schakel.doel ? 'naar '+schakel.doel : 'schakel op')
-               : schakel.advies==='ok' ? 'goede versnelling' : 'wacht op toerental';
+               : schakel.advies==='ok' ? 'goed zo' : 'wacht';
   schakel.groot = schakel.advies==='terug' || schakel.advies==='op' ? (schakel.doel ? String(schakel.doel) : '') : (schakel.gear ? String(schakel.gear) : '—');
   const lv=i.last ? getal(i.last.v) : null;
   const aandeel=zwaarAandeel(i.lastHist, i.nu);
@@ -157,7 +157,7 @@ function lastHtml(l){
       '<path class="vtp-boog" d="M10 50 A40 40 0 0 1 90 50" pathLength="100" stroke-dasharray="'+v+' 100"/>'+
       '<path class="vtp-boog-5" d="M18 50 A32 32 0 0 1 82 50" pathLength="100" stroke-dasharray="'+a+' 100"/></svg>'+
     '<b>'+(l.v===null ? '—' : Math.round(l.v))+'<i>%</i></b>'+
-    '<small>'+(l.aandeel===null ? 'nu' : 'zwaar '+a+'% · 5 min')+'</small></div>';
+    '<small title="aandeel zwaar in de laatste 5 minuten">'+(l.aandeel===null ? 'nu' : a+'% zwaar')+'</small></div>';
 }
 function tempHtml(t){
   return '<div class="vtp-temp" data-rol="'+esc(t.rol)+'" data-st="'+t.st+'"'+(t.stijgt ? ' data-stijgt="1"' : '')+'>'+

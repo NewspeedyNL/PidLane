@@ -44,7 +44,7 @@ m = P.trekModel({ schakel: { advies: 'terug', doel: null } });
 ok(m.schakel.tekst === 'schakel terug' && m.schakel.groot === '', 'zonder versnelling: geen verzonnen getal');
 
 console.log('\n— belasting —');
-ok(['Helling', 'Schakelen', 'Belasting'].every(k => P.trekHtml(P.trekModel({ last: { v: 50 }, lastHist: Array.from({ length: 30 }, (_, i) => ({ t: 1e9 - i * 1000, v: 50 })), nu: 1e9 })).includes('>' + k + '<')), 'elk vak draagt zijn naam, ook als de belasting "zwaar 0%" zegt');
+ok(['Helling', 'Schakelen', 'Belasting'].every(k => P.trekHtml(P.trekModel({ last: { v: 50 }, lastHist: Array.from({ length: 30 }, (_, i) => ({ t: 1e9 - i * 1000, v: 50 })), nu: 1e9 })).includes('>' + k + '<')), 'elk vak draagt zijn naam, ook als de belasting "0% zwaar" zegt');
 const T = 1e9, hist = (frac, dt) => Array.from({ length: 40 }, (_, i) => ({ t: T - (dt || 0) - i * 5000, v: i < 40 * frac ? 92 : 50 }));
 ok(P.zwaarAandeel(hist(0.75), T) === 0.75, '30 van 40 metingen ≥ 85 % is 0,75');
 ok(P.zwaarAandeel(hist(0.75, 400000), T) === null, 'buiten de vijf minuten telt niet (en dan te weinig)');

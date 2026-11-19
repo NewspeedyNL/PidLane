@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 19-11-2026 — Volle scherm staand: trekpaneel altijd in beeld, profielen vullen de hoogte (#748); dossier
+ ═════════════════════════════════════════════════════
+   • Met trekpaneel gaat het paneel voor: de meter krimpt (volPas, --vis-pas, minstens 55%) tot alles boven de navigatiebalk staat. Gemeten tegen de veilige onderrand: in een flexkolom telt de opvulling onderaan niet mee
+   • Hyperlane met trekpaneel: het paneel onderin boven de tanklichtbalk, het middengetal maakt plaats, de ringen blijven
+   • Zonder paneel verdeelt een profiel zich over de hoogte; Motor (ringen) en Verbruik (getallen) groter
+   • Trekpaneel: "goed zo" en "0% zwaar" in plaats van afgekapte teksten; een temperatuur zonder sensor geen lege rij meer (koelwater blijft)
+   • Voertuigoverzicht: toont het profiel uit Mijn voertuigen ook in de demo en zonder akkoord (PLGarage.dossierLees); het percentage telt dat mee. Bewaren blijft achter het akkoord
+   • bproef-volscherm.js (nieuw), bproef-garage (+2), test-visueel (+5), vier mutaties
+
+ ═════════════════════════════════════════════════════
  19-11-2026 — Caravancoach: pedaal, grenzen per motor, eigen richtverbruik, korte tips (#743)
  ═════════════════════════════════════════════════════
    • Gas = het pedaal vanaf zijn rust (PLToon), de gasklep alleen op een benzinemotor zonder pedaal. Op een diesel werkten afdaling en "rustiger gas" niet

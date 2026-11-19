@@ -17,6 +17,23 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 19-11-2026 — Waarom het Voertuigoverzicht half leeg bleef, en waarom "niets te scrollen" toch onder de navigatiebalk lag
+
+**Dossier.** `PLGarage.dossier()` gaf alleen iets terug als er ook bewaard
+mocht worden (`magBewaren()`: geen demo, wel een akkoord). Het overzicht
+gebruikte dezelfde functie om te *tonen*, dus in de demo of zonder akkoord viel
+het terug op de lokale kopie: 63% compleet, km-stand leeg, terwijl Mijn
+voertuigen → Profiel alles had. Lezen en schrijven zijn nu twee functies
+(`dossierLees()` / `dossier()`).
+
+**Volle scherm.** De eerste versie van `volPas()` keek naar `scrollHeight -
+clientHeight` en zag 0. In een flexkolom met `overflow:auto` telt de
+opvulling onderaan niet mee in de scrollhoogte, dus de caravanregel lag 21 px
+in de navigatiebalk zonder dat er iets te scrollen viel. Nu gemeten tegen de
+veilige onderrand (`--pl-sab`). Ook `zoom` op de meter bleek in Chromium pas na
+een paar stappen door te werken (de percentages in `max-width` zoomen niet
+mee); de basismeter krimpt daarom in zijn breedte.
+
 ## 19-11-2026 — Waarom het rit-monitorscherm en het caravandashboard weg zijn
 
 Beide waren een eigen scherm met meettegels die Slim visueel ook al toonde: elf
