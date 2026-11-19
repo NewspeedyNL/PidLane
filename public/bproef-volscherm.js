@@ -33,7 +33,12 @@ const SAB = 48;
   }
   try {
     await app.venster(412, 740);
-    await app.ev(`startDemoCar(0); true`); await W(2000);
+    // Als klant, zonder het inlogvenster: met dat venster open staat de app op
+    // visibility:hidden, en dan zegt "het middengetal is verborgen" niets.
+    await app.ev(`window.currentUser = { user:'proef', role:'klant', label:'proef' }; startDemoCar(0); true`); await W(2000);
+    await app.ev(`(function(){ const o = document.getElementById('loginOv'); if (o) o.style.display = 'none'; PLNav.tab('live'); return true; })()`);
+    const zicht = await app.ev(`getComputedStyle(document.querySelector('.cc') || document.body).visibility`);
+    if (zicht !== 'visible') { console.log('  FOUT de app staat niet in beeld (' + zicht + ') — deze proef meet dan niets'); process.exit(1); }
     await app.ev(`document.documentElement.style.setProperty('--pl-sab','${SAB}px');
       if(!situatieActief().some(function(x){ return x.id==='caravan'; })) toggleSituatie('caravan');
       localStorage.setItem('pl_vis_profiel','basis'); setPidView('slim'); setPidView('visueel'); PLVisThema.aan(); true`);
@@ -56,12 +61,12 @@ const SAB = 48;
     await app.ev(`localStorage.setItem('pl_vis_profiel','hyperlane'); setPidView('slim'); setPidView('visueel'); PLVisThema.aan(); true`);
     await W(3000);
     const h = await app.ev(`(function(){ const o=document.querySelector('.vis-onder').getBoundingClientRect(), pods=[...document.querySelectorAll('.vhl-pod')].map(function(p){ return p.getBoundingClientRect(); });
-      const mid=document.querySelector('.vhl-mid');
+      const mid=document.querySelector('.vis .vpf-hyper .vhl-mid');
       return { onder:Math.round(o.bottom), boven:Math.round(o.top), h:innerHeight, podOnder:Math.round(Math.max.apply(null, pods.map(function(p){ return p.bottom; }))),
-               mid: mid ? getComputedStyle(mid).visibility : 'geen' }; })()`);
+               mid: mid ? getComputedStyle(mid).visibility : 'geen', midTekst: mid ? mid.textContent.trim().slice(0, 30) : '' }; })()`);
     toets('het paneel staat boven de navigatiebalk', h.onder <= h.h - SAB, JSON.stringify(h));
     toets('en niet over de ringen van toeren en snelheid', h.boven >= h.podOnder - 2, JSON.stringify(h));
-    toets('het middengetal maakt plaats (geen tekst onder het paneel)', h.mid === 'hidden', JSON.stringify(h));
+    toets('het middengetal maakt plaats (geen tekst onder het paneel)', h.mid === 'hidden' && h.midTekst !== '', JSON.stringify(h));
 
     console.log('\n3. Motor zonder paneel vult de hoogte');
     await app.ev(`toggleSituatie('caravan'); localStorage.setItem('pl_vis_profiel','motor'); setPidView('slim'); setPidView('visueel'); PLVisThema.aan(); true`);

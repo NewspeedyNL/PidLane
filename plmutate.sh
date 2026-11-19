@@ -2714,7 +2714,10 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  while(i<3 && m>=MODUS_GRENS[i]+MODUS_HYST) i++;@@  while(i<3 && m>=MODUS_GRENS[i]) i++;@@test-hyperlane.js@@de hysterese omhoog is weg: net boven een grens wisselt het label al"
 "public/pidlane.css@@.vis.vhl-menu-open .vis-lampen { visibility:hidden; }@@@@bproef-hyperlane.js@@het standmenu valt weer achter de lampjes van motor en accu"
 "public/pidlane-hyperlane.js@@  if(x.ev) return { w:'EV', e:'', l:'ELEKTRISCH' };@@@@test-hyperlane.js@@een hybride op de accu toont verbruik 0,0 of gas groot in het midden — #716"
-"public/pidlane.css@@.vis-meldingen { position:fixed; left:12px;@@.vis-meldingen { left:12px;@@bproef-hyperlane.js@@staand op volledig scherm ligt een bevinding midden over het hoofdgetal en de cijfers — #716"
+# 19-11-2026 weggehaald: "staand op volledig scherm ligt een bevinding midden over het hoofdgetal" (#716).
+# Sinds #746 staat een bevinding niet meer als kaart in het vak (een pop-up bovenin), en staand vult
+# Hyperlane de hoogte vanaf boven: zonder position:fixed komt het vak boven de ringen en niet over het
+# middengetal. De mutatie bouwde dus geen fout meer na. Het trekpaneel bij Hyperlane: bproef-volscherm.js.
 "public/pidlane-berekend.js@@  if (hv && vraag>VRAAG_RUST) return@@  if (false) return@@test-hybridemeters.js@@de vermogensvraag ziet het pedaal niet meer: alleen nog laden"
 "public/pidlane-berekend.js@@  if (d.elektrisch && !o.elektrisch) return null;@@@@test-hybridemeters.js@@de vermogensvraag verschijnt ook op een auto zonder elektrische aandrijving"
 "public/pidlane-visprofiel.js@@  if(motor==='diesel' || dieselHybride(motor))@@  if(false)@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
