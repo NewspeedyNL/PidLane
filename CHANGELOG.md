@@ -10,6 +10,25 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 19-11-2026 — Volle scherm staand: trekpaneel altijd in beeld, profielen vullen de hoogte (#748); dossier
+ ═════════════════════════════════════════════════════
+   • Met trekpaneel gaat het paneel voor: de meter krimpt (volPas, --vis-pas, minstens 55%) tot alles boven de navigatiebalk staat. Gemeten tegen de veilige onderrand: in een flexkolom telt de opvulling onderaan niet mee
+   • Hyperlane met trekpaneel: het paneel onderin boven de tanklichtbalk, het middengetal maakt plaats, de ringen blijven
+   • Zonder paneel verdeelt een profiel zich over de hoogte; Motor (ringen) en Verbruik (getallen) groter
+   • Trekpaneel: "goed zo" en "0% zwaar" in plaats van afgekapte teksten; een temperatuur zonder sensor geen lege rij meer (koelwater blijft)
+   • Voertuigoverzicht: toont het profiel uit Mijn voertuigen ook in de demo en zonder akkoord (PLGarage.dossierLees); het percentage telt dat mee. Bewaren blijft achter het akkoord
+   • bproef-volscherm.js (nieuw), bproef-garage (+2), test-visueel (+5), vier mutaties
+
+ ═════════════════════════════════════════════════════
+ 19-11-2026 — Caravancoach: pedaal, grenzen per motor, eigen richtverbruik, korte tips (#743)
+ ═════════════════════════════════════════════════════
+   • Gas = het pedaal vanaf zijn rust (PLToon), de gasklep alleen op een benzinemotor zonder pedaal. Op een diesel werkten afdaling en "rustiger gas" niet
+   • Koelwater: het oordeel voor deze motor (PLKenmerk.koelLive) plus een snelle stijging (≥ 3 °C/min vanaf 95 °C), niet meer alles boven 100 °C
+   • Richtverbruik: je eigen ritten zonder caravan (≥ 50 km) × 1,4, anders het opgegeven verbruik × 1,4, anders 11/14. Het rapport zegt welke bron
+   • Bakolie: een eigen sensor met die naam gaat mee in de rit; boven 110 °C rustiger aan, boven 120 °C stoppen. Piek in het rapport
+   • Alle tips hooguit acht woorden. test-caravancoach.js (19), vier mutaties
+
+ ═════════════════════════════════════════════════════
  19-11-2026 — Oude vensters weg: rit-monitor als venster, caravan via de rijsituatie
  ═════════════════════════════════════════════════════
    • Rit-monitor: tik op de ring opent een venster met de ring, de aan/uit-knop, de waarschuwingen (Verifieer, 👎 Klopt niet) en Rapport nu. Het oude scherm met elf tegels en zuinig-rijdentips is weg; wizard, startkaart en chipje openen het venster

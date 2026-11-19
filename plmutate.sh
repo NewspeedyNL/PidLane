@@ -1172,6 +1172,7 @@ MUTATIES=(
 "public/pidlane-data.js@@{id:'misfire', sit:'constant', motor:true,@@{id:'misfire', sit:'constant',@@test-hybridebasis.js@@de misfire-test mag weer meten terwijl de auto op de accu rijdt"
 "public/pidlane-data.js@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */@@     blijft bestaan in bscGroepen(), zodat zo'n test er zonder meer bij kan. */\n  {id:'hv_soc', sit:'contact', groep:'hybride', naam:'HV-batterij SOC', pids:['015B'], uitleg:'SOC blijft binnen 30–80 %', hold:4, band:{lo:25,hi:85}},@@test-hybridebasis.js@@de SOC-test is terug: 015B als laadtoestand keurt een nieuwe hybride-accu af (#430)"
 "public/pidlane-voertuigdata.js@@    if(_vb) _setField('verbranding', _vb, src);\n@@@@test-voertuigreset.js@@het RDW zegt diesel-hybride, maar de diesel raakt weer kwijt (#430)"
+"public/pidlane-voertuigdata.js@@  const gd=_dossierLees();\n  const pct=dossierPct(gd);@@  const gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null;\n  const pct=dossierPct(gd);@@bproef-garage.js@@het voertuigoverzicht blijft in de demo half leeg terwijl het profiel geladen is"
 "public/pidlane-voertuigdata.js@@const AANDRIJF_MILD_KW = 15;@@const AANDRIJF_MILD_KW = 20;@@test-aandrijfvorm.js@@een Jeep Avenger e-Hybrid (15,6 kW, rijdt elektrisch) heet weer mild"
 "public/pidlane-voertuigdata.js@@  if(kwElektrisch!==null && kwElektrisch<=AANDRIJF_MILD_KW && verbranding){@@  if(false){@@test-aandrijfvorm.js@@een mild hybride heet weer hybride en krijgt de EV-logica"
 "public/pidlane-voertuigdata.js@@  if(/^OVC/.test(klasse||'')){@@  if(false){@@test-aandrijfvorm.js@@een plug-in met weinig kW wordt mild of serieel: de stekker telt niet meer"
@@ -1299,6 +1300,10 @@ MUTATIES=(
 "public/pidlane-berekend.js@@  const na=r[gear-1] ? o.rpm*r[gear]/r[gear-1] : null;@@  const na=r[gear-1] ? o.rpm*r[gear-1]/r[gear] : null;@@test-trekschakel.js@@toerental na terugschakelen omgedraaid: terug naar een versnelling die de motor boven max jaagt"
 "public/pidlane-berekend.js@@  if (o.klim) return gear;\n  return schakelAdvies(@@  return schakelAdvies(@@test-trekschakel.js@@bergop met een caravan zegt de app opschakelen"
 "public/pidlane-caravan.js@@  if(B&&typeof B.schakelTrek==='function'&&typeof ctx.gear==='number'&&ctx.ratios){@@  if(false){@@test-trekschakel.js@@de caravanrit negeert de bekende versnelling en geeft geen doelversnelling"
+"public/pidlane-caravan.js@@  return (!diesel && typeof t==='number' && isFinite(t)) ? t : null;@@  return (typeof t==='number' && isFinite(t)) ? t : null;@@test-caravancoach.js@@op een diesel telt de gasklep weer als gas: een afdaling wordt nooit herkend"
+"public/pidlane-caravan.js@@  if(t>=CARAVAN_KOEL.stijgVanaf&&typeof ago==='number'&&t-ago>=CARAVAN_KOEL.stijgGraden)@@  if(t>=CARAVAN_KOEL.stijgVanaf)@@test-caravancoach.js@@de coach waarschuwt bij elk koelwater boven 95 °C, ook als het stabiel is"
+"public/pidlane-caravan.js@@ && !CARAVAN_LABEL.test(String(r.label||''))){ km+=r.km;@@){ km+=r.km;@@test-caravancoach.js@@de caravanritten tellen mee in het eigen verbruik: het richtverbruik loopt elke rit verder op"
+"public/pidlane-caravan.js@@  if(r&&r.niveau==='fout') return@@  if(false) return@@test-caravancoach.js@@koelwater boven de harde grens geeft geen melding zolang het niet stijgt"
 "public/pidlane-caravan.js@@  if(o.situatie && !o.actief && !o.bezig && o.klaar && !o.handUit) return 'start';@@  if(o.situatie && !o.actief && !o.bezig && o.klaar) return 'start';@@test-caravanrit.js@@een met de hand gestopte caravanrit start twee seconden later weer vanzelf"
 "public/pidlane-caravan.js@@  if(!o.situatie && o.actief && o.auto) return 'stop';@@  if(!o.situatie && o.actief) return 'stop';@@test-caravanrit.js@@een met de hand gestarte caravanrit stopt zodra de rijsituatie uit staat"
 "public/pidlane-caravan.js@@  if(o.situatie && !o.actief && !o.bezig && o.klaar@@  if(o.situatie && !o.actief && !o.bezig@@test-caravanrit.js@@de caravanrit probeert te starten zonder klare adapter (elke 2 s een melding)"
@@ -2709,7 +2714,10 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  while(i<3 && m>=MODUS_GRENS[i]+MODUS_HYST) i++;@@  while(i<3 && m>=MODUS_GRENS[i]) i++;@@test-hyperlane.js@@de hysterese omhoog is weg: net boven een grens wisselt het label al"
 "public/pidlane.css@@.vis.vhl-menu-open .vis-lampen { visibility:hidden; }@@@@bproef-hyperlane.js@@het standmenu valt weer achter de lampjes van motor en accu"
 "public/pidlane-hyperlane.js@@  if(x.ev) return { w:'EV', e:'', l:'ELEKTRISCH' };@@@@test-hyperlane.js@@een hybride op de accu toont verbruik 0,0 of gas groot in het midden — #716"
-"public/pidlane.css@@.vis-meldingen { position:fixed; left:12px;@@.vis-meldingen { left:12px;@@bproef-hyperlane.js@@staand op volledig scherm ligt een bevinding midden over het hoofdgetal en de cijfers — #716"
+# 19-11-2026 weggehaald: "staand op volledig scherm ligt een bevinding midden over het hoofdgetal" (#716).
+# Sinds #746 staat een bevinding niet meer als kaart in het vak (een pop-up bovenin), en staand vult
+# Hyperlane de hoogte vanaf boven: zonder position:fixed komt het vak boven de ringen en niet over het
+# middengetal. De mutatie bouwde dus geen fout meer na. Het trekpaneel bij Hyperlane: bproef-volscherm.js.
 "public/pidlane-berekend.js@@  if (hv && vraag>VRAAG_RUST) return@@  if (false) return@@test-hybridemeters.js@@de vermogensvraag ziet het pedaal niet meer: alleen nog laden"
 "public/pidlane-berekend.js@@  if (d.elektrisch && !o.elektrisch) return null;@@@@test-hybridemeters.js@@de vermogensvraag verschijnt ook op een auto zonder elektrische aandrijving"
 "public/pidlane-visprofiel.js@@  if(motor==='diesel' || dieselHybride(motor))@@  if(false)@@test-visprofiel.js@@een diesel krijgt weer lambda rond 1,00, de brandstoftrims en de ontsteking — #393"
@@ -3009,6 +3017,9 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  const nieuw=(bev||[]).filter(function(b){ return b && b.id!==undefined && !gezien.has(String(b.id)); });@@  const nieuw=(bev||[]).filter(function(b){ return b && b.id!==undefined; });@@test-visueel.js@@dezelfde bevinding popt bij elke tik opnieuw op"
 "public/pidlane-visueel.js@@  if(nu-uit.t>=SCHAKEL_STABIEL_MS) uit.toon=s;@@  uit.toon=s;@@test-visueel.js@@de schakelpijl springt bij elke kuil heen en weer"
 "public/pidlane-visueel.js@@    if(!pid && t.zoek) return;@@@@test-visueel.js@@zonder bakoliesensor staat er een lege rij Bakolie in het trekpaneel"
+"public/pidlane-visueel.js@@    if(z!==nu) v.style.setProperty('--vis-pas', String(z));@@    if(false) v.style.setProperty('--vis-pas', String(z));@@bproef-volscherm.js@@op het volle scherm loopt het trekpaneel weer onder de navigatiebalk door"
+"public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }@@@@bproef-volscherm.js@@bij Hyperlane ligt het trekpaneel over het middengetal heen"
+"public/pidlane-visueel.js@@function trekRijTonen(rol, pid){ return !!pid || rol==='koel'; }@@function trekRijTonen(rol, pid){ return true; }@@test-visueel.js@@een sensor die de auto niet heeft staat als lege rij met een streep in het trekpaneel"
 "public/pidlane.css@@.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@.vis-leds { display:none; }\n.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@bproef-visueel.js@@de schakellampjes staan in de tekening maar zijn nooit te zien"
 "public/pidlane-rapport.js@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'grijs';@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'groen';@@test-rapport.js@@het analyserapport kleurt een systeem zonder data groen: niet gemeten leest als goed"
 "public/pidlane-rapport.js@@      uitkomst: UITKOMST[tekst(h && h.uitkomst).toLowerCase()] ? tekst(h.uitkomst).toLowerCase() : 'open',@@      uitkomst: tekst(h && h.uitkomst).toLowerCase() || 'open',@@test-rapport.js@@het analyserapport neemt elke uitkomst van de AI over, ook een die het niet kent"

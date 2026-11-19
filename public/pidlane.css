@@ -3768,6 +3768,34 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 #plGearOv .plg-k { width:44px; height:44px; border-radius:10px; border:1px solid var(--bd2); background:var(--sur2);
   color:var(--tx); font:800 18px var(--f); cursor:pointer; }
 #plGearOv .plg-k.nu { border-color:var(--bl); }
+/* ══ HET VOLLE SCHERM STAAND BENUTTEN (19-11-2026) ════════════════════
+   Uit de auto: het trekpaneel liep onder de navigatiebalk door, en Motor en
+   Verbruik lieten de onderste 40% leeg. Wat belangrijker is krijgt de ruimte:
+   - met een trekpaneel gaat het paneel voor; de meter krimpt mee
+     (PLVisueel.volPas() zet --vis-pas), het paneel staat altijd in beeld;
+   - zonder paneel verdeelt een profiel zich over de hele hoogte;
+   - bij Hyperlane maakt het middengetal plaats voor het paneel, de ringen
+     (toeren en snelheid) blijven. */
+@media (orientation:portrait) {
+  body.pl-vis-vol .vis { justify-content:flex-start; }
+  body.pl-vis-vol .vis > .vis-bak { flex:1 0 auto; display:flex; flex-direction:column; justify-content:safe center; }
+  /* De basismeter krimpt in de breedte (hij is vierkant); een profiel zoomt. */
+  body.pl-vis-vol .vis > .vis-bak:not(:has(.vpf)) { max-width:calc(min(100%, calc(var(--pl-vh) - 140px), 760px) * var(--vis-pas, 1)); }
+  body.pl-vis-vol .vis > .vis-bak:has(.vpf) { zoom:var(--vis-pas, 1); }
+  body.pl-vis-vol .vis:has(.vtp) { justify-content:safe center; }
+  body.pl-vis-vol .vis-bak > .vpf { flex:1 0 auto; display:flex; flex-direction:column; justify-content:safe space-evenly; }
+  body.pl-vis-vol .vis:has(.vtp) > .vis-bak { flex-grow:0; }
+  body.pl-vis-vol .vis:has(.vtp) .vis-bak > .vpf { flex-grow:0; justify-content:flex-start; }
+  /* Motor (neon) en Verbruik (digitaal): het hoofdelement groter. */
+  body.pl-vis-vol .vpf-neon .vpf-ringen { max-width:min(46vh, 86vw, 520px); }
+  body.pl-vis-vol .vpf-lcd-groot .vpf-w { font-size:min(14vh, 24vw, 140px); }
+  body.pl-vis-vol .vpf-lcd-rij .vpf-w { font-size:min(5.2vh, 9vw, 48px); }
+  body.pl-vis-vol .vpf-lcd-rijen { gap:3vh 18px; }
+  /* Hyperlane met trekpaneel: het paneel onderin, boven de tanklichtbalk. */
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vis-onder { position:fixed; left:12px; right:12px; width:auto; max-width:none; z-index:3;
+    bottom:calc(var(--pl-sab, 0px) + 6.5vh); max-height:58vh; overflow:auto; }
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }
+}
 /* ══ ONDER DE METER (19-11-2026): trekpaneel en rit-monitor ══════════
    pidlane-vispaneel.js tekent, pidlane-visueel.js vult. Eén kolom onder de
    meter; liggend op het volle scherm rechts ernaast (zie hierboven). */

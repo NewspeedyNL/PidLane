@@ -815,6 +815,13 @@ console.log('\n— trekmodus: caravan of beladen (27-09-2026) —');
     waar('snelheidTrend: 3 km/u verlies in 5 s is −0,6', V.snelheidTrend(h, T) === -0.6, String(V.snelheidTrend(h, T)));
     waar('snelheidTrend: korter dan 3 s geschiedenis zegt niets', V.snelheidTrend(h.slice(-4), T) === null);
     waar('snelheidTrend: een oude laatste meting zegt niets', V.snelheidTrend(h, T + 5000) === null);
+    waar('#748: een temperatuur zonder sensor is geen rij met een streep, koelwater altijd wel',
+      V.trekRijTonen('olie', null) === false && V.trekRijTonen('olie', '015C') === true && V.trekRijTonen('koel', null) === true);
+    // Het volle scherm passend maken (19-11-2026)
+    waar('volPasStap: 100 px te hoog bij een meter van 500 → krimpt tot hij past', V.volPasStap(1, 100, 500) === 0.784, String(V.volPasStap(1, 100, 500)));
+    waar('volPasStap: past al → blijft', V.volPasStap(1, 0, 500) === 1 && V.volPasStap(0.8, -10, 400) === 0.8);
+    waar('volPasStap: ruimte over → groeit terug, nooit boven 1', V.volPasStap(0.8, -200, 400) === 0.96 && V.volPasStap(0.95, -300, 400) === 1);
+    waar('volPasStap: nooit kleiner dan 55%', V.volPasStap(1, 900, 500) === 0.55);
     let st = V.schakelStabiel(null, { advies: 'terug', doel: 4 }, 0);
     waar('schakelStabiel: een nieuw advies staat niet meteen in beeld', st.toon === null);
     st = V.schakelStabiel(st, { advies: 'terug', doel: 4 }, 2900);
