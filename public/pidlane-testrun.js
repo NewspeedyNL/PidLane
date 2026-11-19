@@ -675,7 +675,6 @@ async function _blok1() {
 // ══════════════════════════════════════════════════════════════════
 const SCHERMEN = [
   ['Ritanalyse', 'openRitAnalyse', 'closeRitAnalyse'],
-  ['Caravan', 'openCaravan', 'closeCaravanDash'],
   ['Klimaatcheck', 'openClimateCheck', 'closeClimateCheck'],
   ['Diepe diagnose', 'openDeepDiag', 'closeDeepDiag'],
   ['PID-recorder', 'openPidRecorder', 'closePidRecorder'],

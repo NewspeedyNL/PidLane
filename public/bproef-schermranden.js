@@ -660,7 +660,6 @@ async function keurVel(app, v, waar, sluit) {
         ['scenario-balk', 'scenarioBadge', function(){ _scenario.enabled = true; updateScenarioBadge(); }],
         ['melding (toast)', 'pidToast',    function(){ showToast('proef', 60000); }],
         ['rit-pil',        'ritPill',      function(){ _showRitPill(); }],
-        ['caravan-pil',    'caravanPill',  function(){ _showCaravanPill(); }],
       ];
       const uit = [];
       maak.forEach(function (m) {

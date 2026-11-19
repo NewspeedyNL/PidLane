@@ -130,20 +130,6 @@ function openCaravan(){
 }
 window.openCaravan=openCaravan;
 
-function caravanResetUI(){
-  // terug naar het setup-scherm; live-scherm verborgen
-  const setup=document.getElementById('carSetup'), live=document.getElementById('carLive');
-  if(setup) setup.style.display='block';
-  if(live)  live.style.display='none';
-  const li=document.getElementById('carLimit');
-  if(li && !li.value) li.value=String(caravanSpeedLimit);
-  // toon de actuele brandstofprijs die ook elders wordt gebruikt
-  const pr=document.getElementById('fuelPrice')?.value;
-  const pe=document.getElementById('carPriceEcho');
-  if(pe) pe.textContent = pr ? `€ ${(+pr).toFixed(2)}/liter` : '€ 2,05/liter';
-  const st=document.getElementById('carStatus'); if(st) st.textContent='Klaar om te starten';
-}
-
 // ═══════════════════ START ═══════════════════
 async function startCaravan(o){
   if(caravanActive) return;                       // guard tegen dubbel starten
@@ -152,10 +138,6 @@ async function startCaravan(o){
   if(!(await preAnalysisCheck())) return;
   caravanAuto=!!(o && o.auto);
   caravanHandUit=false;
-
-  // snelheidslimiet overnemen uit het invoerveld
-  const li=parseInt(document.getElementById('carLimit')?.value,10);
-  if(!isNaN(li) && li>=50 && li<=140) caravanSpeedLimit=li;
 
   // PID-set activeren in de bestaande poll-scheduler. Koppel-PIDs alleen als
   // de auto ze ondersteunt → anders vermogen via belasting%.
@@ -176,12 +158,6 @@ async function startCaravan(o){
   caravanTerreinBron={ helling:0, obd:0 };
   caravanPeak={ lkm:0, coolant:0, load:0, power:0 };
 
-  // UI naar live
-  const setup=document.getElementById('carSetup'), live=document.getElementById('carLive');
-  if(setup) setup.style.display='none';
-  if(live)  live.style.display='block';
-  const st=document.getElementById('carStatus'); if(st) st.textContent='Rit loopt — rij normaal';
-  _carRenderCoach();
   log('🚐 Caravan-rittracker gestart'+(caravanAuto?' (rijsituatie caravan)':''),'ok');
   try{ showToast('🚐 Caravanrit loopt — limiet '+caravanSpeedLimit+' km/u'); }catch(e){ console.warn('caravan: melding', e); }
 
@@ -199,58 +175,10 @@ async function stopCaravan(){
   caravanHandUit=_carSituatie();
   caravanAuto=false;
   if(caravanTimer){ clearInterval(caravanTimer); caravanTimer=null; caravanTickInterval=null; }
-  _removeCaravanPill();
-  const st=document.getElementById('carStatus'); if(st) st.textContent='Rit gestopt — rapport wordt gemaakt…';
   log('🚐 Caravan-rit gestopt — rapport genereren','info');
   await generateCaravanRapport();
 }
 window.stopCaravan=stopCaravan;
-
-function closeCaravanDash(){
-  if(caravanActive){ // niet stiekem doormeten: sluiten = stoppen
-    caravanActive=false;
-    if(caravanTimer){ clearInterval(caravanTimer); caravanTimer=null; caravanTickInterval=null; }
-  }
-  _removeCaravanPill();
-  const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
-  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
-}
-window.closeCaravanDash=closeCaravanDash;
-
-// ═══════════════════ MINIMALISEREN (pill) ═══════════════════
-function minimizeCaravanDash(){
-  const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
-  if(caravanActive) _showCaravanPill();
-}
-window.minimizeCaravanDash=minimizeCaravanDash;
-
-function restoreCaravanDash(){
-  const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='block';
-  _removeCaravanPill();
-}
-window.restoreCaravanDash=restoreCaravanDash;
-
-function _showCaravanPill(){
-  let p=document.getElementById('caravanPill');
-  if(!p){
-    p=document.createElement('div');
-    p.id='caravanPill';
-    p.style.cssText='position:fixed;bottom:calc(48px + var(--pl-sab,0px) + var(--pl-nav-h,0px));left:50%;transform:translateX(-50%);z-index:8500;background:linear-gradient(135deg,#0e9f6e,#1a6fff);color:#fff;font-size:12px;font-weight:800;padding:7px 14px;border-radius:16px;box-shadow:0 3px 14px rgba(0,0,0,.45);cursor:pointer;display:flex;align-items:center;gap:8px;letter-spacing:.3px';
-    p.onclick=restoreCaravanDash;
-    document.body.appendChild(p);
-  }
-  p.style.display='flex';
-  _updateCaravanPill();
-}
-function _updateCaravanPill(){
-  const p=document.getElementById('caravanPill'); if(!p) return;
-  const t=document.getElementById('carTimer')?.textContent||'0:00';
-  const lkm=document.getElementById('carLkm')?.textContent||'—';
-  p.innerHTML=`🚐 Rit loopt · <span style="font-family:var(--m,monospace)">${t}</span> · ${lkm} L/100 <span style="opacity:.7">↑ open</span>`;
-}
-function _removeCaravanPill(){
-  const p=document.getElementById('caravanPill'); if(p) p.style.display='none';
-}
 
 // ═══════════════════ RING-HELPERS ═══════════════════
 function _carPush(pid,t,v){
@@ -338,7 +266,6 @@ function _carAlert(key,msg,level,cooldownMs){
   caravanCooldown[key]=now;
   caravanCoach.push({ t:now, msg, level, key });
   if(caravanCoach.length>60) caravanCoach.splice(0,caravanCoach.length-60);
-  _carRenderCoach();
   // Veiligheidswaarschuwing → langere toast + korte trilling; gewone tip →
   // korte toast.
   //
@@ -425,18 +352,6 @@ function caravanCheckRules(ctx){
   }
 }
 
-function _carRenderCoach(){
-  const box=document.getElementById('carCoach'); if(!box) return;
-  if(!caravanCoach.length){ box.innerHTML='<div style="color:rgba(255,255,255,.35);font-size:12px;padding:6px 2px">Nog geen tips — de coach kijkt mee zodra je rijdt.</div>'; return; }
-  const clr={ warn:'#ffb020', tip:'#7cf5c0' };
-  box.innerHTML=caravanCoach.slice(-8).reverse().map(c=>{
-    const ts=new Date(c.t).toTimeString().slice(0,5);
-    return `<div style="display:flex;gap:7px;padding:6px 8px;border-left:3px solid ${clr[c.level]||'#7cf5c0'};background:rgba(255,255,255,.04);border-radius:0 8px 8px 0;margin-bottom:5px">
-      <span style="color:rgba(255,255,255,.3);font-size:11px;font-family:var(--m,monospace);flex-shrink:0">${ts}</span>
-      <span style="font-size:12.5px;color:rgba(255,255,255,.9);line-height:1.35">${c.msg}</span></div>`;
-  }).join('');
-}
-
 // ═══════════════════ TICK (de motor) ═══════════════════
 function caravanTick(){
   if(!caravanActive) return;
@@ -495,7 +410,6 @@ function caravanTick(){
 
   caravanRenderLive(ctx,pw);
   caravanCheckRules(ctx);
-  _updateCaravanPill();
 }
 
 // ═══════════════════ ADVIES ALS WAARDE ═══════════════════
@@ -532,70 +446,11 @@ function caravanVerbruikNiveau(lkm,fuelType){
 }
 
 // ═══════════════════ LIVE-WEERGAVE ═══════════════════
-function caravanRenderLive(ctx,pw){
-  const set=(id,txt,color)=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; if(color)el.style.color=color; } };
-
-  // timer
-  const el=Math.floor((Date.now()-caravanStartTime)/1000);
-  set('carTimer',`${Math.floor(el/60)}:${String(el%60).padStart(2,'0')}`);
-
-  // klim-badge
-  const cb={ klim:{t:'⛰️ Klim',c:'#ffb020'}, afdaling:{t:'🛞 Afdaling',c:'#7cf5c0'}, vlak:{t:'➖ Vlak',c:'#8fd3ff'} }[ctx.climb];
-  const cbEl=document.getElementById('carClimb');
-  if(cbEl){
-    const uitHelling=ctx.terreinBron==='helling';
-    cbEl.textContent=cb.t+(uitHelling?` · ${ctx.helling>0?'+':''}${ctx.helling.toFixed(1)}°`:'');
-    cbEl.title=uitHelling?'Gemeten met de helling van de telefoon':'Geschat uit belasting en snelheid — zet de telefoon vast in de houder en nul hem voor een gemeten helling';
-    cbEl.style.background=cb.c+'22'; cbEl.style.color=cb.c;
-  }
-
-  // momentaan verbruik (kleur t.o.v. richtwaarde)
-  let lkmTxt='—', lkmClr='#fff';
-  if(ctx.lkm!==null){ lkmTxt=ctx.lkm.toFixed(1); lkmClr={ alarm:'#ff6b6b', letop:'#ffb020', ok:'#7cf5c0' }[caravanVerbruikNiveau(ctx.lkm,ctx.fuelType)]; }
-  set('carLkm',lkmTxt,lkmClr);
-  set('carLh', ctx.fuelRate!==null?`${ctx.fuelRate.toFixed(1)} L/u`:'—');
-
-  // snelheid + cruise-hint
-  set('carSpeed', typeof ctx.speed==='number'?Math.round(ctx.speed):'—');
-  const cruiseTarget=ctx.cruiseTarget;
-  const ch=document.getElementById('carCruise');
-  if(ch){
-    if(ctx.climb!=='klim'&&typeof ctx.speed==='number'&&ctx.speed>cruiseTarget+3){ ch.textContent=`cruise ~${cruiseTarget}`; ch.style.color='#ffb020'; }
-    else { ch.textContent=`doel ~${cruiseTarget}`; ch.style.color='rgba(255,255,255,.35)'; }
-  }
-
-  // toerental + schakel-hint (glow)
-  set('carRpm', typeof ctx.rpm==='number'?Math.round(ctx.rpm):'—');
-  const gEl=document.getElementById('carGear');
-  if(gEl){
-    const adv=caravanSchakelAdvies(ctx);
-    if(adv==='terug'){ gEl.textContent='⬇️ terug'; gEl.style.color='#ffb020'; }
-    else if(adv==='op'){ gEl.textContent='⬆️ op'; gEl.style.color='#8fd3ff'; }
-    else { gEl.textContent='✓ ok'; gEl.style.color='#7cf5c0'; }
-  }
-
-  // vermogen (kW of belasting%)
-  set('carPower', pw.val==null?'—':(pw.unit==='kW'?Math.round(pw.val):Math.round(pw.val)));
-  set('carPowerLbl', pw.unit==='kW'?'kW vermogen':'% belasting');
-
-  // koelwater (kleur)
-  let coolClr='#7cf5c0';
-  if(typeof ctx.coolant==='number'){ coolClr=ctx.coolant>=108?'#ff6b6b':ctx.coolant>=102?'#ffb020':'#7cf5c0'; }
-  set('carCoolant', typeof ctx.coolant==='number'?`${Math.round(ctx.coolant)}°`:'—',coolClr);
-
-  // boordspanning
-  let vTxt='—', vClr='#8fd3ff';
-  if(typeof ctx.volt==='number'&&ctx.volt>0){ vTxt=ctx.volt.toFixed(1)+'V'; const n=_carLaad(ctx.volt, pidVals['010C']); vClr=(n==='fout'||n==='letop')?'#ffb020':'#8fd3ff'; }
-  set('carVolt',vTxt,vClr);
-
-  // trip-balk
-  set('carKm', caravanKm.toFixed(1));
-  const avg = caravanKm>0.1 ? (caravanLiters/caravanKm*100) : null;
-  set('carAvg', avg!==null?avg.toFixed(1):'—');
-  set('carLiters', caravanLiters.toFixed(2));
-  const price=parseFloat(document.getElementById('fuelPrice')?.value)||2.05;
-  set('carCost', '€ '+(caravanLiters*price).toFixed(2));
-}
+/* De haak voor de rijmodus (pidlane-rijmodus.js wikkelt deze functie om de
+   ctx van elke tik te lezen). Tot 19-11-2026 tekende hij hier het eigen
+   caravandashboard; dat is weg, het beeld staat in het trekpaneel van Slim
+   visueel. Leeg laten, niet weghalen: de rijmodus hangt eraan. */
+function caravanRenderLive(ctx,pw){ return ctx; }
 
 // ═══════════════════ AI-EINDRAPPORT ═══════════════════
 /* Waar de terreinverdeling vandaan komt. Puur, zodat de test hem kan lezen. */
@@ -654,7 +509,6 @@ async function generateCaravanRapport(){
     '',
   ];
 
-  const st=document.getElementById('carStatus'); if(st) st.textContent='AI stelt het rapport op…';
 
   const coachEvidence = Object.keys(tipCount).length
     ? Object.entries(tipCount).map(([k,n])=>`${tipLabels[k]||k} (${n}×)`).join('; ')
@@ -734,9 +588,7 @@ Sluit af met exact deze zin op een nieuwe regel: ${RAPPORT_DISCLAIMER}${PLRappor
     }
   }catch(e){ log('Caravan-rapport tonen mislukt: '+e.message,'warn'); }
 
-  // overlay sluiten en naar home; tekstrapport ook meteen wegschrijven
-  const ov=document.getElementById('caravanDash'); if(ov) ov.style.display='none';
-  _removeCaravanPill();
+  // tekstrapport ook meteen wegschrijven
   try{ download(`caravan-rit-${plDatumLokaal()}.txt`,lines.join('\n')); }catch(e){ console.warn('download mislukt:', e); }
   log('🚐 Caravan-rapport klaar','ok');
   try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }

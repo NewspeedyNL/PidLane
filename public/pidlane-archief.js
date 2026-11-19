@@ -826,7 +826,7 @@ const _PL_SLUIT_TEKST=/^(✕|×|✖|x|X|╳)$/;
 const _PL_SLUIT_NAAM=/(^|[-_])(x|close|sluit|sluiten)$|Close$|X$/;
 // Deze vensters hebben een eigen terugregel verderop (minimaliseren tijdens
 // een rit, of alleen sluiten als er verbinding is).
-const _PL_EIGEN_TERUG=['ritDash','caravanDash','connOv','welcomeScreen','kebabMenu'];
+const _PL_EIGEN_TERUG=['ritDash','connOv','welcomeScreen','kebabMenu'];
 // "Sluiten" als knoptekst telt ook (28-09-2026). Testrun 8.3: het Run-venster,
 // het logboek, het testrunpaneel en acht andere vensters hebben geen ✕ maar
 // een knop met dat woord. De zoeker sloeg ze over, ze staan niet in de vaste
@@ -939,14 +939,7 @@ function appBack(){
       else rd.style.display='none';
       return true;
     }
-    const cd=document.getElementById('caravanDash');
-    if(_plZichtbaar(cd)){
-      if(typeof caravanActive!=='undefined' && caravanActive && typeof minimizeCaravanDash==='function') minimizeCaravanDash();
-      else if(typeof closeCaravanDash==='function') closeCaravanDash();
-      else cd.style.display='none';
-      return true;
-    }
-  }catch(e){ console.warn('closeCaravanDash mislukt:', e); }
+  }catch(e){ console.warn('ritDash sluiten mislukt:', e); }
   // 2b. Neon-dashboard, airco/wintercheck — kwamen uit de tweede handler
   const neon=document.getElementById('neonDash');
   if(_plZichtbaar(neon)){
