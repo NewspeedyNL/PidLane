@@ -810,9 +810,21 @@
      leest en schrijft voor een klant het actieve voertuig hier, in plaats
      van een tweede lijst in localStorage die met Mijn voertuigen uit de pas
      loopt. */
+  /* Het dossier om te tónen (19-11-2026). dossier() gaf alleen iets als er
+     ook bewaard mocht worden: geen demo en een akkoord. Daardoor bleef het
+     Voertuigoverzicht half leeg (63% compleet, km-stand leeg) terwijl het
+     profiel in Mijn voertuigen gewoon geladen was. Lezen mag met elk actief
+     voertuig van een ingelogde klant; schrijven blijft achter magBewaren(). */
+  function dossierLees() {
+    if (!magPlatform()) return null;
+    var v = actief();
+    return v ? dossierVan(v) : null;
+  }
   function dossier() {
     if (!magBewaren()) return null;
-    var v = actief();
+    return dossierVan(actief());
+  }
+  function dossierVan(v) {
     return { id: v.id, naam: v.naam || [v.merk, v.model].filter(Boolean).join(' ') || 'je voertuig',
       km: v.kmstand != null ? String(v.kmstand) : '', beurt: v.onderhoud_laatst || '', distributie: v.distributie || '', bijz: v.notities || '',
       merk: v.merk || '', model: v.model || '', year: v.bouwjaar != null ? String(v.bouwjaar) : '', brandstof: v.brandstof || '' };
@@ -2758,6 +2770,7 @@
     eerderBlok: eerderBlok,
     eerderAantal: eerderAantal,
     dossier: dossier,
+    dossierLees: dossierLees,
     dossierBewaar: dossierBewaar,
     actief: actief,
     // De tankbeurten van een voertuig, voor PLZonderUit (verbruik zonder adapter).

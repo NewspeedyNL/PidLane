@@ -252,7 +252,7 @@ function loadUserVehicleData(){
   // De lokale kopie volgt het, zodat de AI-prompt (_dossierPromptLine) en het
   // overzicht hetzelfde zeggen als Mijn voertuigen — geen tweede waarheid.
   try{
-    const gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null;
+    const gd=_dossierLees();
     if(gd){ userVehicleData.km=gd.km; userVehicleData.beurt=gd.beurt; userVehicleData.distributie=gd.distributie; userVehicleData.bijz=gd.bijz; }
   }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
   // Rijsituatie verloopt vanzelf: een caravanvlag van gisteren mag de analyse
@@ -277,10 +277,20 @@ function applyUserOverrides(){
   ['merk','model','year','brandstof'].forEach(k=>{ if(String(u[k]||'').trim()) core[k]=u[k]; });
   if(Object.keys(core).length){ try{ mergeVehicleData('user',core); }catch(e){ console.warn('mergeVehicleData mislukt:', e); } }
 }
-function dossierPct(){
+/* Het dossier uit Mijn voertuigen om te tonen, of null (alleen lezen). */
+function _dossierLees(){
+  try{ return (window.PLGarage&&PLGarage.dossierLees)?PLGarage.dossierLees():null; }
+  catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); return null; }
+}
+/* Hoe compleet het dossier is. Wat in Mijn voertuigen staat telt mee: daar
+   staat het dossier (19-11-2026; tot dan telde alleen de lokale kopie, en die
+   is in de demo of zonder akkoord leeg). Puur op de twee argumenten na. */
+function dossierPct(gd){
   const v=(typeof vehicleInfo!=='undefined'&&vehicleInfo)||{};
   const u=userVehicleData||{};
-  const checks=[v.merk,v.model,v.year,v.brandstof,v.vin,u.km,u.beurt,u.distributie];
+  const d=gd===undefined ? _dossierLees() : gd;
+  const k=function(a,b){ return (d&&String(d[a]||'').trim()) ? d[a] : b; };
+  const checks=[k('merk',v.merk),k('model',v.model),k('year',v.year),k('brandstof',v.brandstof),v.vin,k('km',u.km),k('beurt',u.beurt),k('distributie',u.distributie)];
   const filled=checks.filter(x=>String(x||'').trim()).length;
   return Math.round(filled/checks.length*100);
 }
@@ -360,7 +370,6 @@ function openVehicleOverview(){
   const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
   const inp=(id,val,ph)=>`<input id="${id}" value="${esc(val)}" placeholder="${ph||''}" style="width:100%;box-sizing:border-box;background:var(--sur2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-family:var(--f);font-size:13px;padding:8px 10px">`;
   const row=(lbl,html)=>`<div style="margin-bottom:9px"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:3px">${lbl}</div>${html}</div>`;
-  const pct=dossierPct();
   /* VOOR EEN KLANT GEEN TWEEDE FORMULIER (27-09-2026). Merk, model, km-stand,
      onderhoud en bijzonderheden stonden hier én in Mijn voertuigen → Profiel:
      twee plekken om hetzelfde in te vullen. Met een gekoppeld voertuig toont
@@ -378,8 +387,10 @@ function openVehicleOverview(){
       ${r('Kilometerstand',km)}${r('APK tot',w.apk_tot)}${r('Laatste onderhoud',w.onderhoud_laatst)}${r('Distributie',w.distributie)}${r('Notities',w.notities)}
       <div style="font-size:11px;color:var(--tx3);margin-top:6px">Aanpassen doe je op één plek: de knop onderaan opent het profiel.</div></div>`;
   }
-  let gd=null;
-  try{ gd=(window.PLGarage&&PLGarage.dossier)?PLGarage.dossier():null; }catch(e){ console.warn('Voertuigdossier: Mijn voertuigen niet te lezen', e); }
+  // Tonen uit Mijn voertuigen zodra er een actief voertuig is, ook in de demo
+  // of zonder akkoord; bewaren gaat daar dan via het profiel.
+  const gd=_dossierLees();
+  const pct=dossierPct(gd);
   const kern=k=>(gd&&gd[k])||v[k]||'';
   const koppeling=gd
     ? `<div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.45);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--tx2)">🔗 Gekoppeld aan <b>${esc(gd.naam)}</b> in Mijn voertuigen. Wat je hier bewaart, staat daar ook. <a href="#" onclick="event.preventDefault();document.getElementById('vehOverview').style.display='none';PLGarage.open('${esc(gd.id)}')" style="color:var(--bl);font-weight:700">Volledig profiel →</a></div>`

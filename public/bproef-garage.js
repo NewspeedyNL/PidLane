@@ -184,6 +184,14 @@ const NEPSERVER = `(function(){
       return { dicht: dicht, open: open, weerDicht: b.querySelectorAll('button[onclick^="toggleSituatie"]').length }; })()`);
     toets('rijsituatie staat standaard dicht: geen chips, wel een regel', sit.dicht.chips === 0 && /Rijsituatie/.test(sit.dicht.tekst), JSON.stringify(sit));
     toets('één tik klapt hem open, nog een tik weer dicht', sit.open >= 8 && sit.weerDicht === 0, JSON.stringify(sit));
+    // 19-11-2026: in de demo (of zonder akkoord) bleef het overzicht leeg — 63% en een lege km-stand —
+    // terwijl het profiel geladen was. Lezen mag; alleen bewaren hangt aan het akkoord.
+    const demo = await app.ev(`(function(){ const was = demoMode; demoMode = true; openVehicleOverview();
+      const t = document.getElementById('vehOverview').textContent;
+      const velden = ['uvKm','uvBeurt','uvDistr','uvBijz'].filter(i => document.getElementById(i)).length;
+      const pct = dossierPct(); demoMode = was; openVehicleOverview(); return { t: t, velden: velden, pct: pct }; })()`);
+    toets('19-11: ook in de demo toont het overzicht het profiel uit Mijn voertuigen', /84\.210 km/.test(demo.t) && demo.velden === 0, demo.t.slice(0, 300));
+    toets('…en telt dat mee in het percentage (geen 63% met een gevulde km-stand)', demo.pct >= 75, JSON.stringify(demo.pct));
     await app.ev(`[...document.querySelectorAll('#vehOverview button')].find(b => /Profiel aanpassen/.test(b.textContent)).click(); 'ok'`);
     toets('Profiel aanpassen sluit het overzicht en opent het profiel in Mijn voertuigen',
       await wacht(`document.getElementById('vehOverview').style.display === 'none' && PLGarage.staat().view === 'formulier'`),
