@@ -665,8 +665,8 @@ const NEON_BRON = (function () {
   const bron = fs.readFileSync('pidlane-neon.js', 'utf8');
   const i = bron.indexOf('function hudShortLabel(name, max){');
   if (i < 0) throw new Error('hudShortLabel(name, max) niet gevonden in pidlane-neon.js — hernoemd of van handtekening veranderd?');
-  const j = bron.indexOf('\nfunction ', i + 10);
-  if (j < 0) throw new Error('het einde van hudShortLabel() is niet te vinden');
+  const j = bron.indexOf('\n}\n', i) + 2;   // het einde van de functie (19-11-2026: er staat geen functie meer achter)
+  if (j < 2) throw new Error('het einde van hudShortLabel() is niet te vinden');
   return bron.slice(i, j);
 })();
 function metKorteNamen(actief, slimBron, neonBron) {

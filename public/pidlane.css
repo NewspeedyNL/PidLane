@@ -2676,17 +2676,6 @@ body.pl-visueel:has(#pane-live.active) #blkChipFab { display:none !important; }
 .reco .rs{font-size:12px;color:var(--tx2);line-height:1.4}
 .reco .ra{margin-left:auto;font-size:18px;color:var(--bl);flex-shrink:0}
 
-/* ══ HUD hoekmeters ══ */
-.hudMini { position:absolute; width:26%; max-width:170px; aspect-ratio:1; cursor:pointer; transition:transform .1s; }
-.hudMini:active { transform:scale(.94); }
-.hudMini svg { width:100%; height:100%; overflow:visible; }
-.hudMini .mc { position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); text-align:center; width:100%; }
-.hudMini .mv { font-family:var(--m); font-size:clamp(15px,4.4vw,24px); font-weight:700; line-height:1; letter-spacing:-1px; text-shadow:0 0 12px currentColor; }
-.hudMini .ml { font-family:var(--m); font-size:clamp(7px,1.8vw,9px); font-weight:700; letter-spacing:.5px; opacity:.75; margin-top:1px; }
-.hudMini .mu { position:absolute; top:66%; left:50%; transform:translateX(-50%); font-family:var(--m); font-size:clamp(6px,1.5vw,8px); opacity:.5; }
-.hudPresetBtn { padding:5px 9px; border-radius:7px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.04); color:#8a94a6; font-family:var(--f); font-size:12px; font-weight:700; cursor:pointer; }
-.hudPresetBtn.active { background:#22d3ee; color:#000; border-color:#22d3ee; }
-
 /* ══ EMPTY STATE ══ */
 .emp { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 20px; text-align:center; color:var(--tx3); }
 .emp .ei { font-size:36px; margin-bottom:10px; opacity:.4; }
@@ -3796,6 +3785,92 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
     bottom:calc(var(--pl-sab, 0px) + 6.5vh); max-height:58vh; overflow:auto; }
   body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }
 }
+/* ══ CHECKPAGINA'S (19-11-2026): één opmaak, PLCheck in pidlane-checkopmaak.js ══
+   Airco/Wintercheck, Onderhoud, Klaar voor vertrek, Accu & elektrisch. Op
+   9520: boven het startscherm (9500, niet elke ingang verbergt dat), onder de
+   navigatiebalk (9550, die wijkt: ONDER_DE_BALK in pidlane-nav.js) en onder de
+   modal-band, zodat verzamelscherm, verbindscherm en AI-rapport erboven komen.
+   Niet .pl-check: dat is de knop "Check mijn auto". */
+.plc-ov { position:fixed; inset:0; z-index:calc(var(--z-modal) - 80); overflow-y:auto; font-family:var(--f); color:var(--tx);
+  background:radial-gradient(ellipse at 50% 0%, var(--bls), transparent 55%), var(--bg); }
+.plc-wrap { max-width:540px; margin:0 auto; display:flex; flex-direction:column; gap:12px; box-sizing:border-box;
+  padding:calc(12px + var(--pl-sat, 0px)) 16px calc(28px + var(--pl-sab, 0px)); }
+.plc-balk { display:flex; justify-content:space-between; align-items:center; }
+.plc-x { width:40px; height:40px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-size:15px; font-weight:800; cursor:pointer; }
+.plc-kop { display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; margin-top:-18px; }
+.plc-ring { display:flex; align-items:center; justify-content:center; width:72px; height:72px; border-radius:50%; font-size:32px;
+  border:3px solid var(--bl); background:var(--sur); box-shadow:0 0 24px var(--bls); }
+.plc-kop h2 { margin:6px 0 0; font-size:20px; font-weight:800; }
+.plc-kop p { margin:0; font-size:13px; line-height:1.5; color:var(--tx2); }
+.plc-kaart { display:flex; flex-direction:column; gap:12px; padding:14px; border-radius:16px; border:1px solid var(--bd); background:var(--sur); }
+.plc-veld { display:flex; flex-direction:column; gap:6px; }
+.plc-veld > span { font-size:12px; font-weight:700; color:var(--tx2); }
+.plc-veld input, .plc-veld select { width:100%; box-sizing:border-box; padding:11px 12px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font:15px var(--f); }
+.plc-keus { display:flex; gap:6px; }
+.plc-keus-knop { flex:1; height:40px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx2); font:700 13px var(--f); cursor:pointer; }
+.plc-keus-knop.aan { border-color:var(--bl); background:var(--bls); color:var(--tx); }
+.plc-tip { display:flex; gap:10px; align-items:flex-start; padding:11px 12px; border-radius:12px; border:1px solid var(--bd); border-left:4px solid var(--bl); background:var(--sur); font-size:12.5px; line-height:1.5; color:var(--tx2); }
+.plc-tip[data-soort="let"] { border-left-color:var(--or); background:var(--ors); color:var(--tx); }
+.plc-stap { display:flex; gap:12px; align-items:flex-start; }
+.plc-nr { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--blv); color:#fff; font-size:13px; font-weight:800; }
+.plc-stap b { display:block; font-size:14px; }
+.plc-stap small { display:block; font-size:12px; line-height:1.45; color:var(--tx2); margin-top:1px; }
+.plc-knop { width:100%; min-height:50px; border-radius:12px; font:800 15px var(--f); cursor:pointer; }
+.plc-knop.pri { border:0; background:var(--blv); color:#fff; box-shadow:0 6px 18px var(--bls); }
+.plc-knop.sec { border:1px solid var(--bd); background:var(--sur); color:var(--tx); font-weight:700; }
+.plc-knop:active { transform:scale(.99); }
+.plc-status { text-align:center; font-size:12px; color:var(--tx3); }
+.plc-resultaat:empty { display:none; }
+
+/* ══ RIT-ANALYSE (19-11-2026): ring per fase, zelfde vormtaal als het trekpaneel ══ */
+.rit-ov { position:fixed; inset:0; z-index:var(--z-modal); background:rgba(4,8,16,.88); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); color:var(--tx); }
+html:not(.dark) .rit-ov { background:rgba(240,244,250,.94); }
+.rit-paneel { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; max-width:640px; margin:0 auto; box-sizing:border-box;
+  padding:calc(16px + var(--pl-sat, 0px)) 16px calc(16px + var(--pl-sab, 0px)); }
+.rit-kop { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-shrink:0; }
+.rit-kop b { display:block; font-size:18px; }
+.rit-kop small { display:block; font-size:12px; color:var(--tx2); margin-top:2px; }
+.rit-kop-knoppen { display:flex; gap:8px; }
+.rit-knop { height:40px; padding:0 14px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font:700 13px var(--f); cursor:pointer; }
+.rit-ring { display:flex; flex-direction:column; align-items:center; gap:10px; flex-shrink:0; }
+.rit-ring-svg { width:min(62vw, 34vh, 240px); height:auto; }
+.rit-seg, .rit-voortgang { fill:none; stroke-linecap:round; }
+.rit-seg { stroke-width:12; stroke:var(--sur2); }
+.rit-seg-bezig { stroke:var(--bls); animation:rit-adem 1.6s ease-in-out infinite; }
+.rit-seg-ok { stroke:var(--gn); opacity:.45; }
+.rit-seg-let { stroke:var(--or); opacity:.6; }
+.rit-voortgang { stroke-width:4; stroke:var(--bl); }
+@keyframes rit-adem { 50% { opacity:.55; } }
+.rit-tijd { font:800 38px var(--f); fill:var(--tx); font-variant-numeric:tabular-nums; }
+.rit-tot { font:600 12px var(--f); fill:var(--tx3); }
+.rit-fasen { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+.rit-fase { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; border:1px solid var(--bd); background:var(--sur); font-size:11.5px; color:var(--tx2); }
+.rit-fase i { font-style:normal; }
+.rit-fase[data-staat="bezig"] { border-color:var(--bl); color:var(--tx); font-weight:700; }
+.rit-fase[data-staat="ok"] { border-color:var(--gn); color:var(--gn); }
+.rit-fase[data-staat="let"] { border-color:var(--or); color:var(--or); }
+.rit-nu { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-radius:14px; border:1px solid var(--bd); background:var(--sur); flex-shrink:0; }
+.rit-nu small, .rit-sectie { font-size:10px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--tx3); }
+.rit-nu b { font-size:15px; }
+.rit-nu span { font-size:12px; color:var(--tx2); }
+.rit-resultaten { flex:1; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:8px; }
+.rit-lijst { display:flex; flex-direction:column; gap:8px; }
+.rit-kaart { padding:10px 12px; border-radius:14px; border:1px solid var(--bd); border-left:4px solid var(--gn); background:var(--sur); }
+.rit-kaart.let { border-left-color:var(--or); }
+.rit-kaart > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:8px; }
+.rit-kaart-kop { font-size:13.5px; }
+.rit-kaart-oordeel { font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; background:var(--gns); color:var(--gn); }
+.rit-kaart.let .rit-kaart-oordeel { background:var(--ors); color:var(--or); }
+.rit-waarde { font-size:12px; padding:3px 8px; border-radius:8px; background:var(--sur2); color:var(--tx2); }
+.rit-waarde.let { background:var(--ors); color:var(--or); font-weight:700; }
+.rit-duiding { font-size:12px; color:var(--tx2); line-height:1.45; }
+.rit-voet { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
+.rit-voet-knoppen { display:flex; gap:8px; }
+.rit-start, .rit-stop { flex:1; height:48px; border-radius:12px; font:800 15px var(--f); cursor:pointer; }
+.rit-start { border:0; background:var(--blv); color:#fff; }
+.rit-stop { border:1px solid var(--rd); background:var(--rds); color:var(--rd); }
+@media (prefers-reduced-motion:reduce) { .rit-seg-bezig { animation:none; } }
+
 /* ══ ONDER DE METER (19-11-2026): trekpaneel en rit-monitor ══════════
    pidlane-vispaneel.js tekent, pidlane-visueel.js vult. Eén kolom onder de
    meter; liggend op het volle scherm rechts ernaast (zie hierboven). */
@@ -3837,7 +3912,7 @@ body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vtp-schakel[data-advies="terug"] .vtp-pijl { background:var(--or); }
 .vtp-schakel[data-advies="terug"] b, .vtp-schakel[data-advies="terug"] small { color:var(--or); }
 .vtp-schakel[data-advies="op"] .vtp-rad { border-color:var(--bl); background:var(--bls); }
-.vtp-schakel[data-advies="op"] .vtp-pijl { background:var(--bl); }
+.vtp-schakel[data-advies="op"] .vtp-pijl { background:var(--blv); }
 .vtp-schakel[data-advies="ok"] .vtp-rad { border-color:var(--gn); }
 .vtp-schakel[data-advies="ok"] .vtp-pijl { background:var(--gn); }
 @keyframes vtp-puls { 50% { box-shadow:0 0 0 7px transparent, 0 0 16px var(--or); } }

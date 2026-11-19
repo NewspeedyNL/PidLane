@@ -52,7 +52,7 @@
   /* Volledig-schermige dashboards die ónder de balk liggen (z-index 9000) en
      hun eigen knoppen onderaan hebben. Daarover hoort de balk niet te staan.
      Alles op 9600 en hoger ligt er vanzelf al boven. */
-  var ONDER_DE_BALK = ['climateDash', 'evDash', 'langeRitDash'];
+  var ONDER_DE_BALK = ['climateDash', 'evDash', 'langeRitDash', 'onderhoudDash'];   // onderhoud sinds 19-11-2026 (PLCheck: alle vier op dezelfde laag)
 
   // ════════════════════════════════════════════════════════════════
   //  PURE FUNCTIES

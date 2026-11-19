@@ -23,7 +23,7 @@ function toets(naam, waar, uitleg) {
 }
 const bron = fs.readFileSync(path.join(__dirname, 'pidlane-neon.js'), 'utf8');
 const KOP = '// Terugkeer naar de app zonder volledige herlaad';
-const STAART = "\nwindow.addEventListener('resize'";
+const STAART = "\n// ── einde terugkeer";
 const van = bron.indexOf(KOP), tot = bron.indexOf(STAART, van);
 if (van < 0 || tot < van) { console.log('  FOUT  de terugkeer-luisteraar is niet gevonden in pidlane-neon.js — het anker is weg'); process.exit(1); }
 

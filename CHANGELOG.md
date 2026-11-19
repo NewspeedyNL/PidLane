@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 19-11-2026 — Oude weergaven: Neon weg, Rit-analyse als ring, checkpagina's in één opmaak
+ ═════════════════════════════════════════════════════
+   • Neon-dashboard weg (had geen ingang meer; Slim visueel toont hetzelfde). Met de terugknop-, datalog- en Escape-takken, de HUD-presets en de CSS. De naamafkorter en het herverbinden bij terugkeer blijven
+   • Rit-analyse: een ring met één segment per fase (wacht · bezig · in orde · afwijking), de klok in het midden, de fasen als chips eronder en de uitkomst per fase als kaart
+   • Airco/Wintercheck, Onderhoud, Klaar voor vertrek, Accu & elektrisch: één opmaak (PLCheck). Icoon in een ring, kaarten, tips met een gekleurde rand, één primaire en één secundaire knop; geen eigen accentkleur per pagina meer. De navigatiebalk wijkt nu ook voor Onderhoud
+   • test-ritring.js (7), test-checkopmaak.js (15), test-nav (+1), vier mutaties
+
+ ═════════════════════════════════════════════════════
  19-11-2026 — Volle scherm staand: trekpaneel altijd in beeld, profielen vullen de hoogte (#748); dossier
  ═════════════════════════════════════════════════════
    • Met trekpaneel gaat het paneel voor: de meter krimpt (volPas, --vis-pas, minstens 55%) tot alles boven de navigatiebalk staat. Gemeten tegen de veilige onderrand: in een flexkolom telt de opvulling onderaan niet mee

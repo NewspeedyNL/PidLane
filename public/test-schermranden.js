@@ -94,23 +94,16 @@ for (const v of VENSTERS) {
           'geen var(--pl-sab…) gevonden — de onderkant kan dan onder de gebarenbalk komen');
 }
 
-console.log('\n2. Twee vensters in index.html (HUD en rittracker)');
+console.log('\n2. Een venster in index.html (rittracker; de HUD is weg sinds 19-11-2026)');
 {
   const html = wortel('public/index.html');
-
-  const iHud = html.indexOf('id="neonDash"');
-  toets('neonDash gevonden', iHud >= 0);
-  if (iHud >= 0) {
-    const stuk = html.slice(iHud, iHud + 1200);
-    toets('HUD-koptekst gebruikt --pl-sat', /var\(--pl-sat/.test(stuk));
-    toets('hudScreen schuift evenveel mee', /top:calc\(44px \+ var\(--pl-sat/.test(stuk),
-          'de inhoud onder de koptekst moet met dezelfde marge verschuiven, anders overlapt hij de koptekst');
-  }
 
   const iRit = html.indexOf('id="ritDash"');
   toets('ritDash gevonden', iRit >= 0);
   if (iRit >= 0) {
-    const stuk = html.slice(iRit, iRit + 500);
+    // Sinds 19-11-2026 staat de opmaak in pidlane.css (.rit-paneel), niet inline.
+    const css = wortel('public/pidlane.css'), i = css.indexOf('.rit-paneel {');
+    const stuk = i >= 0 ? css.slice(i, i + 400) : html.slice(iRit, iRit + 500);
     toets('ritDash gebruikt --pl-sat en --pl-sab', /var\(--pl-sat/.test(stuk) && /var\(--pl-sab/.test(stuk));
   }
 

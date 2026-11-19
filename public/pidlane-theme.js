@@ -206,7 +206,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // hiernaast de tik al netjes afgehandeld. Twee reparaties in archief.js
   // konden dat niet zien, want de oorzaak stond in dit bestand.
   // De hele ketting (inclusief de overlays die alleen hier stonden:
-  // needsUpdateModal, .pick-overlay, neonDash, climateDash, kebabMenu,
+  // needsUpdateModal, .pick-overlay, climateDash, kebabMenu,
   // connOv) is verhuisd naar appBack() in pidlane-archief.js.
   // Zet hier nooit een tweede luisteraar terug — test-terugknop.js valt.
 
@@ -297,7 +297,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }catch(e){ /* stil: opslag kan leeg of corrupt zijn */ }
 
   window.addEventListener('resize',()=>{ if(trendPIDs.length) drawGraph(); });
-  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeNeonDashboard?.(); closeRitAnalyse?.(); }});
+  document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeRitAnalyse?.(); }});
 
   // Focus op login veld — tenzij er een onthouden sessie is
   // (Android herlaadt de WebView bij terugkeer uit achtergrond; zonder dit

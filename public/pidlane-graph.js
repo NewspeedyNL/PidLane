@@ -15,19 +15,6 @@ const TREND_GROUPS={
   temp:{ name:'Temperatuur', icon:'🌡️', pids:['0105','015C','010F','0146'], colors:['#e53e3e','#f77f00','#1a6fff','#00a86b'] },
 };
 
-// HUD presets — gedeelde bron met de trendgroepen hierboven.
-// center = grote centrale wijzerplaat, corners = de 4 hoekmeters.
-// Zo gebruiken de meters exact dezelfde PID-verzamelingen als de trends.
-const HUD_PRESETS={
-  rijden:   { name:'Rijden',     center:'010D', corners:['0142','010C','0105','0111'] }, // snelheid + accu/toeren/temp/gasklep
-  vermogen: { name:'Vermogen',   center:'010C', corners:TREND_GROUPS.power.pids.slice(0,4) },
-  brandstof:{ name:'Brandstof',  center:'010C', corners:TREND_GROUPS.fuel.pids.slice(0,4) },
-  accu:     { name:'Accu',       center:'0142', corners:TREND_GROUPS.accu.pids.slice(0,4) },
-  temp:     { name:'Temperatuur',center:'0105', corners:TREND_GROUPS.temp.pids.slice(0,4) },
-};
-let hudPreset='rijden';
-let hudCorners=[...HUD_PRESETS.rijden.corners]; // door gebruiker per hoek aanpasbaar
-let hudCenter=HUD_PRESETS.rijden.center;
 
 /* ── GRAFIEK: één baan per sensor (herbouwd 26-09-2026) ─────────────────
    WAT ER WAS. Tot vier knoppenrijen, een losse keuzelijst, een chiprij en

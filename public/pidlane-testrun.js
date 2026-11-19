@@ -680,7 +680,6 @@ const SCHERMEN = [
   ['PID-recorder', 'openPidRecorder', 'closePidRecorder'],
   ['Rapporten', 'openReportsOverview', 'closeReportsOverview'],
   ['Rijsituatie', 'openSituatie', 'closeSituatie'],
-  ['Neon-dashboard', 'openNeonDashboard', 'closeNeonDashboard'],
   ['AI-rapport', 'openAIReportSheet', 'closeAIReportSheet'],
   ['Bulk-recorder', 'openBulkRecorder', null]
 ];

@@ -1182,44 +1182,23 @@ function showBandenInfo(){
 function openOnderhoud(){
   let ov=document.getElementById('onderhoudDash');
   if(!ov){ ov=document.createElement('div'); ov.id='onderhoudDash'; document.body.appendChild(ov); }
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1410,#0d1a22);z-index:9600;overflow-y:auto;font-family:var(--f)';
-  const v=getVehicle();
-  ov.innerHTML=`
-  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#34d399;text-transform:uppercase">Onderhoud Plannen</div>
-      <button onclick="closeExtraDash('onderhoudDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
-    </div>
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:40px">🛠️</div>
-      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Is onderhoud écht nodig?</div>
-      <div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-top:6px">${v.merk?`${v.merk} ${v.model||''} ${v.year||''}`:'Verbind eerst de adapter'} — PidLane combineert het voorgeschreven schema met de actuele sensordata en zoekt naar gebreken.</div>
-    </div>
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;margin-bottom:12px">
-      <label style="font-size:12px;color:#cbd5e1;display:block;margin-bottom:5px">Km sinds laatste grote beurt (optioneel)</label>
-      <input id="ondLaatste" type="number" placeholder="bijv. 12000" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-family:var(--f);font-size:14px;box-sizing:border-box;margin-bottom:10px">
-      <label style="font-size:12px;color:#cbd5e1;display:block;margin-bottom:5px">Optioneel: rit voor betere meting</label>
-      <div style="display:flex;gap:6px">
-        <button class="ondRitOpt" data-r="geen" onclick="setOndRit('geen')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid #34d399;background:rgba(52,211,153,.12);color:#34d399;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">Geen rit</button>
-        <button class="ondRitOpt" data-r="2min" onclick="setOndRit('2min')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#cbd5e1;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">⚡ 2 min</button>
-        <button class="ondRitOpt" data-r="10min" onclick="setOndRit('10min')" style="flex:1;padding:8px;border-radius:7px;border:1.5px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#cbd5e1;font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">🚗 10 min</button>
-      </div>
-    </div>
-    <div style="background:rgba(52,211,153,.06);border:1px solid #34d39944;border-radius:10px;padding:10px;margin-bottom:14px;font-size:12px;color:#cbd5e1;line-height:1.5">💡 Houd het serviceboekje altijd compleet — dat behoudt de waarde. PidLane kijkt of werk nu nodig is of veilig kan wachten.</div>
-    <button onclick="runOnderhoud()" style="width:100%;padding:14px;border-radius:11px;border:none;background:#34d399;color:#04130d;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">▶ Analyseer onderhoud</button>
-    <div id="ondResult" style="margin-top:14px"></div>
-  </div>`;
+  PLCheck.ov(ov);
+  const v=getVehicle(), C=PLCheck;
+  ov.innerHTML=C.pagina(
+    C.kop({ icoon:'🛠️', titel:'Is onderhoud écht nodig?', sluit:"closeExtraDash('onderhoudDash')",
+            tekst:C.esc(v.merk?`${v.merk} ${v.model||''} ${v.year||''}`:'Verbind eerst de adapter')+' — PidLane combineert het voorgeschreven schema met de actuele sensordata en zoekt naar gebreken.' })+
+    C.kaart(
+      C.veld('Km sinds laatste grote beurt (optioneel)', '<input id="ondLaatste" type="number" inputmode="numeric" placeholder="bijv. 12000">')+
+      C.veld('Optioneel: rit voor betere meting', C.keus('ondRit', [['geen','Geen rit'],['2min','⚡ 2 min'],['10min','🚗 10 min']], 'geen', "setOndRit('$')")))+
+    C.tip('Houd het serviceboekje altijd compleet — dat behoudt de waarde. PidLane kijkt of werk nu nodig is of veilig kan wachten.')+
+    C.knop('▶ Analyseer onderhoud', 'runOnderhoud()')+
+    '<div id="ondResult" class="plc-resultaat"></div>');
   ov.style.display='block';
   window._ondRit='geen';
 }
 function setOndRit(r){
   window._ondRit=r;
-  document.querySelectorAll('.ondRitOpt').forEach(b=>{
-    const on=b.dataset.r===r;
-    b.style.borderColor=on?'#34d399':'rgba(255,255,255,.15)';
-    b.style.background=on?'rgba(52,211,153,.12)':'rgba(255,255,255,.05)';
-    b.style.color=on?'#34d399':'#cbd5e1';
-  });
+  PLCheck.zetKeus('ondRit', r);
 }
 async function runOnderhoud(){
   const res=document.getElementById('ondResult');
@@ -1278,27 +1257,18 @@ ADVIES: [1-2 zinnen; benadruk serviceboekje compleet houden]`;
 function openEVCheck(){
   let ov=document.getElementById('evDash');
   if(!ov){ ov=document.createElement('div'); ov.id='evDash'; document.body.appendChild(ov); }
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a0f1a,#10182a);z-index:9000;overflow-y:auto;font-family:var(--f)';
-  const v=getVehicle();
+  PLCheck.ov(ov);
+  const v=getVehicle(), C=PLCheck;
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'';
   const isEV = ft==='elektrisch'||ft==='hybride';
-  ov.innerHTML=`
-  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#a78bfa;text-transform:uppercase">EV / Hybride Check</div>
-      <button onclick="closeExtraDash('evDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
-    </div>
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:40px">🔋</div>
-      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Accu & elektrisch systeem</div>
-      <div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-top:6px">${v.merk?`${v.merk} ${v.model||''}`:'Verbind eerst de adapter'} — verkorte analyse stilstaand, daarna een korte rit van 2 minuten met focus op accu en aandrijving.</div>
-    </div>
-    ${!isEV?`<div style="background:rgba(245,158,11,.1);border:1px solid #f59e0b55;border-radius:10px;padding:11px;margin-bottom:12px;font-size:12px;color:#fcd34d;line-height:1.5">⚠️ Deze auto lijkt geen EV/hybride. Veel accu-PID's zijn fabrieksspecifiek en mogelijk niet via standaard OBD2 beschikbaar — de analyse gebruikt wat de auto levert.</div>`:''}
-    <div style="background:rgba(167,139,250,.06);border:1px solid #a78bfa44;border-radius:10px;padding:11px;margin-bottom:14px;font-size:12px;color:#cbd5e1;line-height:1.5">De check kijkt naar accuspanning/HV-systeem, laadgedrag, regeneratie en temperatuur waar beschikbaar. Standaard OBD2 toont beperkte EV-data; merk-specifieke PID's kunnen ontbreken.</div>
-    <button onclick="runEVCheck()" style="width:100%;padding:13px;border-radius:11px;border:none;background:#a78bfa;color:#10081f;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer;margin-bottom:9px">⚡ Stilstaande analyse</button>
-    <button onclick="runEVCheckRit()" style="width:100%;padding:12px;border-radius:11px;border:1px solid #a78bfa55;background:rgba(167,139,250,.12);color:#a78bfa;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">🚗 + 2 min rit erbij</button>
-    <div id="evResult" style="margin-top:14px"></div>
-  </div>`;
+  ov.innerHTML=C.pagina(
+    C.kop({ icoon:'🔋', titel:'Accu & elektrisch systeem', sluit:"closeExtraDash('evDash')",
+            tekst:C.esc(v.merk?`${v.merk} ${v.model||''}`:'Verbind eerst de adapter')+' — verkorte analyse stilstaand, daarna een korte rit van 2 minuten met focus op accu en aandrijving.' })+
+    (!isEV ? C.tip("Deze auto lijkt geen EV/hybride. Veel accu-PID's zijn fabrieksspecifiek en mogelijk niet via standaard OBD2 beschikbaar — de analyse gebruikt wat de auto levert.", 'let') : '')+
+    C.tip("De check kijkt naar accuspanning/HV-systeem, laadgedrag, regeneratie en temperatuur waar beschikbaar. Standaard OBD2 toont beperkte EV-data; merk-specifieke PID's kunnen ontbreken.")+
+    C.knop('⚡ Stilstaande analyse', 'runEVCheck()')+
+    C.knop('🚗 + 2 min rit erbij', 'runEVCheckRit()', 'sec')+
+    '<div id="evResult" class="plc-resultaat"></div>');
   ov.style.display='block';
 }
 function runEVCheckRit(){
@@ -1349,35 +1319,17 @@ ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
 function openLangeRit(){
   let ov=document.getElementById('langeRitDash');
   if(!ov){ ov=document.createElement('div'); ov.id='langeRitDash'; document.body.appendChild(ov); }
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#0a1018,#101a26);z-index:9000;overflow-y:auto;font-family:var(--f)';
-  const v=getVehicle();
-  ov.innerHTML=`
-  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#38bdf8;text-transform:uppercase">Lange Rit Voorbereiden</div>
-      <button onclick="closeExtraDash('langeRitDash')" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">✕</button>
-    </div>
-    <div style="text-align:center;margin-bottom:16px">
-      <div style="font-size:40px">🧳</div>
-      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-top:4px">Klaar voor vertrek?</div>
-      <div style="font-size:13px;color:#94a3b8;line-height:1.5;margin-top:6px">Technische go/no-go op basis van de sensoren, plus een meeneem-checklist voor veiligheid en buitenland.</div>
-    </div>
-    <div style="background:rgba(56,189,248,.06);border:1px solid #38bdf844;border-radius:10px;padding:11px;margin-bottom:12px">
-      <label style="font-size:12px;color:#cbd5e1;display:block;margin-bottom:6px">Bestemming (voor landspecifieke eisen)</label>
-      <select id="langeRitLand" class="api-inp" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-size:14px;box-sizing:border-box">
-        <option value="nl">Nederland / binnenland</option>
-        <option value="fr">Frankrijk</option>
-        <option value="de">Duitsland</option>
-        <option value="at">Oostenrijk</option>
-        <option value="ch">Zwitserland</option>
-        <option value="be">België</option>
-        <option value="other">Ander EU-land</option>
-      </select>
-    </div>
-    <button onclick="runLangeRitTech()" style="width:100%;padding:13px;border-radius:11px;border:none;background:#38bdf8;color:#04121c;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer;margin-bottom:9px">🔧 Technische check</button>
-    <button onclick="renderLangeRitChecklist()" style="width:100%;padding:12px;border-radius:11px;border:1px solid #38bdf855;background:rgba(56,189,248,.12);color:#38bdf8;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer">📋 Toon meeneem-checklist</button>
-    <div id="langeRitResult" style="margin-top:14px"></div>
-  </div>`;
+  PLCheck.ov(ov);
+  const v=getVehicle(), C=PLCheck;
+  ov.innerHTML=C.pagina(
+    C.kop({ icoon:'🧳', titel:'Klaar voor vertrek?', sluit:"closeExtraDash('langeRitDash')",
+            tekst:'Technische go/no-go op basis van de sensoren, plus een meeneem-checklist voor veiligheid en buitenland.' })+
+    C.kaart(C.veld('Bestemming (voor landspecifieke eisen)',
+      '<select id="langeRitLand"><option value="nl">Nederland / binnenland</option><option value="fr">Frankrijk</option><option value="de">Duitsland</option>'+
+      '<option value="at">Oostenrijk</option><option value="ch">Zwitserland</option><option value="be">België</option><option value="other">Ander EU-land</option></select>'))+
+    C.knop('🔧 Technische check', 'runLangeRitTech()')+
+    C.knop('📋 Toon meeneem-checklist', 'renderLangeRitChecklist()', 'sec')+
+    '<div id="langeRitResult" class="plc-resultaat"></div>');
   ov.style.display='block';
 }
 async function runLangeRitTech(){
@@ -1496,7 +1448,7 @@ function openClimateCheck(mode='airco'){
   document.getElementById('welcomeScreen')?.classList.add('hidden');
   let ov=document.getElementById('climateDash');
   if(!ov){ ov=document.createElement('div'); ov.id='climateDash'; document.body.appendChild(ov); }
-  ov.style.cssText='position:fixed;inset:0;background:linear-gradient(160deg,#04101a,#0a1622);z-index:9000;overflow-y:auto;font-family:var(--f)';
+  PLCheck.ov(ov);
   ov.innerHTML=climateIntroHTML(mode);
   ov.style.display='block';
 }
@@ -1507,7 +1459,6 @@ function closeClimateCheck(){
 
 function climateIntroHTML(mode){
   const airco = mode==='airco';
-  const accent = airco?'#22d3ee':'#60a5fa';
   const icon = airco?'❄️':'🔥';
   const titel = airco?'Airco Check':'Wintercheck';
   const sub = airco
@@ -1524,32 +1475,13 @@ function climateIntroHTML(mode){
     ['3','Opwarmen volgen','We volgen koelvloeistof en olie tot bedrijfstemperatuur (~90\u00b0C).'],
     ['4','Oordeel','Thermostaat, opwarmtijd, oliecirculatie en accuconditie.'],
   ];
-  return `
-  <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;padding:4px">\u2039</button>
-      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:${accent};text-transform:uppercase">PidLane</div>
-      <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:4px">\u2715</button>
-    </div>
-    <div style="text-align:center;margin-bottom:18px">
-      <div style="font-size:46px;margin-bottom:6px">${icon}</div>
-      <div style="font-size:20px;font-weight:800;color:#f1f5f9">${titel}</div>
-      <div style="font-size:13px;color:#94a3b8;line-height:1.55;margin-top:6px">${sub}</div>
-    </div>
-    <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px;margin-bottom:14px">
-      ${stappen.map(s=>`
-        <div style="display:flex;gap:11px;align-items:flex-start;margin-bottom:11px">
-          <div style="flex-shrink:0;width:24px;height:24px;border-radius:50%;background:${accent};color:#04101a;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center">${s[0]}</div>
-          <div><div style="font-size:14px;font-weight:700;color:#e2e8f0">${s[1]}</div><div style="font-size:12px;color:#94a3b8;line-height:1.45;margin-top:1px">${s[2]}</div></div>
-        </div>`).join('')}
-    </div>
-    <div style="background:rgba(34,211,238,.06);border:1px solid ${accent}44;border-radius:12px;padding:11px;margin-bottom:16px;display:flex;gap:9px;align-items:flex-start">
-      <span style="font-size:15px">\u{1F4E1}</span>
-      <div style="font-size:12px;color:#cbd5e1;line-height:1.5">De meting gebruikt vooral de <b style="color:${accent}">auto-sensoren</b>. Een thermometer kun je optioneel toevoegen voor een extra controle \u2014 dat resultaat is minder betrouwbaar.</div>
-    </div>
-    <button onclick="climateStart()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">\u25b6 Start ${titel}</button>
-    <div style="text-align:center;font-size:12px;color:#96a2bb;margin-top:10px">${(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode)?'\u2705 Adapter verbonden':'\u26a0\ufe0f Geen adapter \u2014 verbind eerst de OBD2 adapter'}</div>
-  </div>`;
+  const C=PLCheck, verbonden=(typeof connected!=='undefined'&&connected)||(typeof demoMode!=='undefined'&&demoMode);
+  return C.pagina(
+    C.kop({ icoon:icon, titel:titel, tekst:C.esc(sub), sluit:'closeClimateCheck()' })+
+    C.stappen(stappen.map(function(x){ return [x[1], x[2]]; }))+
+    C.tip('De meting gebruikt vooral de <b>auto-sensoren</b>. Een thermometer kun je optioneel toevoegen voor een extra controle — dat resultaat is minder betrouwbaar.')+
+    C.knop('▶ Start '+titel, 'climateStart()')+
+    '<div class="plc-status">'+(verbonden?'✅ Adapter verbonden':'⚠️ Geen adapter — verbind eerst de OBD2 adapter')+'</div>');
 }
 
 async function climateStart(){

@@ -297,7 +297,7 @@ var KRITIEK = [
   'openClimateCheck','closeClimateCheck',
   'openDeepDiag','closeDeepDiag','openPidRecorder','closePidRecorder',
   'openReportsOverview','closeReportsOverview','openSituatie','closeSituatie',
-  'openNeonDashboard','closeNeonDashboard','closeExtraDash',
+  'closeExtraDash',
   'openAIReportSheet','closeAIReportSheet',
   'openBulkRecorder',
   // Slim visueel: een chip op de rail opent het scherm van zijn module, en
