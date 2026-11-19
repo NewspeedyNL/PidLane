@@ -3020,6 +3020,8 @@ MUTATIES=(
 "public/pidlane-visueel.js@@    if(z!==nu) v.style.setProperty('--vis-pas', String(z));@@    if(false) v.style.setProperty('--vis-pas', String(z));@@bproef-volscherm.js@@op het volle scherm loopt het trekpaneel weer onder de navigatiebalk door"
 "public/pidlane-rit.js@@              staat:status[i] ? status[i] : (actief && i===idx ? 'bezig' : 'wacht') };@@              staat:status[i] ? status[i] : (i<=idx ? 'ok' : 'wacht') };@@test-ritring.js@@de rit-analyse toont een fase als in orde voordat ze geanalyseerd is"
 "public/pidlane-rit.js@@  const t=Math.max(0, Math.min(tot, sec||0));@@  const t=Math.max(0, sec||0);@@test-ritring.js@@de klok van de rit-analyse loopt na afloop door voorbij het totaal"
+"public/pidlane-checkopmaak.js@@  el.className='plc-ov';@@  el.className='pl-check';@@test-checkopmaak.js@@de checkpagina's krijgen de klasse van de knop Check mijn auto en worden een knop"
+"public/pidlane-nav.js@@'langeRitDash', 'onderhoudDash'];@@'langeRitDash'];@@test-nav.js@@de navigatiebalk staat over de onderhoudspagina heen"
 "public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }@@@@bproef-volscherm.js@@bij Hyperlane ligt het trekpaneel over het middengetal heen"
 "public/pidlane-visueel.js@@function trekRijTonen(rol, pid){ return !!pid || rol==='koel'; }@@function trekRijTonen(rol, pid){ return true; }@@test-visueel.js@@een sensor die de auto niet heeft staat als lege rij met een streep in het trekpaneel"
 "public/pidlane.css@@.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@.vis-leds { display:none; }\n.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@bproef-visueel.js@@de schakellampjes staan in de tekening maar zijn nooit te zien"

@@ -83,8 +83,19 @@ eis('een dashboard onder de balk open → geen balk', K.balkZichtbaar({ ingelogd
 
 console.log('\n5. De dashboards waarvoor de balk wijkt bestaan echt');
 const bronnen = ['pidlane-koopcheck.js'].map(function (f) { return fs.readFileSync(__dirname + '/' + f, 'utf8'); }).join('\n');
+// Sinds 19-11-2026 krijgen de checkpagina's hun laag van de gedeelde klasse
+// .plc-ov (PLCheck.ov, pidlane-checkopmaak.js): die z-index uitrekenen.
+const CSS = fs.readFileSync(__dirname + '/pidlane.css', 'utf8');
+const zModal = Number((CSS.match(/--z-modal:\s*(\d+)/) || [])[1]);
+const zCheck = (function () {
+  const r = (CSS.match(/\.plc-ov \{[^}]*z-index:([^;]+);/) || [])[1] || '';
+  const c = r.match(/calc\(var\(--z-modal\)\s*-\s*(\d+)\)/);
+  return c ? zModal - Number(c[1]) : Number(r);
+})();
 K.ONDER_DE_BALK.forEach(function (id) {
-  const m = bronnen.match(new RegExp("ov\\.id='" + id + "'[\\s\\S]{0,200}?z-index:(\\d+)"));
+  let m = bronnen.match(new RegExp("ov\\.id='" + id + "'[\\s\\S]{0,200}?z-index:(\\d+)"));
+  if (!(zCheck > 0)) { eis(id + ': de laag van .plc-ov is te lezen', false, 'z-index niet gevonden in pidlane.css'); return; }
+  if (!m && new RegExp("ov\\.id='" + id + "'[\\s\\S]{0,200}?PLCheck\\.ov\\(ov\\)").test(bronnen)) m = [null, String(zCheck)];
   eis(id + ' bestaat en ligt onder de balk (9550)', !!m && Number(m[1]) < 9550, m ? 'z-index ' + m[1] : 'niet gevonden');
 });
 
