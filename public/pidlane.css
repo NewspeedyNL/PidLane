@@ -3812,11 +3812,11 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .plc-tip { display:flex; gap:10px; align-items:flex-start; padding:11px 12px; border-radius:12px; border:1px solid var(--bd); border-left:4px solid var(--bl); background:var(--sur); font-size:12.5px; line-height:1.5; color:var(--tx2); }
 .plc-tip[data-soort="let"] { border-left-color:var(--or); background:var(--ors); color:var(--tx); }
 .plc-stap { display:flex; gap:12px; align-items:flex-start; }
-.plc-nr { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--bl); color:#fff; font-size:13px; font-weight:800; }
+.plc-nr { flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--blv); color:#fff; font-size:13px; font-weight:800; }
 .plc-stap b { display:block; font-size:14px; }
 .plc-stap small { display:block; font-size:12px; line-height:1.45; color:var(--tx2); margin-top:1px; }
 .plc-knop { width:100%; min-height:50px; border-radius:12px; font:800 15px var(--f); cursor:pointer; }
-.plc-knop.pri { border:0; background:var(--bl); color:#fff; box-shadow:0 6px 18px var(--bls); }
+.plc-knop.pri { border:0; background:var(--blv); color:#fff; box-shadow:0 6px 18px var(--bls); }
 .plc-knop.sec { border:1px solid var(--bd); background:var(--sur); color:var(--tx); font-weight:700; }
 .plc-knop:active { transform:scale(.99); }
 .plc-status { text-align:center; font-size:12px; color:var(--tx3); }
@@ -3867,7 +3867,7 @@ html:not(.dark) .rit-ov { background:rgba(240,244,250,.94); }
 .rit-voet { display:flex; flex-direction:column; gap:8px; flex-shrink:0; }
 .rit-voet-knoppen { display:flex; gap:8px; }
 .rit-start, .rit-stop { flex:1; height:48px; border-radius:12px; font:800 15px var(--f); cursor:pointer; }
-.rit-start { border:0; background:var(--bl); color:#fff; }
+.rit-start { border:0; background:var(--blv); color:#fff; }
 .rit-stop { border:1px solid var(--rd); background:var(--rds); color:var(--rd); }
 @media (prefers-reduced-motion:reduce) { .rit-seg-bezig { animation:none; } }
 
@@ -3912,7 +3912,7 @@ body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vtp-schakel[data-advies="terug"] .vtp-pijl { background:var(--or); }
 .vtp-schakel[data-advies="terug"] b, .vtp-schakel[data-advies="terug"] small { color:var(--or); }
 .vtp-schakel[data-advies="op"] .vtp-rad { border-color:var(--bl); background:var(--bls); }
-.vtp-schakel[data-advies="op"] .vtp-pijl { background:var(--bl); }
+.vtp-schakel[data-advies="op"] .vtp-pijl { background:var(--blv); }
 .vtp-schakel[data-advies="ok"] .vtp-rad { border-color:var(--gn); }
 .vtp-schakel[data-advies="ok"] .vtp-pijl { background:var(--gn); }
 @keyframes vtp-puls { 50% { box-shadow:0 0 0 7px transparent, 0 0 16px var(--or); } }
