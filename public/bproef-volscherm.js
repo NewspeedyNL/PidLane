@@ -44,12 +44,12 @@ const SAB = 48;
       localStorage.setItem('pl_vis_profiel','basis'); setPidView('slim'); setPidView('visueel'); PLVisThema.aan(); true`);
     // volPas() loopt met de tik van één seconde mee
     let m = null;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 15; i++) {
       await W(1000);
       m = await app.ev(`(function(){ const o=document.querySelector('.vis'), r=document.querySelector('.vtp-rit'), l=document.querySelector('.vtp-limiet');
         return { over:o.scrollHeight-o.clientHeight, pas:o.style.getPropertyValue('--vis-pas'), rit:r?Math.round(r.getBoundingClientRect().bottom):null,
                  lim:l?Math.round(l.getBoundingClientRect().bottom):null, h:innerHeight }; })()`);
-      if (m.over <= 1) break;
+      if (m.over <= 1 && m.rit !== null && m.rit <= m.h - SAB) break;   // niet alleen 'niets te scrollen': dat zegt de onderrand niet
     }
     console.log('\n1. Basis + trekpaneel, staand op een kort scherm');
     toets('alles in beeld: niets onder de onderrand', m.over <= 1, JSON.stringify(m));
