@@ -324,11 +324,15 @@ function beoordeel(m) {
                   chipWeg: (function(){ const c=document.querySelector('.vis-chip[data-id="monitor"]'); return !c || getComputedStyle(c).display==='none'; })(),
                   tekst: v ? v.textContent : '' };
       // Tik op de ring: het venster met de waarschuwingen (19-11-2026, vervangt pane-monitor)
-      if (v) v.click();
+      // Vers opzoeken: de ring wordt elke seconde opnieuw getekend als zijn tekst verandert,
+      // en een tik op een losgekoppeld element doet niets (zo ging het op een volle runner).
+      const ringNu = document.querySelector('#visRitMon .vrm'); if (ringNu) ringNu.click();
       const mv = document.getElementById('monVenster');
+      await new Promise(function(r){ setTimeout(r, 450); });   // het venster schuift 0,25 s omhoog
       const vr = mv ? mv.querySelector('.mv-sheet').getBoundingClientRect() : null;
-      r.venster = !!mv && mv.classList.contains('open') && !!mv.querySelector('#monRing .vrm') && !!mv.querySelector('#monWarnLijst')
-                  && !!vr && vr.width > 200 && vr.bottom <= innerHeight + 1 && mv.parentElement === document.body;
+      r.v = { open: !!mv && mv.classList.contains('open'), ring: !!(mv && mv.querySelector('#monRing .vrm')), lijst: !!(mv && mv.querySelector('#monWarnLijst')),
+              b: vr ? Math.round(vr.width) : 0, onder: vr ? Math.round(vr.bottom) : 0, h: innerHeight, body: !!mv && mv.parentElement === document.body };
+      r.venster = r.v.open && r.v.ring && r.v.lijst && r.v.b > 200 && r.v.onder <= r.v.h + 1 && r.v.body;
       r.oudScherm = !!document.getElementById('pane-monitor');
       const x = mv && mv.querySelector('.mv-x'); if (x) x.click();
       r.dicht = !!mv && !mv.classList.contains('open');

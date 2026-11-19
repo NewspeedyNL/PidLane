@@ -113,7 +113,8 @@ function caravanWacht(){
 }
 (function(){
   const tik=function(){ try{ caravanWacht(); }catch(e){ console.warn('caravan: wachter', e); } };
-  if(typeof window!=='undefined' && window.PLRust) PLRust.elke(2000, tik, 'caravanwachter'); else setInterval(tik, 2000);
+  // Een meettimer: met Maps ervoor (app uit beeld) loopt hij door zolang er een verbinding is.
+  if(typeof window!=='undefined' && window.PLRust) PLRust.meet(2000, tik, 'caravanwachter'); else setInterval(tik, 2000);
 })();
 
 /* De oude ingang (wizard, startkaart): naar Slim visueel, met de rijsituatie

@@ -66,7 +66,7 @@ function toets(naam, waar, uitleg) {
     const meetN = (b.taken || []).filter(t => t.meet).map(t => t.naam);
     const VERWACHT = ['ai-ping', 'batterij', 'bulkdashboard', 'grafiek', 'help', 'herinneringen', 'monitorchip', 'monitorknop', 'onderbalk', 'run-stip', 'scherm-aan', 'startscherm', 'topbar', 'versie', 'weer', 'weer-opstart', 'winterkaart', 'zonder-adapter'];
     toets('de schermtimers hangen eraan', scherm === VERWACHT.join(','), scherm);
-    toets('de meettimers ook (versnelling, telemetrie, berekend, garage, accu)', ['versnelling', 'telemetrie', 'berekend', 'garage', 'accu'].every(x => meetN.indexOf(x) >= 0), meetN.join(','));
+    toets('de meettimers ook (versnelling, telemetrie, berekend, garage, accu, caravanwachter)', ['versnelling', 'telemetrie', 'berekend', 'garage', 'accu', 'caravanwachter'].every(x => meetN.indexOf(x) >= 0), meetN.join(','));
     toets('en ze lopen', (b.taken || []).every(t => t.loopt), JSON.stringify(b.taken));
 
     // De chip tellen: _monChipTick is een globale functie, de timer roept hem bij naam
