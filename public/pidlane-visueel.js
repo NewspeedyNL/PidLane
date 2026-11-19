@@ -1909,7 +1909,10 @@ function trekInvoer(ind, nu){
   const vers=function(p){ return (p && v[p]!==undefined && v[p]!==null && !isOud(p, nu) && isFinite(Number(v[p]))) ? Number(v[p]) : null; };
   const rij=function(rol){ return ind.trek.filter(function(t){ return t.rol===rol; })[0] || null; };
   const lastRij=rij('last'), speed=vers('010D'), rpm=vers('010C'), load=lastRij ? vers(lastRij.pid) : null;
-  const throttle=vers('0111'), pedaal=vers('015A')!==null ? vers('015A') : vers('0149');
+  // Het pedaal vanaf zijn rust, of de gasklep op een benzinemotor (#743): dezelfde regel als de coach.
+  const ftG=lees(function(){ return typeof vehicleFuelType==='function' ? vehicleFuelType() : null; }, 'brandstof');
+  const gas=(typeof caravanPedaal==='function') ? lees(function(){ return caravanPedaal(vers, ftG==='diesel'); }, 'pedaal') : vers('0111');
+  const throttle=gas, pedaal=gas;
   const trend=snelheidTrend(H['010D'], nu);
   const helling=lees(function(){ return (window.PLTelemetrie && PLTelemetrie.hellingVast) ? PLTelemetrie.hellingVast() : null; }, 'helling');
   const terrein=(speed!==null && typeof caravanTerrein==='function') ? lees(function(){ return caravanTerrein(load, speed, throttle, trend, helling); }, 'terrein') : null;

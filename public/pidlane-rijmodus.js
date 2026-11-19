@@ -315,8 +315,9 @@
 
     var niveau = null, richt = null;
     try {
-      if (typeof caravanVerbruikNiveau === 'function') niveau = caravanVerbruikNiveau(c.lkm, c.fuelType);
-      if (typeof caravanRichtverbruik === 'function') richt = caravanRichtverbruik(c.fuelType);
+      if (typeof caravanVerbruikNiveau === 'function') niveau = caravanVerbruikNiveau(c.lkm, c.fuelType, c.richt);
+      // Het richtverbruik van deze rit (#743: uit je eigen ritten), anders de vaste waarde.
+      richt = (typeof c.richt === 'number' && c.richt > 0) ? c.richt : (typeof caravanRichtverbruik === 'function' ? caravanRichtverbruik(c.fuelType) : null);
     } catch (e) { console.warn('Rijmodus: verbruiksoordeel niet gelezen', e); }
     var max = richt ? richt * 2 : 30;
     _attr('rijVerbruik', 'data-k', niveau || 'leeg');

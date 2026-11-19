@@ -41,6 +41,8 @@ let caravanClimbSecs    = { klim:0, afdaling:0, vlak:0 };
 let caravanTerreinBron  = { helling:0, obd:0 };   // seconden per bron van het terreinoordeel
 let caravanPeak         = { lkm:0, coolant:0, load:0, power:0 };
 let caravanVermogenBron = 'belasting';
+let caravanRicht        = { l100:14, bron:'vast' };   // richtverbruik met caravan, bij de start bepaald (#743)
+let caravanAtfPid       = null;   // eigen bakoliesensor, als de auto hem heeft
 
 const CARAVAN_PIDS_BASE = ['010D','010C','0104','0105','0111','0142','015E','0110'];
 const CARAVAN_HIST_CAP  = 400;    // ~6.5 min bij 1s
@@ -146,7 +148,10 @@ async function startCaravan(o){
   const heeftKoppel = (typeof supportedPIDs!=='undefined' && supportedPIDs.has && supportedPIDs.has('0162') && supportedPIDs.has('0163'));
   if(heeftKoppel){ pids.push('0162','0163'); caravanVermogenBron='koppel'; }
   else caravanVermogenBron='belasting';
+  caravanAtfPid=_carAtfPid();
+  if(caravanAtfPid) pids.push(caravanAtfPid);
   await ensurePIDListActive(pids);
+  caravanRicht=_carRicht(vehicleFuelType());
 
   // reset meters
   caravanActive=true;
@@ -285,72 +290,136 @@ function _carAlert(key,msg,level,cooldownMs){
   else showToast(msg,4500);
 }
 
+/* De coachregels (#743, 19-11-2026). Wat er tot deze datum anders was:
+   - "gas" was de gasklep (0111). Op een diesel staat die vrijwel altijd open,
+     dus afdaling en "rustiger op het gas" deden daar niets. Nu het pedaal
+     vanaf zijn geleerde rust (caravanPedaal), de gasklep alleen als terugval
+     op een benzinemotor.
+   - koelwater waarschuwde boven vast 100 °C. Veel motoren lopen normaal
+     105 °C; het oordeel komt nu uit PLKenmerk.koelLive (dezelfde grens als de
+     rit-monitor), plus een snelle stijging vanaf 95 °C.
+   - het richtverbruik was vast 11/14 l/100; nu uit je eigen ritten zonder
+     caravan, keer CARAVAN_FACTOR (caravanRichtBepaal).
+   - de teksten waren 25–40 woorden in een toast van 4,5 s. Nu hooguit acht
+     woorden; de uitleg staat in het rapport (tipLabels).
+   - bakolie (eigen sensor, als de auto hem heeft) telt mee. */
+const CARAVAN_KOEL = { stijgVanaf:95, stijgGraden:3 };   // °C, en °C per minuut
+const CARAVAN_ATF  = { letop:110, heet:120 };            // °C bakolie
 function caravanCheckRules(ctx){
-  const { speed,rpm,load,coolant,throttle,volt,lkm,climb,fuelType,cruiseTarget,limit } = ctx;
-  const baseL  = fuelType==='diesel'?11:14;       // richt-verbruik caravan L/100km
+  const { speed,rpm,load,coolant,gas,volt,lkm,climb,cruiseTarget,limit,richt,atf } = ctx;
 
   // 1/2) SCHAKELEN — uit caravanSchakel(), pas als het advies 3 s staat
-  //      (geen geflapper bij een kuil in de weg). Kort: dit lees je rijdend.
+  //      (geen geflapper bij een kuil in de weg).
   const sch=ctx.schakel;
   if(sch&&ctx.schakelStabiel&&sch.advies==='terug'&&speed>10){
-    _carAlert('terug',sch.doel?`⬇️ Terug naar ${sch.doel} — de motor trekt het niet`:'⬇️ Schakel terug — de motor zwoegt','tip',45000);
+    _carAlert('terug',sch.doel?`⬇️ Terug naar ${sch.doel} — motor trekt het niet`:'⬇️ Schakel terug — motor zwoegt','tip',45000);
   }
   else if(sch&&ctx.schakelStabiel&&sch.advies==='op'&&speed>25){
     _carAlert('op',sch.doel?`⬆️ Naar ${sch.doel} — zuiniger`:'⬆️ Schakel op — zuiniger','tip',120000);
   }
 
-  // 3) CRUISE OP ~95 — vlak/gelijkmatig en snelheid boven het zuinige punt
-  if(climb!=='klim'&&typeof speed==='number'&&speed>cruiseTarget+3){
-    const trendFlat = Math.abs((ctx.trend??0))<0.4;
-    if(trendFlat)
-      _carAlert('cruise',`🎯 Zet cruise op ~${cruiseTarget} km/h — met caravan kost ${Math.round(speed)}→${cruiseTarget} al merkbaar minder; luchtweerstand telt kwadratisch.`,'tip',180000);
+  // 3) CRUISE — vlak en gelijkmatig, boven het zuinige punt
+  if(climb!=='klim'&&typeof speed==='number'&&speed>cruiseTarget+3&&Math.abs(ctx.trend??0)<0.4)
+    _carAlert('cruise',`🎯 Cruise op ${cruiseTarget} km/u`,'tip',180000);
+
+  // 4) RUSTIGER GAS — een sprong in het pedaal van meer dan 25 punten in 2 s
+  if(typeof gas==='number'&&climb!=='klim'){
+    const gasAgo=_carAgo('GAS',2);
+    if(gasAgo!==null && gas-gasAgo>25) _carAlert('gas','🪶 Rustiger gas geven','tip',120000);
   }
 
-  // 4) RUSTIGER OP HET GAS — grote gasklep-sprong (schokkerig = duur)
-  if(typeof throttle==='number'){
-    const thAgo=_carAgo('0111',2);
-    if(thAgo!==null && throttle-thAgo>25 && climb!=='klim')
-      _carAlert('gas','🪶 Rustiger op het gas — gelijkmatig rijden met een caravan bespaart het meest. Anticipeer op wat komt i.p.v. bijsturen met het pedaal.','tip',120000);
-  }
-
-  // 5) AFDALING — laat uitrollen op de motor (overrun = 0 brandstof, remt mee)
-  if(climb==='afdaling'&&typeof throttle==='number'&&throttle<5&&speed>40){
-    _carAlert('afdaling','🛞 Laat rollen op de motor — voet van het gas kost 0 brandstof (overrun-afsluiting) en de motor remt mee. Zo voorkom je ook oververhitte remmen op een lange afdaling.','tip',90000);
-  }
+  // 5) AFDALING — voet los: geen brandstof, en de motor remt mee
+  if(climb==='afdaling'&&typeof gas==='number'&&gas<5&&speed>40)
+    _carAlert('afdaling','🛞 Gas los — laten uitrollen','tip',90000);
 
   // 6) VERBRUIK PIEKT op vlak terrein (op een klim is hoog verbruik normaal)
-  if(typeof lkm==='number'&&lkm>baseL*1.6&&climb!=='klim'&&speed>25){
-    _carAlert('verbruik',`⛽ Verbruik piekt nu (${lkm.toFixed(1)} L/100km). Op vlak terrein kan dat zuiniger — let op toerental en een lichte gasvoet.`,'tip',150000);
-  }
+  if(typeof lkm==='number'&&typeof richt==='number'&&lkm>richt*1.6&&climb!=='klim'&&speed>25)
+    _carAlert('verbruik',`⛽ ${lkm.toFixed(1).replace('.',',')} l/100 — gas iets terug`,'tip',150000);
 
-  // ── VEILIGHEID / THERMISCH (warn → notificatie) ──
-  // 7) Koelwater loopt op boven 100°C
-  if(typeof coolant==='number'&&coolant>100){
-    const cAgo=_carAgo('0105',60);
-    if(cAgo!==null && coolant-cAgo>=3)
-      _carAlert('koel',`🌡️ Koelwater loopt op (${Math.round(coolant)}°C). Op een lange klim: toerental iets hoger houden voor betere koeling, of even inhouden.`,'warn',90000);
-  }
+  // ── VEILIGHEID / THERMISCH (warn → trilling) ──
+  // 7) Koelwater: het oordeel voor déze motor, of een snelle stijging
+  const koel=caravanKoelOordeel(coolant, _carAgo('0105',60));
+  if(koel) _carAlert('koel',koel,'warn',90000);
+  // 7b) Bakolie, als de auto hem geeft
+  if(typeof atf==='number'&&atf>=CARAVAN_ATF.letop)
+    _carAlert('atf',`⚙️ Bakolie ${Math.round(atf)}° — ${atf>=CARAVAN_ATF.heet?'stop en laat afkoelen':'rustiger aan'}`,'warn',120000);
   // 8) Duurbelasting — >60% van de laatste 5 min zwaar belast
   {
-    const a=caravanHist['0104']; 
+    const a=caravanHist['0104'];
     if(a&&a.length>30){
       const since=Date.now()-300000; let hi=0,tot=0;
       for(const s of a){ if(s.t>=since){ tot++; if(s.v>=85) hi++; } }
       if(tot>20 && hi/tot>0.60)
-        _carAlert('duur','🔥 Al langere tijd zwaar belast. Overweeg een korte pauze — laat motor en versnellingsbak even afkoelen voor de volgende klim.','warn',300000);
+        _carAlert('duur','🔥 Lang zwaar belast — plan een pauze','warn',300000);
     }
   }
-  // 9) Boordspanning laag terwijl de motor draait
-  // Eén grens voor de laadspanning (PLKenmerk, #532): een slimme
-  // laadregeling laadt bij een volle accu bewust onder 13 V.
+  // 9) Laadspanning laag terwijl de motor draait (PLKenmerk, #532)
   const _ls=_carLaad(volt, rpm);
-  if(_ls==='fout'||_ls==='letop'){
-    _carAlert('volt',`🔋 Boordspanning laag (${volt.toFixed(1)}V) met draaiende motor${_ls==='letop'?' (niet zeker voor deze auto)':''} — laat riem/accu nakijken als dit aanhoudt.`,'warn',180000);
+  if(_ls==='fout'||_ls==='letop')
+    _carAlert('volt',`🔋 Laadspanning laag: ${volt.toFixed(1).replace('.',',')} V${_ls==='letop'?' (niet zeker)':''}`,'warn',180000);
+  // 10) Boven de ingestelde caravanlimiet
+  if(typeof speed==='number'&&speed>limit+4)
+    _carAlert('limiet',`⚠️ ${Math.round(speed)} km/u — limiet is ${limit}`,'tip',120000);
+}
+/* Koelwater voor déze motor, of null. ago = de waarde van een minuut
+   geleden (null als die er niet is). Puur, op PLKenmerk na. */
+function caravanKoelOordeel(t, ago){
+  if(typeof t!=='number'||!isFinite(t)) return null;
+  let r=null;
+  try{ r=(window.PLKenmerk && PLKenmerk.koelLive) ? PLKenmerk.koelLive(t) : null; }
+  catch(e){ console.warn('caravan: koelwateroordeel', e); }
+  if(r&&r.niveau==='fout') return `🌡️ Koelwater ${Math.round(t)}° — te heet, rustig aan`;
+  if(r&&r.niveau==='letop') return `🌡️ Koelwater ${Math.round(t)}° — warm voor deze motor`;
+  if(t>=CARAVAN_KOEL.stijgVanaf&&typeof ago==='number'&&t-ago>=CARAVAN_KOEL.stijgGraden)
+    return `🌡️ Koelwater stijgt snel (${Math.round(t)}°)`;
+  return null;
+}
+/* Het pedaal, 0–100 vanaf zijn geleerde rust (PLToon), of de gasklep op een
+   benzinemotor als er geen pedaal is. null op een diesel zonder pedaal: daar
+   zegt de gasklep niets. */
+function caravanPedaal(g, diesel){
+  for(const p of ['015A','0149']){
+    const v=g(p);
+    if(typeof v==='number'&&isFinite(v)){
+      try{ return (window.PLToon && PLToon.waarde) ? PLToon.waarde(p, v) : v; }
+      catch(e){ console.warn('caravan: pedaal', e); return v; }
+    }
   }
-  // 10) Boven de ingestelde caravan-limiet
-  if(typeof speed==='number'&&speed>limit+4){
-    _carAlert('limiet',`⚠️ ${Math.round(speed)} km/h — boven je ingestelde caravanlimiet van ${limit}. Terug naar ~${cruiseTarget} is veiliger én zuiniger.`,'tip',120000);
-  }
+  const t=g('0111');
+  return (!diesel && typeof t==='number' && isFinite(t)) ? t : null;
+}
+/* Het richtverbruik met caravan: je eigen verbruik zonder caravan keer
+   CARAVAN_FACTOR. Bron in volgorde: gewogen ritten zonder caravanlabel
+   (minstens 50 km), het opgegeven verbruik van het voertuig, de vaste waarde.
+   Puur: ritten = PLGarage.rittenVan(), opgegeven = voertuig.verbruik_opgegeven. */
+const CARAVAN_FACTOR = 1.4;
+const CARAVAN_LABEL = /caravan|aanhang|trek/i;
+function caravanRichtBepaal(ritten, opgegeven, fuelType){
+  let km=0, l=0;
+  (ritten||[]).forEach(function(r){
+    if(r && typeof r.verbruik_l100==='number' && typeof r.km==='number' && r.km>=2 && !CARAVAN_LABEL.test(String(r.label||''))){ km+=r.km; l+=r.verbruik_l100*r.km/100; }
+  });
+  if(km>=50) return { l100:Math.round(l/km*100*CARAVAN_FACTOR*10)/10, bron:'ritten' };
+  const o=Number(opgegeven);
+  if(o>0) return { l100:Math.round(o*CARAVAN_FACTOR*10)/10, bron:'opgegeven' };
+  return { l100:caravanRichtverbruik(fuelType), bron:'vast' };
+}
+function _carRicht(fuelType){
+  try{
+    const G=window.PLGarage, v=G&&G.actief&&G.actief();
+    const ritten=(v && G.rittenVan) ? G.rittenVan(v.id) : null;
+    return caravanRichtBepaal(ritten, v&&v.verbruik_opgegeven, fuelType);
+  }catch(e){ console.warn('caravan: richtverbruik uit de ritten niet te lezen — vaste waarde', e); return { l100:caravanRichtverbruik(fuelType), bron:'vast' }; }
+}
+/* De bakoliesensor: een eigen sensor met die naam (dezelfde zoekregel als
+   het trekpaneel, PLVisueel.TREK). null als de auto hem niet heeft. */
+function _carAtfPid(){
+  try{
+    const r=(window.PLVisueel && PLVisueel.TREK || []).filter(function(t){ return t.rol==='atf'; })[0];
+    const defs=(typeof discoveredPIDDefs!=='undefined' && discoveredPIDDefs) ? discoveredPIDDefs : [];
+    const d=r && r.zoek ? defs.filter(function(x){ return x && r.zoek.test(String(x.name||'')); })[0] : null;
+    return d ? d.pid : null;
+  }catch(e){ console.warn('caravan: bakoliesensor zoeken mislukt', e); return null; }
 }
 
 // ═══════════════════ TICK (de motor) ═══════════════════
@@ -364,10 +433,13 @@ function caravanTick(){
   const speed=g('010D'), rpm=g('010C'), load=g('0104'),
         coolant=g('0105'), throttle=g('0111'), volt=g('0142');
   const fuelRate=caravanFuelRate();
+  const fuelType=vehicleFuelType();
+  const gas=caravanPedaal(g, fuelType==='diesel');
 
   // historie bijhouden
   _carPush('010D',now,speed); _carPush('010C',now,rpm); _carPush('0104',now,load);
   _carPush('0105',now,coolant); _carPush('0111',now,throttle);
+  if(gas!==null) _carPush('GAS',now,gas);
   if(volt!==undefined) _carPush('0142',now,volt);
   if(fuelRate!==null)  _carPush('015E',now,fuelRate);
   const helling=_carHelling();
@@ -384,13 +456,12 @@ function caravanTick(){
   // afgeleiden
   const spdAgo=_carAgo('010D',5);
   const trend = (spdAgo!==null)?(speed-spdAgo)/5:null;   // km/h per s
-  const terrein = caravanTerrein(load,speed,throttle,trend,helling);
+  const terrein = caravanTerrein(load,speed,gas,trend,helling);
   const climb = terrein.climb;
   caravanClimbSecs[climb]=(caravanClimbSecs[climb]||0)+dt;
   caravanTerreinBron[terrein.bron]+=dt;
   const pw=caravanVermogen(rpm,load);
   const cruiseTarget=Math.max(80,caravanSpeedLimit-5);
-  const fuelType=vehicleFuelType();
 
   // pieken
   if(lkm!==null&&lkm>caravanPeak.lkm&&speed>5) caravanPeak.lkm=lkm;
@@ -401,9 +472,11 @@ function caravanTick(){
   let sb={ gear:null, ratios:null };
   try{ if(window.PLBerekend&&PLBerekend.schakelBron) sb=PLBerekend.schakelBron(); }
   catch(e){ console.warn('caravan: versnelling niet gelezen', e); }
-  const pedaal=(typeof g('015A')==='number')?g('015A'):g('0149');
-  const ctx={ speed,rpm,load,coolant,throttle,pedaal,volt,fuelRate,lkm,climb,trend,helling,terreinBron:terrein.bron,
-              fuelType,cruiseTarget,limit:caravanSpeedLimit, gear:sb.gear, ratios:sb.ratios };
+  const atf=caravanAtfPid ? g(caravanAtfPid) : undefined;
+  if(typeof atf==='number'&&(caravanPeak.atf===undefined||atf>caravanPeak.atf)) caravanPeak.atf=atf;
+  const ctx={ speed,rpm,load,coolant,throttle,gas,pedaal:gas,volt,fuelRate,lkm,climb,trend,helling,terreinBron:terrein.bron,
+              fuelType,cruiseTarget,limit:caravanSpeedLimit, gear:sb.gear, ratios:sb.ratios,
+              richt:caravanRicht.l100, atf:typeof atf==='number'?atf:null };
   ctx.schakel=caravanSchakel(ctx);
   const adv=ctx.schakel?ctx.schakel.advies+'|'+ctx.schakel.doel:'';
   if(adv!==caravanSchakelSinds.adv) caravanSchakelSinds={ adv, t:now };
@@ -440,9 +513,9 @@ function caravanSchakel(ctx){
 // 'terug' | 'op' | 'ok', of null — voor de rijmodus.
 function caravanSchakelAdvies(ctx){ const s=caravanSchakel(ctx); return s?s.advies:null; }
 // 'ok' | 'letop' | 'alarm' t.o.v. het richtverbruik, of null zonder meting.
-function caravanVerbruikNiveau(lkm,fuelType){
+function caravanVerbruikNiveau(lkm,fuelType,richt){
   if(typeof lkm!=='number'||isNaN(lkm)) return null;
-  const baseL=caravanRichtverbruik(fuelType);
+  const baseL=(typeof richt==='number'&&richt>0) ? richt : caravanRichtverbruik(fuelType);
   return lkm>baseL*1.5?'alarm':lkm>baseL*1.15?'letop':'ok';
 }
 
@@ -481,8 +554,8 @@ async function generateCaravanRapport(){
   const tipLabels={ terug:'Terugschakelen (motor zwoegt)', op:'Opschakelen (toerental te hoog)',
     cruise:`Cruise op ~${Math.max(80,caravanSpeedLimit-5)}`, gas:'Rustiger/gelijkmatiger gas',
     afdaling:'Laten uitrollen bij afdaling', verbruik:'Verbruikspiek op vlak terrein',
-    koel:'Koelwater liep op', duur:'Duurbelasting — pauze geadviseerd',
-    volt:'Lage boordspanning', limiet:'Boven caravanlimiet' };
+    koel:'Koelwater te warm voor deze motor of snel stijgend', atf:'Bakolie warm (boven '+CARAVAN_ATF.letop+' °C)',
+    duur:'Duurbelasting — pauze geadviseerd', volt:'Lage laadspanning', limiet:'Boven caravanlimiet' };
 
   const lines=[
     'PIDLANE — CARAVAN/AANHANGER RIT: BRANDSTOF + TECHNIEK + RIJGEDRAG',
@@ -501,7 +574,9 @@ async function generateCaravanRapport(){
     rp?`  Toerental: ${F(rp.min)} / ${F(rp.avg)} / ${F(rp.max)} tpm`:'  Toerental: —',
     ld?`  Belasting: ${F(ld.min)} / ${F(ld.avg)} / ${F(ld.max)} %`:'  Belasting: —',
     co?`  Koelwater: ${F(co.min)} / ${F(co.avg)} / ${F(co.max)} °C`:'  Koelwater: —',
-    `  Piek verbruik: ${caravanPeak.lkm?caravanPeak.lkm.toFixed(1)+' L/100km':'—'}   Piek koelwater: ${caravanPeak.coolant?Math.round(caravanPeak.coolant)+'°C':'—'}`,
+    `  Piek verbruik: ${caravanPeak.lkm?caravanPeak.lkm.toFixed(1)+' L/100km':'—'}   Piek koelwater: ${caravanPeak.coolant?Math.round(caravanPeak.coolant)+'°C':'—'}`+
+      (typeof caravanPeak.atf==='number'?`   Piek bakolie: ${Math.round(caravanPeak.atf)}°C`:''),
+    `  Richtverbruik met caravan: ${caravanRicht.l100.toFixed(1)} L/100km (${caravanRicht.bron==='ritten'?'je eigen ritten zonder caravan × '+CARAVAN_FACTOR:caravanRicht.bron==='opgegeven'?'je opgegeven verbruik × '+CARAVAN_FACTOR:'vaste schatting — rij eerst 50 km zonder caravan'})`,
     '',
     'COACHING TIJDENS DE RIT (aantal keer):',
     ...(Object.keys(tipCount).length
