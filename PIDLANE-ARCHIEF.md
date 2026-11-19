@@ -17,6 +17,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 19-11-2026 — Waarom het rit-monitorscherm en het caravandashboard weg zijn
+
+Beide waren een eigen scherm met meettegels die Slim visueel ook al toonde: elf
+tegels op de rit-monitor, acht op het caravandashboard. Wat alleen daar stond
+was klein: bij de monitor de lijst "Waarschuwingen & onderbouwing" met
+Verifieer, 👎 Klopt niet en Rapport nu; bij de caravan de startknop, de limiet
+en de lijst met coachtips. Dat is verhuisd: de lijst naar een venster vanaf de
+ring onder Slim visueel (`openMonitorView()` opent dat venster, zodat wizard,
+startkaart en chipje vanzelf meeverhuizen), de start naar de rijsituatie
+caravan, de limiet naar een tik in het trekpaneel. De coachlijst zelf is niet
+teruggekomen: de laatste tip staat in het paneel, de rest in het rapport.
+
+Wat er bewust níét meeging: de zuinig-rijdentips van de monitor (een rouleerlijst
+met algemene tips, los van de meting) en de pil van een geminimaliseerde
+caravanrit. Een rit die loopt staat al als chip op de rail.
+
 ## 18-11-2026 — Waarom heuvelaf "telefoon niet in de houder" gaf
 
 Melding van de eigenaar: telefoon in de houder, heuvelaf rijden, en de app meldt dat de telefoon niet in de houder zit. `houderMeting()` mat de volle hoek tussen omhoog en de nulstand. Een helling kantelt de hele auto om zijn dwarsas, dus die hoek groeit met de helling mee; daar komt bij remmen de vertraging bij als 010D ouder is dan 2 s (dan trekt `opMotion()` hem er niet af). Boven 15°, 2 s lang, was het `verschoven`. Nu telt alleen wat een helling tot `HOUDER.maxHelling` (25°) níét verklaart (`afwijkingBuitenHelling()`); zijwaarts blijft de grens 15°. Wat dit niet vangt: een telefoon die in de houder alleen voorover kantelt, minder dan 25°. Die beweegt dan los van de auto, en daar is de wiebelgrens voor. Zonder bekende rijrichting (geen nulstand) geldt de volle hoek, zoals vroeger.

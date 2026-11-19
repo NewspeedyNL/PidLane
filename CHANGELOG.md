@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 19-11-2026 — Oude vensters weg: rit-monitor als venster, caravan via de rijsituatie
+ ═════════════════════════════════════════════════════
+   • Rit-monitor: tik op de ring opent een venster met de ring, de aan/uit-knop, de waarschuwingen (Verifieer, 👎 Klopt niet) en Rapport nu. Het oude scherm met elf tegels en zuinig-rijdentips is weg; wizard, startkaart en chipje openen het venster
+   • Caravanrit: de rijsituatie caravan start de rit zodra de adapter klaar is en stopt hem met rapport als je hem uitzet. Met de hand gestopt start hij niet meteen opnieuw. De limiet (80/90/100/110) is een rood bord in het trekpaneel, bewaard per toestel. Wizard en startkaart zetten de rijsituatie aan en openen Slim visueel
+   • Het caravandashboard en zijn pil zijn weg, met de takken in terugknop en datalog
+   • Handleiding bijgewerkt. test-caravanrit.js (13), bproef-visueel (+3), drie mutaties
+
+ ═════════════════════════════════════════════════════
  19-11-2026 — Slim visueel: trekpaneel, rit-monitor onder de meter, bevinding als pop-up
  ═════════════════════════════════════════════════════
    • Trekmodus (caravan of beladen): de zes getaltegels zijn één paneel. De helling als weg met de combinatie erop (gemeten of geschat), het schakeladvies als rad met de doelversnelling (pas na 3 s, zoals de coach), de belasting als boog met het aandeel zwaar van 5 min, elke temperatuur als balk met trend (koelwater, olie, inlaat, en bakolie als de auto die als eigen sensor heeft). De laatste coachtip in één regel
