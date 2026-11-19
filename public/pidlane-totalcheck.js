@@ -621,77 +621,33 @@ function bscConditie(t, situaties){
   for(const n of extra){ if(!BSC_TESTS.some(x=>x.id===n.id)) BSC_TESTS.push(n); }
 })();
 
-/* ── 🛡️ RIT-MONITOR dashboard: 1s-verversing zolang de pane zichtbaar is ── */
-// Opener volgens het activateAIPane-patroon: welkomstscherm dicht, alle
-// tabs/panes uit, alleen pane-monitor aan.
-// Verbergt de uitleg boven de rit-monitor 10 s nadat de pane opent. Bewust
-// geen localStorage: bij een volgende sessie mag je hem best nog eens lezen.
-let _monIntroT=0;
-function _monIntroStart(){
-  const el=document.getElementById('monIntroTxt'); if(!el) return;
-  el.classList.remove('weg');
-  clearTimeout(_monIntroT);
-  _monIntroT=setTimeout(()=>{ try{ el.classList.add('weg'); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ } }, 10000);
-}
+/* ── 🛡️ RIT-MONITOR: het venster (19-11-2026) ─────────────────────────
+   Tot deze datum had de rit-monitor een eigen scherm (pane-monitor) met elf
+   meettegels, een zuinig-rijdenvak en daaronder de waarschuwingen. De tegels
+   en de tips stonden ook in Slim visueel; wat alleen hier stond was de lijst
+   "Waarschuwingen & onderbouwing" met Verifieer, 👎 Klopt niet en Rapport nu.
+   Dat is nu een venster over de app heen: de ring uit Slim visueel bovenaan,
+   de schakelaar, en de lijst. Alle oude ingangen (wizard, startkaart, het
+   zwevende chipje, de ring) roepen openMonitorView() en komen hier. */
 function openMonitorView(){
-  try{ document.getElementById('welcomeScreen').classList.add('hidden'); }catch(e){ /* stil: element bestaat niet of DOM is nog niet klaar */ }
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
-  const pane=document.getElementById('pane-monitor'); if(pane) pane.classList.add('active');
-  const tb=document.querySelector('.tb'); if(tb) tb.scrollTop=0;
-  if(typeof setLeftPanelForMode==='function') setLeftPanelForMode('monitor');
-  // PID-lade hoort niet op de monitor: setLeftPanelForMode (externe module)
-  // is ouder dan deze pane en kent de modus 'monitor' niet — dus zelf hard
-  // sluiten, plus twee nakomertjes voor alles wat 'm async weer opent.
-  _monSluitPidLade();
-  setTimeout(_monSluitPidLade,350); setTimeout(_monSluitPidLade,1200);
-  _monDemoChip=false;               // demo-testchipje weg zodra de pane open is
-  try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); }      // meteen vullen, niet wachten op de 1s-tik
-  try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }  // chipje direct weg zodra de pane open is
-  try{ _monIntroStart(); }catch(e){ console.warn('_monIntroStart mislukt:', e); }
-}
-// ── PID-lade-bewaking op de monitor ─────────────────────────────
-// Staat het sensorenpaneel (#slPanel: zijbalk op desktop, sheet op mobiel)
-// zichtbaar in beeld? Geometrie-check, want de open/dicht-klasse van de
-// lade leeft in de externe module/pidlane.css.
-function _monPidLadeOpen(){
-  const sl=document.getElementById('slPanel'); if(!sl) return false;
-  const cs=getComputedStyle(sl);
-  if(cs.display==='none'||cs.visibility==='hidden') return false;
-  const r=sl.getBoundingClientRect();
-  return r.width>80 && r.height>80 && r.bottom>0 && r.top<(window.innerHeight-24);
-}
-// Sluit lade + zijbalk. Uitzondering: opende de gebruiker hem net zélf via
-// 🎛️ PID-keuze, dan 2 minuten met rust laten.
-function _monSluitPidLade(){
-  try{
-    if(Date.now()-(window._pidLadeUserTs||0)<120000) return;
-    if(typeof closeLades==='function') closeLades();
-    slCollapsed=true;
-    const g=document.getElementById('appGrid'); if(g) g.classList.add('sl-col');
-    if(typeof updateSLToggleIcon==='function') updateSLToggleIcon();
-    if(typeof clearSLAutoHide==='function') clearSLAutoHide();
-    try{ localStorage.setItem('ns_sl','true'); }catch(e){ /* stil: opslag kan vol of geblokkeerd zijn */ }
-  }catch(e){ console.warn('clearSLAutoHide mislukt:', e); }
-}
-// Is de monitor-pane wat de gebruiker NU ziet? Let op: goHome() legt het
-// welkomstscherm als overlay BOVENOP — de pane houdt dan gewoon z'n
-// offsetParent, dus die check alleen is niet genoeg.
-function _monPaneZichtbaar(){
-  const pane=document.getElementById('pane-monitor');
-  if(!pane||!pane.classList.contains('active')||!pane.offsetParent) return false;
-  const ws=document.getElementById('welcomeScreen');
-  if(ws&&!ws.classList.contains('hidden')) return false;   // home-overlay erboven
-  return true;
-}
-// ➖ op de pane: terug naar home; monitor waakt door, chipje neemt het over.
-// In demo slaapt PLMon — dan tonen we het chipje tóch (testbaar zonder rit);
-// vlag gaat weer uit zodra de pane opnieuw opent.
-let _monDemoChip=false;
-function monMinimize(){
-  if(typeof demoMode!=='undefined'&&demoMode) _monDemoChip=true;
-  try{ goHome(); }catch(e){ console.warn('goHome mislukt:', e); }
+  const v=document.getElementById('monVenster'); if(!v) return;
+  // Aan <body> hangen: een voorouder met transform (#appScale) maakt van
+  // position:fixed anders een vak binnen die voorouder.
+  if(v.parentElement!==document.body) document.body.appendChild(v);
+  v.classList.add('open');
+  _monLaatstGetekend='';
+  try{ if(typeof window.updateMonitorBtn==='function') window.updateMonitorBtn(); }catch(e){ console.warn('updateMonitorBtn mislukt:', e); }
+  try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); }
   try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }
+}
+function monVensterSluit(){
+  const v=document.getElementById('monVenster'); if(v) v.classList.remove('open');
+  try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); }
+}
+// Staat het venster open? Dan verversen we het, en hoeft het chipje niet.
+function _monPaneZichtbaar(){
+  const v=document.getElementById('monVenster');
+  return !!(v && v.classList.contains('open'));
 }
 // TEST:ECT_HOOG en TEST:LAADSPANNING zijn de namen die PLWatch werkelijk geeft;
 // tot 04-10-2026 stond hier alleen ECT_HOOG en x_laadspanning, en die komen in
@@ -711,125 +667,18 @@ function monFeedback(sig, reden){
 }
 const _MON_ERNSTIG=/^(ECT_HOOG|TEST:ECT_HOOG|PIEK:|UITVAL:|THERMOSTAAT|TEST:x_laadspanning|TEST:LAADSPANNING)/;
 
-/* ── Zuinig rijden (26-07-2026) ────────────────────────────────────────
-   Twee soorten advies onder elkaar. Boven een LIVE regel die op de echte
-   meetwaarden van dít moment slaat; daaronder een algemene tip die elke
-   14 seconden doorrouleert.
-
-   Over de schakelmomenten: een tabel met fabrieksschakelpunten per model
-   heb ik niet, en die ga ik ook niet verzinnen. De grenzen hieronder komen
-   uit het brandstoftype — het verschil tussen benzine en diesel is groot en
-   wél hard te bepalen (PID 0151, anders het voertuigdossier). Het advies
-   zelf is verder volledig op deze auto gebaseerd: het kijkt naar het echte
-   toerental, de echte belasting en de echte gaspedaalstand. */
-function _monBenzine(){
-  try{
-    const f=pidVals['0151'];
-    if(typeof f==='number') return !(f===4||f===5);       // 4/5 = diesel volgens J1979
-    const b=String((vehicleInfo&&(vehicleInfo.brandstof||vehicleInfo.fuel))||'').toLowerCase();
-    if(/diesel|tdi|hdi|dci|cdi|crdi/.test(b)) return false;
-  }catch(e){ /* stil: pidVals/vehicleInfo kunnen nog ontbreken vóór de eerste meting */ }
-  return true;                                            // bij twijfel benzinegrenzen
-}
-const _MON_TIPS=[
-  '🛞 Rol uit met de auto in de versnelling. Zolang je de koppeling niet indrukt en het gas los is, spuit de ECU niets in — je rijdt dan letterlijk op nul. In z\'n vrij of ontkoppeld draait de motor stationair door en kost dat wél brandstof.',
-  '👀 Kijk ver vooruit. Elke keer dat je moet remmen, gooi je snelheid weg waar je brandstof voor betaald hebt. Vroeg gas los kost niets, hard remmen kost alles.',
-  '🌬️ Boven ongeveer 80 km/u kost een open raam meer dan de airco. Daaronder is het andersom.',
-  '🧳 Dakdrager of fietsendrager eraf als je hem niet gebruikt. Leeg scheelt dat al snel een halve liter per 100 km op snelweg.',
-  '🛞 Controleer je bandenspanning maandelijks. Een halve bar te laag kost enkele procenten verbruik en gaat ten koste van je banden.',
-  '🐢 Snelheid weegt kwadratisch mee in luchtweerstand. 110 in plaats van 130 rijden scheelt op een lange rit meer dan welke rijstijltruc dan ook.',
-  '❄️ Korte ritten met een koude motor zijn veruit het duurst per kilometer. Combineer boodschappen in één rit in plaats van drie losse.',
-  '⏱️ Sta je langer dan een halve minuut stil? Motor uit. Opnieuw starten kost minder dan stationair blijven draaien.'
-];
-let _monTipIdx=0, _monTipT=0;
-function _monZuinigTip(spd,rpm,thr,load){
-  const live=document.getElementById('monTipLive'), alg=document.getElementById('monTipAlg');
-  if(!live||!alg) return;
-  // Algemene tip rouleert
-  const nu=Date.now();
-  if(!_monTipT||nu-_monTipT>14000){ _monTipT=nu; alg.textContent=_MON_TIPS[_monTipIdx%_MON_TIPS.length]; _monTipIdx++; }
-  // Live advies
-  const benz=_monBenzine();
-  const opschakel = benz?2300:1900, terugschakel = benz?1300:1150, stationair = benz?900:800;
-  let t='⛽ Zuinig rijden — advies verschijnt zodra je rijdt.', kleur='';
-  if(typeof rpm==='number'&&typeof spd==='number'){
-    const gasLos = (typeof thr==='number') ? thr<=12 : (typeof load==='number'&&load<20);
-    if(spd>20&&gasLos&&rpm>stationair+250){
-      t='🛞 Je rolt nu uit mét gas los en in de versnelling — op dit moment gaat er geen druppel in. Laat de koppeling omhoog zolang je nog vaart hebt.'; kleur='goed';
-    } else if(spd>15&&rpm>opschakel&&(typeof load!=='number'||load<65)){
-      t='⬆️ '+Math.round(rpm)+' toeren bij deze belasting — een versnelling hoger kan. '+(benz?'Benzine':'Diesel')+' loopt het zuinigst rond '+(benz?'1800-2200':'1400-1800')+' toeren.'; kleur='let';
-    } else if(spd>25&&rpm<terugschakel&&typeof load==='number'&&load>70){
-      t='⬇️ Laag toerental met veel gas belast de motor zwaar en levert nauwelijks zuinigheid op. Schakel hier een versnelling terug.'; kleur='let';
-    } else if(spd>0&&rpm>stationair){
-      t='✅ Toerental en belasting zitten in een zuinig gebied. Zo doorrijden.'; kleur='goed';
-    } else if(spd<=0&&rpm>stationair-150){
-      t='⏱️ Stilstaand met draaiende motor. Duurt het langer dan een halve minuut, dan is de motor uitzetten goedkoper dan stationair draaien.'; kleur='let';
-    }
-  }
-  live.textContent=t;
-  live.className='mon-tip-live'+(kleur?' '+kleur:'');
-}
 let _monLaatstGetekend='';
-function _monTegel(id, v, warnCls){
-  const t=document.getElementById('monT_'+id), e=document.getElementById('monV_'+id);
-  if(!t||!e) return;
-  e.textContent=(v===undefined||v===null||isNaN(v))?'—':(typeof fv==='function'?fv(v):v);
-  t.className='mon-tile'+(warnCls?' '+warnCls:'');
-}
-function _monNiveau(r, oudAlarm){
-  if(!r) return oudAlarm ? 'alarm' : '';
-  if(r.niveau==='fout') return r.hard ? 'alarm' : 'warn';
-  return r.niveau==='letop' ? 'warn' : '';
-}
 function _monTick(){
-  if(!_monPaneZichtbaar()) return;                      // pane niet in beeld: niks doen
-  if(_monPidLadeOpen()) _monSluitPidLade();             // lade sluipt terug? dicht ermee
+  if(!_monPaneZichtbaar()) return;                      // venster dicht: niks doen
   const M=window.PLMon;
-  const spd=pidVals['010D'], rpm=pidVals['010C'], ect=pidVals['0105'];
-  const load=pidVals['0104'], volt=pidVals['0142'], map=pidVals['010B'];
-  const st6=pidVals['0106'], lt7=pidVals['0107'];
-  const trim=(typeof st6==='number'&&typeof lt7==='number')?Math.round((st6+lt7)*10)/10:undefined;
-  // Tegels + kleuring op basis van dezelfde grenzen als de watchers
-  _monTegel('spd',spd); _monTegel('rpm',rpm!==undefined?Math.round(rpm):undefined);
-  // Koelwater en laadspanning uit één grens per grootheid (PLKenmerk, #532):
-  // hard fout = alarm, fout of let op voor déze auto = warn, onbeslist = niets.
-  _monTegel('ect',ect, _monNiveau(window.PLKenmerk && typeof ect==='number' ? PLKenmerk.koelLive(ect) : null, typeof ect==='number'&&ect>112));
-  _monTegel('load',load);
-  _monTegel('volt',volt, _monNiveau(window.PLKenmerk && typeof volt==='number' && typeof rpm==='number' ? PLKenmerk.laadLive(volt, rpm) : null, false));
-  _monTegel('trim',trim, (typeof trim==='number'&&Math.abs(trim)>20&&typeof ect==='number'&&ect>=65)?'warn':'');
-  _monTegel('map',map);
-  // ── Extra meetwaarden ──
-  const iat=pidVals['010F'], thr=pidVals['0111'], adv=pidVals['010E'], maf=pidVals['0110'];
-  _monTegel('iat',iat);
-  _monTegel('thr',thr);
-  _monTegel('adv',adv);
-  // Momentaan verbruik uit massaluchtstroom. Boven 5 km/u in L/100 km, daaronder
-  // (stilstaand, stationair) in L/uur — anders deel je door bijna nul.
-  let lph, lphU='L/100';
-  if(typeof maf==='number'&&maf>0){
-    const afr=_monBenzine()?14.7:14.5, dich=_monBenzine()?745:835;   // g/L
-    const lu=(maf/afr)*3600/dich;                                    // liter per uur
-    if(typeof spd==='number'&&spd>5){ lph=Math.round(lu/spd*100*10)/10; }
-    else { lph=Math.round(lu*10)/10; lphU='L/uur'; }
-  }
-  _monTegel('lph',lph);
-  const uEl=document.getElementById('monU_lph'); if(uEl) uEl.textContent=lphU;
-  _monZuinigTip(spd,rpm,thr,load);
-  // Statusbalk
-  const sEl=document.getElementById('monStatus'), tEl=document.getElementById('monStatusTxt');
-  const actief=!!(M&&M.active);
-  sEl.classList.toggle('slaap',!actief);
-  const chips=['monChipFase','monChipTemp','monChipTijd'].map(i=>document.getElementById(i));
-  if(actief){
-    const st=M._state?M._state():{fase:'onbekend',temp:'onbekend'};
-    const n=M._order.length;
-    tEl.textContent=n?('Monitor waakt — '+n+' bevinding'+(n===1?'':'en')):'Monitor waakt — alles rustig';
-    chips[0].textContent='🚗 '+st.fase; chips[1].textContent='🌡️ motor '+st.temp;
-    chips[2].textContent='⏱ '+Math.max(0,Math.round((Date.now()-(M.startedAt||Date.now()))/60000))+' min mee';
-    chips.forEach(c=>c.style.display='');
-  } else {
-    tEl.textContent=demoMode?'Monitor slaapt — demo-modus (alleen echte ritten)':'Monitor slaapt — verbind met de auto';
-    chips.forEach(c=>c.style.display='none');
+  // De ring: dezelfde als onder Slim visueel (PLVisPaneel).
+  const ring=document.getElementById('monRing');
+  if(ring && window.PLVisPaneel){
+    const W=window.PLWatch||{}, o=(M&&M._order)||[];
+    const h=PLVisPaneel.ritHtml(PLVisPaneel.ritModel({ tests:W.tests, dekking:W._dekking, meldingen:o.length, draait:!!(M&&M.active),
+      ernstig:o.some(k=>_MON_ERNSTIG.test(k)), mil:M&&M.prev?M.prev.mil:null, teller:M&&M.prev?M.prev.count:null,
+      fase:(M&&typeof M._state==='function')?M._state().fase:'' }));
+    if(ring._h!==h){ ring.innerHTML=h; ring._h=h; }
   }
   // Waarschuwingsfeed alleen hertekenen als er iets veranderde
   const lijst=document.getElementById('monWarnLijst');
@@ -901,7 +750,7 @@ function _monChipMaak(){
 }
 function _monChipTick(){
   const M=window.PLMon;
-  const toon=(!!(M&&M.active)||((typeof demoMode!=='undefined')&&demoMode&&_monDemoChip))&&!_monPaneZichtbaar();
+  const toon=!!(M&&M.active)&&!_monPaneZichtbaar();
   const c=_monChipEl||(toon?_monChipMaak():null);
   if(!c) return;                                        // nog nooit nodig geweest
   c.style.display=toon?'flex':'none';

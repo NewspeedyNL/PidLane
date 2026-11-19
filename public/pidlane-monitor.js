@@ -403,7 +403,7 @@ window.PLMon = PLMon;
    Tot nu toe startte en stopte de monitor zichzelf en was hij alleen op
    afstand uit te zetten via de feature-flag. Er was dus geen enkele knop
    voor de gebruiker. Deze twee functies vullen dat gat; de knop zit sinds
-   2026-07-26 op de Rit-monitor-pane zelf (#monPaneToggle) i.p.v. in het
+   2026-07-26 op de Rit-monitor zelf (#monPaneToggle, sinds 19-11-2026 in het venster) i.p.v. in het
    ☰-menu, en de stand wordt niet meer bewaard tussen sessies. */
 window.toggleRitMonitor = function(){
   PLMon.userAan = !PLMon.userAan;
