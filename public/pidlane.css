@@ -3778,12 +3778,12 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
      (toeren en snelheid) blijven. */
 @media (orientation:portrait) {
   body.pl-vis-vol .vis { justify-content:flex-start; }
-  body.pl-vis-vol .vis > .vis-bak { flex:1 0 auto; display:flex; flex-direction:column; justify-content:center; }
+  body.pl-vis-vol .vis > .vis-bak { flex:1 0 auto; display:flex; flex-direction:column; justify-content:safe center; }
   /* De basismeter krimpt in de breedte (hij is vierkant); een profiel zoomt. */
   body.pl-vis-vol .vis > .vis-bak:not(:has(.vpf)) { max-width:calc(min(100%, calc(var(--pl-vh) - 140px), 760px) * var(--vis-pas, 1)); }
   body.pl-vis-vol .vis > .vis-bak:has(.vpf) { zoom:var(--vis-pas, 1); }
   body.pl-vis-vol .vis:has(.vtp) { justify-content:safe center; }
-  body.pl-vis-vol .vis-bak > .vpf { flex:1 0 auto; display:flex; flex-direction:column; justify-content:space-evenly; }
+  body.pl-vis-vol .vis-bak > .vpf { flex:1 0 auto; display:flex; flex-direction:column; justify-content:safe space-evenly; }
   body.pl-vis-vol .vis:has(.vtp) > .vis-bak { flex-grow:0; }
   body.pl-vis-vol .vis:has(.vtp) .vis-bak > .vpf { flex-grow:0; justify-content:flex-start; }
   /* Motor (neon) en Verbruik (digitaal): het hoofdelement groter. */
