@@ -92,6 +92,12 @@ const zCheck = (function () {
   const c = r.match(/calc\(var\(--z-modal\)\s*-\s*(\d+)\)/);
   return c ? zModal - Number(c[1]) : Number(r);
 })();
+// Andersom: elke checkpagina op de gedeelde laag (PLCheck.ov) staat in de lijst,
+// anders staat de balk (9550) over die pagina (9520) heen.
+(bronnen.match(/ov\.id='([A-Za-z]+)'[\s\S]{0,200}?PLCheck\.ov\(ov\)/g) || []).forEach(function (t) {
+  const id = t.match(/ov\.id='([A-Za-z]+)'/)[1];
+  eis(id + ' ligt op de gedeelde laag en de balk wijkt ervoor', K.ONDER_DE_BALK.indexOf(id) >= 0, 'ONDER_DE_BALK: ' + K.ONDER_DE_BALK.join(', '));
+});
 K.ONDER_DE_BALK.forEach(function (id) {
   let m = bronnen.match(new RegExp("ov\\.id='" + id + "'[\\s\\S]{0,200}?z-index:(\\d+)"));
   if (!(zCheck > 0)) { eis(id + ': de laag van .plc-ov is te lezen', false, 'z-index niet gevonden in pidlane.css'); return; }
