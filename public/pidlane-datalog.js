@@ -607,13 +607,12 @@ function pidChoiceBackHome(){
 // Lopende metingen worden GEMINIMALISEERD, niet gestopt.
 function plCloseModeOverlays(){
   // 1) Transiente popups dicht
-  for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
+  for(const id of ['pdfReadyModal','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }
   // 2) Modus-dashboards opzij — nette close-functies waar die bestaan
   try{ closeDeepDiag(); }catch(e){ console.warn('closeDeepDiag mislukt:', e); }
   try{ closeClimateCheck(); }catch(e){ console.warn('closeClimateCheck mislukt:', e); }          // ruimt óók z'n timer op
-  try{ closeNeonDashboard(); }catch(e){ console.warn('closeNeonDashboard mislukt:', e); }         // ruimt hudTimer op
   try{
     const rd=document.getElementById('ritDash');
     if(rd && rd.style.display!=='none'){

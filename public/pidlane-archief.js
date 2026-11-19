@@ -914,7 +914,7 @@ function appBack(){
   // 1. AI-rapport sheet of bekende modals/overlays open? sluit de bovenste.
   //    needsUpdateModal kwam uit de tweede handler; die id stond hier niet en
   //    was dus onbereikbaar voor back zodra die handler weg is.
-  for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','needsUpdateModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','hudPicker','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
+  for(const id of ['srTextSheet','aiReportSheet','pdfReadyModal','needsUpdateModal','reportsOverviewSheet','optResultModal','scenarioModal','btLogModal','ritFocusModal','apiDialog','bandenInfoModal','proefritKeuzeModal','logCenter','vehOverview','demoCarModal']){
     const el=document.getElementById(id);
     if(_plZichtbaar(el)){ el.style.display='none'; return true; }
   }
@@ -940,12 +940,7 @@ function appBack(){
       return true;
     }
   }catch(e){ console.warn('ritDash sluiten mislukt:', e); }
-  // 2b. Neon-dashboard, airco/wintercheck — kwamen uit de tweede handler
-  const neon=document.getElementById('neonDash');
-  if(_plZichtbaar(neon)){
-    if(typeof closeNeonDashboard==='function') closeNeonDashboard(); else neon.style.display='none';
-    return true;
-  }
+  // 2b. Airco/wintercheck — kwam uit de tweede handler
   const clim=document.getElementById('climateDash');
   if(_plZichtbaar(clim)){
     if(typeof closeClimateCheck==='function') closeClimateCheck(); else clim.style.display='none';

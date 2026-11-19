@@ -52,9 +52,9 @@ const KETTING = BRON.slice(VAN, TOT);
 // ── nagebouwde DOM ────────────────────────────────────────────────
 const IDS = ['srCtxAsk', 'srTextSheet', 'aiReportSheet', 'pdfReadyModal', 'needsUpdateModal',
   'reportsOverviewSheet', 'optResultModal', 'scenarioModal', 'btLogModal', 'ritFocusModal',
-  'apiDialog', 'hudPicker', 'bandenInfoModal', 'proefritKeuzeModal', 'logCenter', 'vehOverview',
+  'apiDialog', 'bandenInfoModal', 'proefritKeuzeModal', 'logCenter', 'vehOverview',
   'demoCarModal', 'onderhoudDash', 'evDash', 'langeRitDash', 'ritDash',
-  'neonDash', 'climateDash', 'kebabMenu', 'connOv', 'welcomeScreen'];
+  'climateDash', 'kebabMenu', 'connOv', 'welcomeScreen'];
 
 function maakEl(id) {
   const klassen = [];
@@ -115,7 +115,6 @@ function maakWereld(opzet) {
     backToDoors: noem('backToDoors'),
     minimizeRitAnalyse: noem('minimizeRitAnalyse'),
     closeRitAnalyse: noem('closeRitAnalyse'),
-    closeNeonDashboard: noem('closeNeonDashboard'),
     closeClimateCheck: noem('closeClimateCheck'),
     closeKebab: noem('closeKebab'),
     closeConnOv: noem('closeConnOv'),
@@ -191,9 +190,6 @@ sluit('lopende rit-analyse', { ritActive: true }, ['ritDash'], function (w, n) {
 });
 sluit('afgeronde rit-analyse', { ritActive: false }, ['ritDash'], function (w, n) {
   toets(n + ' → sluiten', w.gedaan.indexOf('closeRitAnalyse') > -1, 'gedaan: ' + w.gedaan.join(', '));
-});
-sluit('neon-dashboard (kwam uit de tweede handler)', {}, ['neonDash'], function (w, n) {
-  toets(n + ' → closeNeonDashboard()', w.gedaan.indexOf('closeNeonDashboard') > -1, 'gedaan: ' + w.gedaan.join(', '));
 });
 sluit('airco/wintercheck (kwam uit de tweede handler)', {}, ['climateDash'], function (w, n) {
   toets(n + ' → closeClimateCheck()', w.gedaan.indexOf('closeClimateCheck') > -1, 'gedaan: ' + w.gedaan.join(', '));
