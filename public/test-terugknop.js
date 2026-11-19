@@ -53,7 +53,7 @@ const KETTING = BRON.slice(VAN, TOT);
 const IDS = ['srCtxAsk', 'srTextSheet', 'aiReportSheet', 'pdfReadyModal', 'needsUpdateModal',
   'reportsOverviewSheet', 'optResultModal', 'scenarioModal', 'btLogModal', 'ritFocusModal',
   'apiDialog', 'hudPicker', 'bandenInfoModal', 'proefritKeuzeModal', 'logCenter', 'vehOverview',
-  'demoCarModal', 'onderhoudDash', 'evDash', 'langeRitDash', 'ritDash', 'caravanDash',
+  'demoCarModal', 'onderhoudDash', 'evDash', 'langeRitDash', 'ritDash',
   'neonDash', 'climateDash', 'kebabMenu', 'connOv', 'welcomeScreen'];
 
 function maakEl(id) {
@@ -115,8 +115,6 @@ function maakWereld(opzet) {
     backToDoors: noem('backToDoors'),
     minimizeRitAnalyse: noem('minimizeRitAnalyse'),
     closeRitAnalyse: noem('closeRitAnalyse'),
-    minimizeCaravanDash: noem('minimizeCaravanDash'),
-    closeCaravanDash: noem('closeCaravanDash'),
     closeNeonDashboard: noem('closeNeonDashboard'),
     closeClimateCheck: noem('closeClimateCheck'),
     closeKebab: noem('closeKebab'),
@@ -193,9 +191,6 @@ sluit('lopende rit-analyse', { ritActive: true }, ['ritDash'], function (w, n) {
 });
 sluit('afgeronde rit-analyse', { ritActive: false }, ['ritDash'], function (w, n) {
   toets(n + ' → sluiten', w.gedaan.indexOf('closeRitAnalyse') > -1, 'gedaan: ' + w.gedaan.join(', '));
-});
-sluit('lopende caravan-dash', { caravanActive: true }, ['caravanDash'], function (w, n) {
-  toets(n + ' → minimaliseren', w.gedaan.indexOf('minimizeCaravanDash') > -1, 'gedaan: ' + w.gedaan.join(', '));
 });
 sluit('neon-dashboard (kwam uit de tweede handler)', {}, ['neonDash'], function (w, n) {
   toets(n + ' → closeNeonDashboard()', w.gedaan.indexOf('closeNeonDashboard') > -1, 'gedaan: ' + w.gedaan.join(', '));

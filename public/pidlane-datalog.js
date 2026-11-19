@@ -621,13 +621,6 @@ function plCloseModeOverlays(){
       else rd.style.display='none';
     }
   }catch(e){ console.warn('minimizeRitAnalyse mislukt:', e); }
-  try{
-    const cd=document.getElementById('caravanDash');
-    if(cd && cd.style.display!=='none'){
-      if(typeof caravanActive!=='undefined' && caravanActive) minimizeCaravanDash();  // rit loopt door + pill
-      else cd.style.display='none';
-    }
-  }catch(e){ console.warn('minimizeCaravanDash mislukt:', e); }
   for(const id of ['pidRecOv','onderhoudDash','evDash','langeRitDash','vlDash','vlSvOv','reportsOverviewSheet','aiReportSheet','srTextSheet']){
     const el=document.getElementById(id); if(el) el.style.display='none';
   }

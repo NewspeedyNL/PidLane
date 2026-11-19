@@ -1195,30 +1195,8 @@ function closeConnOv(){
         <div id="bscBody" class="bsc-body"><div class="bsc-empty">Klik “Sensoren controleren”. De tests worden gekozen op basis van je motortype en wat de auto ondersteunt; daarna vinken ze zichzelf af zodra hun situatie zich voordoet.</div></div>
       </div>
 
-      <!-- ════ 🛡️ RIT-MONITOR — live dashboard + waarschuwingsfeed ════ -->
+      <!-- ════ 🛡️ RIT-MONITOR — de waarschuwingen in het venster ════ -->
       <style>
-        .mon-status{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,rgba(0,255,136,.08),rgba(0,212,255,.06));border:1px solid rgba(0,255,136,.25);margin-bottom:12px}
-        .mon-status.slaap{background:rgba(128,128,128,.08);border-color:rgba(128,128,128,.3)}
-        .mon-dot{width:12px;height:12px;border-radius:50%;background:#00e08a;box-shadow:0 0 0 0 rgba(0,224,138,.5);animation:monpulse 1.6s infinite}
-        .mon-status.slaap .mon-dot{background:#888;animation:none;box-shadow:none}
-        @keyframes monpulse{0%{box-shadow:0 0 0 0 rgba(0,224,138,.45)}70%{box-shadow:0 0 0 11px rgba(0,224,138,0)}100%{box-shadow:0 0 0 0 rgba(0,224,138,0)}}
-        .mon-chip{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.09);opacity:.9}
-        .mon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:10px}
-        .mon-grid2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
-        /* 27-08-2026 — de sporen stonden op 1fr, en dat is minmax(auto,1fr):
-           een spoor mag dan niet smaller worden dan zijn langste woord. Op een
-           telefoon duwde INLAATLUCHT het raster daarmee breder dan het scherm,
-           waardoor de vierde tegel (Verbruik nu) er half afviel en de tegels
-           ongelijk breed werden. minmax(0,1fr) haalt die bodem weg; het label
-           breekt nu af binnen zijn eigen tegel. */
-        .mon-lab{overflow-wrap:anywhere}
-        .mon-tile{border-radius:14px;padding:12px 10px;text-align:center;background:rgba(255,255,255,.045);border:1.5px solid rgba(255,255,255,.1);transition:border-color .3s, background .3s}
-        .mon-tile.warn{border-color:#f2820c;background:rgba(242,130,12,.10)}
-        .mon-tile.alarm{border-color:#ef4444;background:rgba(239,68,68,.12)}
-        .mon-lab{font-size:11px;font-weight:700;opacity:.65;text-transform:uppercase;letter-spacing:.4px}
-        .mon-val{font-size:26px;font-weight:800;line-height:1.15;font-variant-numeric:tabular-nums}
-        .mon-grid2 .mon-val{font-size:17px}
-        .mon-unit{font-size:11px;opacity:.6;font-weight:600}
         .mon-warnkop{font-size:13px;font-weight:800;margin:4px 0 8px;display:flex;justify-content:space-between;
           align-items:center;gap:8px}
         /* De kop stond als flexkind op min-width:auto: een flexkind mag dan niet
@@ -1242,53 +1220,18 @@ function closeConnOv(){
            De oorzaak zat in pidlane.css (.chk-intro liep naar #f0f7ff) en is
            daar opgelost, dus geldt de fix nu voor álle intro-kaarten. */
       </style>
-      <div class="pane" id="pane-monitor">
-        <div class="chk-intro" style="position:relative">
-          <button onclick="monMinimize()" title="Minimaliseer — monitor blijft waken" aria-label="Minimaliseer" style="position:absolute;top:8px;right:10px;width:32px;height:32px;border-radius:8px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx2);font-size:15px;cursor:pointer;z-index:5">➖</button>
-          <h3>🛡️ Rit-monitor</h3>
-          <!-- 2026-07-26 — de uitleg verdwijnt 10 s na openen. Je leest hem één
-               keer; daarna is het scherm beter besteed aan meetwaarden en
-               rijtips. De knop hieronder blijft altijd staan. -->
-          <div id="monIntroTxt" class="mon-intro-txt"><p>Waakt de hele rit passief mee: leest de eigen foutbuffers van de ECU, bewaakt sensorgedrag en test voorwaardelijk. Bijna geen dataverbruik — en bij een ernstige afwijking volgt automatisch een focus-hermeting ter bevestiging.</p></div>
-          <!-- 2026-07-26 — de aan/uit-schakelaar zat in het ☰-menu; dat item is
-               verwijderd, dus staat de schakelaar nu hier op de pane zelf. De
-               monitor start altijd UIT (zie pidlane-monitor.js), meten blijft
-               een bewuste handeling. -->
+      <!-- Het rit-monitorvenster (19-11-2026): vervangt pane-monitor. De
+           ring, de schakelaar en de waarschuwingen; de meettegels en de
+           zuinig-rijdentips staan in Slim visueel. Zie pidlane-totalcheck.js. -->
+      <div id="monVenster" class="mv-ov" role="dialog" aria-modal="true" aria-label="Rit-monitor" onclick="if(event.target===this)monVensterSluit()">
+        <div class="mv-sheet">
+          <div class="mv-kop"><h3>🛡️ Rit-monitor</h3><button type="button" class="mv-x" onclick="monVensterSluit()" aria-label="Sluiten" title="Sluiten">✕</button></div>
+          <div id="monRing" class="mv-ring"></div>
           <button id="monPaneToggle" onclick="try{toggleRitMonitor()}catch(e){console.warn('Rit-monitor niet omgezet',e)}" style="margin-top:10px;display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:10px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">🔕 Rit-monitor aanzetten</button>
+          <p class="mv-uitleg">Waakt de hele rit mee: leest de eigen foutbuffers van de ECU, let op sensoruitval, bevroren waarden en onmogelijke sprongen, en toetst elke controle alleen als de rijsituatie dat toelaat.</p>
+          <div class="mon-warnkop"><span>⚠️ Waarschuwingen &amp; onderbouwing</span><button class="btn" style="padding:5px 11px;font-size:12px" onclick="try{PLMon.report();showToast?.('Monitorrapport opgeslagen in 📄 Rapporten')}catch(e){console.warn('Monitorrapport niet opgeslagen',e)}">📄 Rapport nu</button></div>
+          <div id="monWarnLijst"><div class="mon-leeg">✅ Nog geen afwijkingen.<br>De monitor let op: verborgen (pending) foutcodes, sensor-uitval, bevroren waarden, onmogelijke sprongen, scheve brandstoftrim, oververhitting en laadspanning — elk alleen getoetst wanneer de rij-situatie dat toelaat.</div></div>
         </div>
-        <div id="monStatus" class="mon-status slaap">
-          <div class="mon-dot"></div>
-          <b id="monStatusTxt">Monitor slaapt — verbind met de auto</b>
-          <span class="mon-chip" id="monChipFase" style="display:none">—</span>
-          <span class="mon-chip" id="monChipTemp" style="display:none">—</span>
-          <span class="mon-chip" id="monChipTijd" style="display:none">—</span>
-        </div>
-        <div class="mon-grid">
-          <div class="mon-tile" id="monT_spd"><div class="mon-lab">Snelheid</div><div class="mon-val" id="monV_spd">—</div><div class="mon-unit">km/u</div></div>
-          <div class="mon-tile" id="monT_rpm"><div class="mon-lab">Toerental</div><div class="mon-val" id="monV_rpm">—</div><div class="mon-unit">rpm</div></div>
-          <div class="mon-tile" id="monT_ect"><div class="mon-lab">Koelwater</div><div class="mon-val" id="monV_ect">—</div><div class="mon-unit">°C</div></div>
-        </div>
-        <div class="mon-grid2">
-          <div class="mon-tile" id="monT_load"><div class="mon-lab">Belasting</div><div class="mon-val" id="monV_load">—</div><div class="mon-unit">%</div></div>
-          <div class="mon-tile" id="monT_volt"><div class="mon-lab">Spanning</div><div class="mon-val" id="monV_volt">—</div><div class="mon-unit">V</div></div>
-          <div class="mon-tile" id="monT_trim"><div class="mon-lab">Trim ∑</div><div class="mon-val" id="monV_trim">—</div><div class="mon-unit">%</div></div>
-          <div class="mon-tile" id="monT_map"><div class="mon-lab">Inlaatdruk</div><div class="mon-val" id="monV_map">—</div><div class="mon-unit">kPa</div></div>
-        </div>
-        <!-- Extra meetwaarden, zichtbaar zodra de uitleg is weggevallen. -->
-        <div class="mon-grid2">
-          <div class="mon-tile" id="monT_iat"><div class="mon-lab">Inlaatlucht</div><div class="mon-val" id="monV_iat">—</div><div class="mon-unit">°C</div></div>
-          <div class="mon-tile" id="monT_thr"><div class="mon-lab">Gaspedaal</div><div class="mon-val" id="monV_thr">—</div><div class="mon-unit">%</div></div>
-          <div class="mon-tile" id="monT_adv"><div class="mon-lab">Ontsteking</div><div class="mon-val" id="monV_adv">—</div><div class="mon-unit">°</div></div>
-          <div class="mon-tile" id="monT_lph"><div class="mon-lab">Verbruik nu</div><div class="mon-val" id="monV_lph">—</div><div class="mon-unit" id="monU_lph">L/100</div></div>
-        </div>
-        <!-- Zuinig rijden: één live-advies dat op de echte meetwaarden van dít
-             moment slaat, plus een algemene tip die doorrouleert. -->
-        <div class="mon-tips" id="monTips">
-          <div class="mon-tip-live" id="monTipLive">⛽ Zuinig rijden — advies verschijnt zodra je rijdt.</div>
-          <div class="mon-tip-alg" id="monTipAlg">—</div>
-        </div>
-        <div class="mon-warnkop"><span>⚠️ Waarschuwingen &amp; onderbouwing</span><button class="btn" style="padding:5px 11px;font-size:12px" onclick="try{PLMon.report();showToast?.('Monitorrapport opgeslagen in 📄 Rapporten')}catch(e){console.warn('Monitorrapport niet opgeslagen',e)}">📄 Rapport nu</button></div>
-        <div id="monWarnLijst"><div class="mon-leeg">✅ Nog geen afwijkingen.<br>De monitor let op: verborgen (pending) foutcodes, sensor-uitval, bevroren waarden, onmogelijke sprongen, scheve brandstoftrim, oververhitting en laadspanning — elk alleen getoetst wanneer de rij-situatie dat toelaat.</div></div>
       </div>
 
       <!-- DIAGNOSE -->
@@ -1778,102 +1721,6 @@ function closeConnOv(){
   </div>
 </div>
 
-<!-- ══ CARAVAN / AANHANGER RITTRACKER (live brandstofcoach) ══ -->
-<div id="caravanDash" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);backdrop-filter:blur(12px);z-index:9600;overflow-y:auto">
-  <div style="max-width:720px;margin:0 auto;padding:calc(18px + var(--pl-sat,0px)) 16px calc(28px + var(--pl-sab,0px))">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div>
-        <div style="font-size:18px;font-weight:800;color:#fff">🚐 Caravan-rit</div>
-        <div id="carStatus" style="font-size:12px;color:rgba(255,255,255,.45)">Klaar om te starten</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="minimizeCaravanDash()" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(14,159,110,.4);background:rgba(14,159,110,.1);color:#7cf5c0;font-size:13px;font-weight:700;cursor:pointer">⎯ Kleiner</button>
-        <button onclick="closeCaravanDash()" style="padding:7px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.6);font-size:13px;cursor:pointer">✕ Sluiten</button>
-      </div>
-    </div>
-
-    <!-- SETUP -->
-    <div id="carSetup">
-      <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;margin-bottom:14px">
-        <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.5;margin-bottom:14px">
-          De coach kijkt tijdens de rit live mee en geeft <b>brandstofgerichte tips</b>: terugschakelen als de motor zwoegt, opschakelen bij onnodig hoog toerental, cruise op een zuinig tempo, rustiger op het gas en uitrollen bij afdalingen. Daarnaast bewaakt hij koelwater, belasting en boordspanning. Aan het eind krijg je één rapport (brandstof + techniek + rijgedrag).
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <label style="font-size:12px;color:rgba(255,255,255,.6)">Caravanlimiet</label>
-          <input id="carLimit" type="number" min="50" max="140" step="5" value="100" style="width:74px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.3);color:#fff;font-size:14px;text-align:center">
-          <span style="font-size:12px;color:rgba(255,255,255,.5)">km/h — cruise-tip mikt ~5 eronder</span>
-        </div>
-        <div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:8px">Brandstofprijs (uit Verbruik-scherm): <span id="carPriceEcho">€ 2,05/liter</span> · terrein wordt op OBD-basis ingeschat (geen GPS)</div>
-      </div>
-      <button onclick="startCaravan()" style="width:100%;padding:14px;border-radius:10px;border:none;background:linear-gradient(135deg,#0e9f6e,#1a6fff);color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:800;cursor:pointer">🚐 Start rit &amp; coaching</button>
-    </div>
-
-    <!-- LIVE -->
-    <div id="carLive" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div id="carTimer" style="font-family:'DM Mono',monospace;font-size:22px;font-weight:600;color:#fff">0:00</div>
-        <div id="carClimb" style="font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;background:rgba(143,211,255,.13);color:#8fd3ff">➖ Vlak</div>
-      </div>
-
-      <!-- grote verbruik-tegel -->
-      <div style="background:linear-gradient(135deg,rgba(14,159,110,.12),rgba(26,111,255,.10));border:1px solid rgba(14,159,110,.25);border-radius:14px;padding:16px;margin-bottom:12px;text-align:center">
-        <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;color:rgba(255,255,255,.45)">MOMENTAAN VERBRUIK</div>
-        <div style="display:flex;align-items:baseline;justify-content:center;gap:8px;margin-top:4px">
-          <span id="carLkm" style="font-family:'DM Mono',monospace;font-size:44px;font-weight:600;color:#fff;line-height:1">—</span>
-          <span style="font-size:14px;color:rgba(255,255,255,.5)">L/100km</span>
-        </div>
-        <div id="carLh" style="font-size:13px;color:rgba(255,255,255,.5);margin-top:2px">—</div>
-      </div>
-
-      <!-- tegels -->
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">SNELHEID</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carSpeed">—</span></div>
-          <div id="carCruise" style="font-size:11px;color:rgba(255,255,255,.35)">doel ~95</div>
-        </div>
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">TOERENTAL</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carRpm">—</span></div>
-          <div id="carGear" style="font-size:11px;font-weight:700;color:#7cf5c0">✓ ok</div>
-        </div>
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">VERMOGEN</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carPower">—</span></div>
-          <div id="carPowerLbl" style="font-size:11px;color:rgba(255,255,255,.35)">% belasting</div>
-        </div>
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">KOELWATER</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#7cf5c0"><span id="carCoolant">—</span></div>
-        </div>
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">SPANNING</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#8fd3ff"><span id="carVolt">—</span></div>
-        </div>
-        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 10px;text-align:center">
-          <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4)">GEMIDDELD</div>
-          <div style="font-family:'DM Mono',monospace;font-size:26px;font-weight:600;color:#fff"><span id="carAvg">—</span></div>
-          <div style="font-size:11px;color:rgba(255,255,255,.35)">L/100km</div>
-        </div>
-      </div>
-
-      <!-- trip-balk -->
-      <div style="display:flex;justify-content:space-between;gap:8px;background:rgba(255,255,255,.04);border-radius:12px;padding:12px 14px;margin-bottom:12px">
-        <div style="text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.4);font-weight:800">AFSTAND</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#fff"><span id="carKm">0.0</span> km</div></div>
-        <div style="text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.4);font-weight:800">VERBRUIKT</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#fff"><span id="carLiters">0.00</span> L</div></div>
-        <div style="text-align:center"><div style="font-size:11px;color:rgba(255,255,255,.4);font-weight:800">KOSTEN</div><div style="font-family:'DM Mono',monospace;font-size:17px;color:#7cf5c0"><span id="carCost">€ 0.00</span></div></div>
-      </div>
-
-      <!-- coaching-feed -->
-      <div style="margin-bottom:14px">
-        <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:rgba(255,255,255,.4);margin-bottom:6px">💬 COACH</div>
-        <div id="carCoach"></div>
-      </div>
-
-      <button onclick="stopCaravan()" style="width:100%;padding:13px;border-radius:10px;border:1px solid rgba(255,100,100,.4);background:rgba(255,0,0,.1);color:#ff6464;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:800;cursor:pointer">⏹ Stop &amp; maak rapport</button>
-    </div>
-  </div>
-</div>
 
 <script src="pidlane-auth.js"></script>
 <script src="pidlane-pidgate.js"></script><!-- PID-gate: afgesplitst uit auth (§15) — moet ná auth.js, dáár staan activePIDs/pidVals/_pidHealth -->

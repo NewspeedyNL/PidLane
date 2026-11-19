@@ -37,7 +37,7 @@
 var KRITIEK = [
   '_niceReportName','aiBusyBegin','aiBusyEnd','_srUpdateBadge','_noteMap','_recStats',
   'appBack','btDiag','btLogAfkappen','btLogDomAfkappen','sppOudeSluiten','isObdNaam','plSnelBekend','_kentNaVerbinden','plVerbindOpen','_pollWacht','buildDiscoveredPIDList',
-  'clearDTC','clearSLAutoHide','closeCaravanDash','closeKebab','closeLades','closeRitAnalyse',
+  'clearDTC','clearSLAutoHide','closeKebab','closeLades','closeRitAnalyse',
   'demo','detectEngineType','disconnectWebSerial','doLogin','download','dtcInfo','dtcPlan',
   // obdChipTap erbij op 06-11-2026: "Verbind adapter" op het startscherm (PLThuis) opent er het verbindscherm mee.
   'obdChipTap',
@@ -156,7 +156,7 @@ var KRITIEK = [
   // De preset na de OBDb-steunlijst (#616, #670): PLGarage roept hem achter
   // een guard aan. Ontbreekt hij, dan blijven de spook-PIDs zonder melding.
   'presetNaSteun','presetAanname',
-  'magToevoegen','measureConnSpeed','merkGroep','minimizeCaravanDash','minimizeRitAnalyse','monitorStatusTekst',
+  'magToevoegen','measureConnSpeed','merkGroep','minimizeRitAnalyse','monitorStatusTekst',
   'openCaravan','openLogboek','openBugReport','openPrivacy','openRitAnalyse',
   // Rapporten → ➕ Rapport aanvragen (29-10-2026): de lijst vraagt per
   // rapport of zijn ingang er is; blok 5 vraagt de lijst zelf.
@@ -265,7 +265,7 @@ var KRITIEK = [
   'plEigenDefs',
   // Slim visueel zet de trekstrook aan bij rijsituatie caravan of beladen
   // (27-09-2026). Valt hij weg, dan blijft de strook stil weg.
-  'situatieActief',
+  'situatieActief','toggleSituatie',
   // Alle AI-rapporten lopen via apiFetch (pidlane-fuel.js). Valt hij weg,
   // dan doet geen enkele analyseknop nog iets.
   'apiFetch',
@@ -324,7 +324,7 @@ var KRITIEK = [
   // Erbij op 14-10-2026. De rijmodus (pidlane-rijmodus.js) leest het advies
   // van de caravancoach achter een guard: ontbreekt een van deze, dan blijft
   // het radertje of de verbruiksbalk leeg zonder dat iets het zegt.
-  'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanSchakelAdvies','caravanVerbruikNiveau',
+  'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanLimietWissel','caravanSchakelAdvies','caravanVerbruikNiveau',
   'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.

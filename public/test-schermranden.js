@@ -114,12 +114,6 @@ console.log('\n2. Twee vensters in index.html (HUD en rittracker)');
     toets('ritDash gebruikt --pl-sat en --pl-sab', /var\(--pl-sat/.test(stuk) && /var\(--pl-sab/.test(stuk));
   }
 
-  const iCar = html.indexOf('id="caravanDash"');
-  toets('caravanDash gevonden', iCar >= 0);
-  if (iCar >= 0) {
-    const stuk = html.slice(iCar, iCar + 500);
-    toets('caravanDash gebruikt --pl-sat en --pl-sab', /var\(--pl-sat/.test(stuk) && /var\(--pl-sab/.test(stuk));
-  }
 }
 
 console.log('\n3. De app-schil zelf — issue #58 (29-08-2026)');

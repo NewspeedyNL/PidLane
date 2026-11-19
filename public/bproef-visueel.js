@@ -323,6 +323,24 @@ function beoordeel(m) {
       const r = { paneel: !!v, seg: v ? v.querySelectorAll('.vrm-seg').length : 0, tests: (PLWatch.tests||[]).length,
                   chipWeg: (function(){ const c=document.querySelector('.vis-chip[data-id="monitor"]'); return !c || getComputedStyle(c).display==='none'; })(),
                   tekst: v ? v.textContent : '' };
+      // Tik op de ring: het venster met de waarschuwingen (19-11-2026, vervangt pane-monitor)
+      // Vers opzoeken: de ring wordt elke seconde opnieuw getekend als zijn tekst verandert,
+      // en een tik op een losgekoppeld element doet niets (zo ging het op een volle runner).
+      const ringNu = document.querySelector('#visRitMon .vrm'); if (ringNu) ringNu.click();
+      const mv = document.getElementById('monVenster');
+      // Het venster schuift omhoog (0,25 s); op een volle runner duurt dat langer. Wacht tot het stilstaat.
+      for (let i = 0; i < 40; i++) {
+        const sh = mv && mv.querySelector('.mv-sheet');
+        if (sh && (!sh.getAnimations || !sh.getAnimations().length)) break;
+        await new Promise(function(r){ setTimeout(r, 50); });
+      }
+      const vr = mv ? mv.querySelector('.mv-sheet').getBoundingClientRect() : null;
+      r.v = { open: !!mv && mv.classList.contains('open'), ring: !!(mv && mv.querySelector('#monRing .vrm')), lijst: !!(mv && mv.querySelector('#monWarnLijst')),
+              b: vr ? Math.round(vr.width) : 0, onder: vr ? Math.round(vr.bottom) : 0, h: innerHeight, body: !!mv && mv.parentElement === document.body };
+      r.venster = r.v.open && r.v.ring && r.v.lijst && r.v.b > 200 && r.v.onder <= r.v.h + 1 && r.v.body;
+      r.oudScherm = !!document.getElementById('pane-monitor');
+      const x = mv && mv.querySelector('.mv-x'); if (x) x.click();
+      r.dicht = !!mv && !mv.classList.contains('open');
       if (!was) PLRun.schakel('monitor');
       await new Promise(function(r){ setTimeout(r, 1300); });
       r.weg = !document.querySelector('#visRitMon .vrm');
@@ -332,6 +350,9 @@ function beoordeel(m) {
     toets('…met wat de ECU zegt', /ECU|motorlampje|foutcode/.test(rm.tekst), rm.tekst);
     toets('…en niet óók nog als chip op de rail', rm.chipWeg, JSON.stringify(rm));
     toets('rit-monitor uit: het paneel is weg', rm.weg, JSON.stringify(rm));
+    toets('tik op de ring: het venster met de ring en de waarschuwingen, in beeld', rm.venster, JSON.stringify(rm));
+    toets('het oude rit-monitorscherm bestaat niet meer', !rm.oudScherm, JSON.stringify(rm));
+    toets('het ✕ sluit het venster', rm.dicht, JSON.stringify(rm));
     await WACHT(300);
 
     console.log('\n6. De rem op de bus');

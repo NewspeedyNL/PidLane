@@ -3296,25 +3296,21 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#connOv .mact > #btnExpertJoin{ grid-column:1 / -1; background:none; border:0; padding:4px; color:var(--tx3); font-size:12px; font-weight:600; }
 .ov#connOv .lg-foot{ margin-top:12px; font-size:11.5px; line-height:1.6; }
 
-/* ── Rit-monitor: uitleg vervalt, meetwaarden en rijtips komen ervoor terug ── */
-.mon-intro-txt{
-  overflow:hidden; max-height:220px; opacity:1;
-  transition:max-height .5s ease, opacity .35s ease, margin .5s ease;
-}
-.mon-intro-txt.weg{ max-height:0; opacity:0; margin:0; }
-.mon-tips{
-  margin:10px 12px 4px; display:flex; flex-direction:column; gap:7px;
-}
-.mon-tip-live{
-  border-radius:12px; padding:11px 13px; font-size:13px; line-height:1.45; font-weight:700;
-  background:rgba(255,255,255,.045); border:1px solid var(--bd); color:var(--tx2);
-}
-.mon-tip-live.goed{ border-color:rgba(0,168,107,.45); background:rgba(0,168,107,.10); color:var(--tx); }
-.mon-tip-live.let { border-color:rgba(247,127,0,.45);  background:rgba(247,127,0,.10);  color:var(--tx); }
-.mon-tip-alg{
-  border-radius:12px; padding:10px 13px; font-size:12.5px; line-height:1.5;
-  background:var(--sur2); border:1px solid var(--bd); color:var(--tx3);
-}
+/* ── Het rit-monitorvenster (19-11-2026): vervangt pane-monitor ── */
+.mv-ov { position:fixed; inset:0; z-index:var(--z-modal); display:none; align-items:flex-end; justify-content:center;
+  background:rgba(0,0,0,.55); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+.mv-ov.open { display:flex; }
+.mv-sheet { width:min(100%, 560px); max-height:calc(var(--pl-vh) - var(--pl-sat, 0px) - 24px); overflow:auto; box-sizing:border-box;
+  padding:14px 16px calc(var(--pl-sab, 0px) + 18px); border-radius:20px 20px 0 0; background:var(--bg); border:1px solid var(--bd); border-bottom:0;
+  color:var(--tx); animation:mv-op .25s ease-out; }
+@keyframes mv-op { from { transform:translateY(24px); opacity:0; } }
+.mv-kop { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.mv-kop h3 { margin:0; font-size:17px; }
+.mv-x { width:40px; height:40px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-size:15px; font-weight:800; cursor:pointer; }
+.mv-ring .vrm { pointer-events:none; }
+.mv-uitleg { margin:10px 2px 14px; font-size:12.5px; line-height:1.5; color:var(--tx2); }
+#monVenster #monPaneToggle { margin-top:10px; }
+@media (min-width:700px) { .mv-ov { align-items:center; } .mv-sheet { border-radius:20px; border-bottom:1px solid var(--bd); } }
 
 /* ── "Ander kanaal": dit PID meet hetzelfde als een standaard-PID, maar via
       een andere sensor of uitleesweg. Zonder deze markering lijken twee net
@@ -3843,6 +3839,16 @@ body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vtp-voet { display:flex; justify-content:center; flex-wrap:wrap; gap:8px; font-size:12px; color:var(--tx2); font-variant-numeric:tabular-nums; }
 .vtp-tip { padding:7px 10px; border-left:3px solid var(--gn); border-radius:0 8px 8px 0; background:var(--sur2); font-size:13px; font-weight:600; color:var(--tx); }
 .vtp-tip[data-level="warn"] { border-left-color:var(--or); }
+.vtp-rit { display:flex; align-items:center; gap:10px; padding-top:8px; border-top:1px solid var(--bd); }
+.vtp-rit-tx { flex:1; display:flex; flex-direction:column; min-width:0; }
+.vtp-rit-tx b { font-size:13px; }
+.vtp-rit-tx small { font-size:11.5px; color:var(--tx2); font-variant-numeric:tabular-nums; }
+.vtp-rit[data-actief="0"] .vtp-rit-tx small { color:var(--tx3); }
+.vtp-limiet { flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; width:58px; height:58px; border-radius:50%;
+  border:3px solid var(--rd); background:#fff; color:#111; font-family:var(--f); cursor:pointer; line-height:1; }
+.vtp-limiet b { font-size:20px; font-weight:900; }
+.vtp-limiet small { font-size:8px; font-weight:700; color:#555; margin-top:1px; }
+.vtp-limiet:active { transform:scale(.94); }
 body.pl-vis-vol .vtp-cel b { font-size:22px; } body.pl-vis-vol .vtp-rad { width:72px; height:72px; } body.pl-vis-vol .vtp-rad b { font-size:32px; }
 
 /* De rit-monitor: één segment per controle op een ring. */
