@@ -328,7 +328,12 @@ function beoordeel(m) {
       // en een tik op een losgekoppeld element doet niets (zo ging het op een volle runner).
       const ringNu = document.querySelector('#visRitMon .vrm'); if (ringNu) ringNu.click();
       const mv = document.getElementById('monVenster');
-      await new Promise(function(r){ setTimeout(r, 450); });   // het venster schuift 0,25 s omhoog
+      // Het venster schuift omhoog (0,25 s); op een volle runner duurt dat langer. Wacht tot het stilstaat.
+      for (let i = 0; i < 40; i++) {
+        const sh = mv && mv.querySelector('.mv-sheet');
+        if (sh && (!sh.getAnimations || !sh.getAnimations().length)) break;
+        await new Promise(function(r){ setTimeout(r, 50); });
+      }
       const vr = mv ? mv.querySelector('.mv-sheet').getBoundingClientRect() : null;
       r.v = { open: !!mv && mv.classList.contains('open'), ring: !!(mv && mv.querySelector('#monRing .vrm')), lijst: !!(mv && mv.querySelector('#monWarnLijst')),
               b: vr ? Math.round(vr.width) : 0, onder: vr ? Math.round(vr.bottom) : 0, h: innerHeight, body: !!mv && mv.parentElement === document.body };
