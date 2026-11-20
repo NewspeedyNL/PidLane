@@ -100,8 +100,10 @@ const SAB = 48;
     // De bulk-recorder weigert de demo-auto ('neemt geen demo op'); voor de
     // ruimte telt alleen dat hij als lopend gemeld wordt, dus die status is nep.
     await app.ev(`(function(){ const echt=PLBulk.status; PLBulk.status=function(){ return window.__nepBulk ? { actief:true, gepauzeerd:false, regels:120, gestart:Date.now()-60000 } : echt.apply(this, arguments); }; return true; })()`);
-    const zet = (aan) => app.ev(`window.confirm=function(){ return true; }; window.__nepBulk=${JSON.stringify(aan)}.indexOf('bulk')>-1;
-      ['monitor','caravan','waak'].forEach(function(id){ const nu=!!(PLRun.staat()[id]||{}).aan; if(nu !== (${JSON.stringify(aan)}.indexOf(id)>-1)) PLRun.schakel(id); }); true`);
+    const zet = (aan) => app.ev(`(function(){ window.confirm=function(){ return true; }; window.__nepBulk=${JSON.stringify(aan)}.indexOf('bulk')>-1;
+      const wil=${JSON.stringify(aan)}, ids=['monitor','caravan','waak'];   // eerst uit, dan aan: rit-monitor en caravanrit sluiten elkaar uit
+      ids.forEach(function(id){ if((PLRun.staat()[id]||{}).aan && wil.indexOf(id)<0) PLRun.schakel(id); });
+      ids.forEach(function(id){ if(!(PLRun.staat()[id]||{}).aan && wil.indexOf(id)>-1) PLRun.schakel(id); }); return true; })()`);
     // Elke combinatie die mag: rit-monitor óf caravanrit, met recorder en waakronde erbij.
     const rondje = async (kop, lopend, soort) => {
       console.log('\n' + kop);
@@ -130,8 +132,10 @@ const SAB = 48;
 
     console.log('\n6. Rit-monitor en caravanrit nooit tegelijk');
     await zet(['monitor']); await W(1500);
-    await app.ev(`PLRun.schakel('caravan'); true`); await W(2500);
     let st = await app.ev(`JSON.stringify({ monitor:!!(PLRun.staat().monitor||{}).aan, caravan:!!(PLRun.staat().caravan||{}).aan })`);
+    toets('beginstand: rit-monitor aan, geen caravanrit', st === '{"monitor":true,"caravan":false}', st);
+    await app.ev(`PLRun.schakel('caravan'); true`); await W(2500);
+    st = await app.ev(`JSON.stringify({ monitor:!!(PLRun.staat().monitor||{}).aan, caravan:!!(PLRun.staat().caravan||{}).aan })`);
     toets('de caravanrit start en zet de rit-monitor uit', st === '{"monitor":false,"caravan":true}', st);
     await app.ev(`PLRun.schakel('monitor'); true`); await W(1500);
     st = await app.ev(`JSON.stringify({ monitor:!!(PLRun.staat().monitor||{}).aan, caravan:!!(PLRun.staat().caravan||{}).aan, ring:!!document.querySelector('.vis .vrm') })`);
