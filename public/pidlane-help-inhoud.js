@@ -300,7 +300,7 @@ var PL_HULP = {
         'De kleur is de ernstigste van auto-dossier, adapter, AI en de diensten samen.</p>' +
         '<p>Tik erop voor vijf regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
         '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is; één gemiste verbinding onderweg maakt hem nog niet rood, pas twee op rij — tik erop voor wat de AI doet, hoe tokens werken en hoe je ze aanvraagt, en hoe je ze niet verspilt aan onvolledige data), <b>Diensten</b> en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
-        '<b>Diensten</b> kijkt elke vijf minuten of het RDW (kentekenregister), de AI en de PidLane-server het doen. Heeft een van hen een storing, dan wordt de stip oranje of rood en zegt de app één keer wat er stoort en wat nog wel werkt: de meting via de adapter werkt altijd. Tik op Diensten om nu te controleren. ' +
+        '<b>Diensten</b> kijkt elke vijf minuten of het RDW (kentekenregister), de AI en de PidLane-server het doen. Heeft een van hen een storing, dan wordt de stip oranje of rood en zegt de app één keer wat er stoort en wat nog wel werkt: de meting via de adapter werkt altijd. Tik op Diensten voor een venster met per dienst de stand, wanneer hij gecontroleerd is en wat je ervan merkt; daar staat ook Nu controleren. ' +
         'Een getal bij de statusknop zegt hoeveel dingen er lopen.</p>',
       zie: ['verbinden'] },
 

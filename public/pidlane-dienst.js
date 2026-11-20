@@ -82,6 +82,7 @@
     Object.keys(_gemeld).forEach((k) => { if (!nieuw.some((m) => m.dienst === k)) { delete _gemeld[k]; console.info('PLDienst: ' + k + ' weer in orde'); } });
     try { if (typeof root.updateTopbarStatus === 'function') root.updateTopbarStatus(); }
     catch (e) { console.warn('PLDienst: bovenbalk niet bijgewerkt', e); }
+    try { teken2(); } catch (e) { console.warn('PLDienst: venster niet bijgewerkt', e); }
   }
 
   // Wat de app zelf zag: een RDW-antwoord via /proxy (vanuit plFetch).
@@ -123,12 +124,62 @@
     if (chip) chip.title = m.map((x) => x.tekst).join('\n') || 'Alle diensten in orde';
     return e;
   }
-  function uitleg() {
-    const m = meldingen(_stand, online());
-    try { if (typeof root.showToast === 'function') root.showToast(m.length ? m.map((x) => '⚠️ ' + x.tekst).join('\n\n') : '✅ RDW, AI en de PidLane-server zijn bereikbaar.', 8000); }
-    catch (e) { console.warn('PLDienst: uitleg niet getoond', e); }
-    check();
+  // Het venster achter de regel Diensten (20-11-2026): per dienst de stand,
+  // wanneer gecontroleerd, en wat de klant ervan merkt. Een toast was te kort
+  // om te lezen wat er nog wel werkt.
+  const DIENSTEN = [
+    ['net', '📶', 'Internet', 'Kenteken, AI-uitleg en opslaan gaan via internet. De meting via de adapter niet.'],
+    ['server', '☁️', 'PidLane-server', 'Inloggen, tegoed, AI-uitleg, opslaan en het doorgeven van RDW-vragen.'],
+    ['rdw', '🚗', 'RDW (kentekenregister)', 'Merk, model, bouwjaar, APK en terugroepacties bij een kenteken.'],
+    ['ai', '🤖', 'AI (Anthropic)', 'De uitleg, rapporten en analyses. Metingen en foutcodes werken zonder.']];
+  const WOORD = { goed: 'in orde', traag: 'traag', verstoord: 'verstoord', storing: 'storing', onbereikbaar: 'niet bereikbaar', offline: 'geen verbinding', onbekend: 'onbekend' };
+  function regel(k) {
+    if (k === 'net') return online() ? { status: 'goed', detail: '' } : { status: 'offline', detail: '' };
+    return _stand[k] || null;
   }
+  function venster() {
+    const C = root.PLCheck, doc = root.document;
+    if (!C || !doc) return '';
+    const kleur = (st) => ({ goed: 'var(--gn,#22c55e)', traag: '#f59e0b', verstoord: '#f59e0b', storing: '#ef4444', onbereikbaar: '#ef4444', offline: '#ef4444' }[st] || '#94a3b8');
+    const tijd = (t) => { try { return t ? new Date(t).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }) : ''; } catch (e) { console.warn('PLDienst: tijd', e); return ''; } };
+    const m = meldingen(_stand, online());
+    const kaarten = DIENSTEN.map((d) => {
+      const r = regel(d[0]), st = r ? r.status : null;
+      return C.kaart('<div style="display:flex;gap:10px;align-items:flex-start">' +
+        '<span style="flex:none;width:12px;height:12px;border-radius:50%;margin-top:5px;background:' + kleur(st) + '"></span>' +
+        '<div style="flex:1"><b>' + d[1] + ' ' + C.esc(d[2]) + '</b> — ' + C.esc(st ? (WOORD[st] || st) : 'nog niet gecontroleerd') +
+        (r && r.detail ? ' <span style="color:var(--tx3)">(' + C.esc(r.detail) + ')</span>' : '') +
+        '<div style="font-size:12px;color:var(--tx3);margin-top:3px">' + C.esc(d[3]) + (r && r.t ? ' · gecontroleerd ' + tijd(r.t) : '') + '</div></div></div>');
+    }).join('');
+    return C.pagina(
+      C.kop({ icoon: '🌐', titel: 'Diensten', sluit: 'PLDienst.sluit()', tekst: 'Waar PidLane op leunt, en of het nu werkt. Een storing hier ligt niet aan de app of aan je auto.' }) +
+      (m.length ? m.map((x) => C.tip(C.esc(x.tekst), 'let')).join('') : C.tip('Alles in orde. De app kijkt elke vijf minuten opnieuw zolang hij in beeld is.')) +
+      kaarten +
+      C.tip('De meting via de adapter, de foutcodes en de sensoren werken altijd, ook zonder internet.') +
+      C.knop('🔄 Nu controleren', 'PLDienst.ververs()') + C.knop('Sluiten', 'PLDienst.sluit()', 'sec'));
+  }
+  function teken2() {
+    const el = root.document && root.document.getElementById('dienstVenster');
+    if (el && el.style.display !== 'none') el.innerHTML = venster();
+  }
+  function open() {
+    const doc = root.document; if (!doc) return;
+    let el = doc.getElementById('dienstVenster');
+    if (!el) { el = doc.createElement('div'); el.id = 'dienstVenster'; doc.body.appendChild(el); }
+    if (root.PLCheck) root.PLCheck.ov(el);
+    el.innerHTML = venster();
+    el.style.display = 'block';
+    ververs();
+  }
+  function sluit() {
+    const el = root.document && root.document.getElementById('dienstVenster');
+    if (el) el.style.display = 'none';
+  }
+  async function ververs() {
+    try { await check(); } catch (e) { console.warn('PLDienst: controle mislukt', e); }
+    teken2();
+  }
+  function uitleg() { open(); }
 
   function start() {
     if (root._plDienstGestart) return;
@@ -142,5 +193,5 @@
   }
   if (root.addEventListener) root.addEventListener('load', start);
 
-  root.PLDienst = { rdwTekst, meldingen, verwerk, zie, check, ernst, teken, uitleg, stand: () => Object.assign({}, _stand), MIS_ROOD: DIENST_MIS_ROOD };
+  root.PLDienst = { rdwTekst, meldingen, verwerk, zie, check, ernst, teken, uitleg, open, sluit, ververs, stand: () => Object.assign({}, _stand), MIS_ROOD: DIENST_MIS_ROOD };
 })(typeof window !== 'undefined' ? window : this);
