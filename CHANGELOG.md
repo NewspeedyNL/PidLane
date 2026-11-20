@@ -14,6 +14,7 @@
  ═════════════════════════════════════════════════════
    • Tik op Diensten in het systeemmenu: venster (PLCheck-opmaak) met per dienst — internet, PidLane-server, RDW, AI — de stand, de reden, wanneer gecontroleerd en wat je ervan merkt; bovenaan wat er nu stoort, onderaan Nu controleren. Het venster ververst zichzelf na een controle
    • Op verzoek zonder nieuwe tests; die volgen
+   • Het kruisje viel achter de bovenbalk: het venster staat nu op de modal-laag (z-index 9600 in plaats van 9520)
 
  ═════════════════════════════════════════════════════
  20-11-2026 — Dienstenstand: storing bij RDW, AI of server in gewone taal
