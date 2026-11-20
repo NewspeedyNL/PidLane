@@ -253,18 +253,24 @@ function beoordeel(m) {
       // rit-monitor hoort weg zolang de rail hem draagt, en terug in Slim.
       // In demo komt de monitor niet verder dan "wacht op verbinding", en dan
       // toont _monChipTick() nooit een pil: zonder deze vlag bewijst de proef niets.
+      // Sinds 20-11-2026 neemt de rit-pil (#ritPil) die plek in Slim over:
+      // één regel met de stand, tik = terug naar Slim visueel.
       const wasActief=PLMon.active; PLMon.active=true;
-      try{ _monChipTick(); }catch(e){}
-      const pil=document.getElementById('monChipFab');
+      const zicht=function(id){ const e=document.getElementById(id); return !!e && getComputedStyle(e).display!=='none'; };
+      try{ _ritPilTick(); _monChipTick(); }catch(e){}
       const chip=!!document.querySelector('#visMeld .vis-rail .vis-chip[data-id="monitor"]');
-      const pilWeg=!pil || getComputedStyle(pil).display==='none';
-      setPidView('slim'); try{ _monChipTick(); }catch(e){}
-      const pilTerug=!!pil && getComputedStyle(pil).display!=='none';
-      PLMon.active=wasActief; try{ _monChipTick(); }catch(e){}
+      const pilWeg=!zicht('monChipFab') && !zicht('ritPil');
+      setPidView('slim'); try{ _ritPilTick(); _monChipTick(); }catch(e){}
+      const pilTerug=zicht('ritPil') && !zicht('monChipFab');
+      const pilTekst=(document.getElementById('ritPil')||{}).textContent||'';
+      try{ ritPilOpen(); }catch(e){}
+      const pilTik=pidViewMode==='visueel' && !zicht('ritPil');
+      setPidView('slim'); try{ _ritPilTick(); _monChipTick(); }catch(e){}
+      PLMon.active=wasActief; try{ _ritPilTick(); _monChipTick(); }catch(e){}
       setPidView('visueel');
       PLVisueel.schakel('monitor');
       return { admin:isAdmin(), voor:voor, aan:aan, tekst:tekst, knoppen:knoppen, uit:!PLRun.staat().monitor.aan,
-               chip:chip, pilWeg:pilWeg, pilTerug:pilTerug };
+               chip:chip, pilWeg:pilWeg, pilTerug:pilTerug, pilTekst:pilTekst, pilTik:pilTik };
     })()`);
     toets('de bulk-recorder staat als snelkoppeling, ook zonder beheer (#478)',
       meld.voor.some(k => /Bulk-recorder/.test(k)), 'admin ' + meld.admin + ': ' + meld.voor.join(', '));
@@ -277,7 +283,8 @@ function beoordeel(m) {
     toets('nog een keer tikken zet hem weer uit', meld.uit === true);
     toets('de rit-monitor staat als chip op de rail', meld.chip, JSON.stringify(meld));
     toets('…en zijn zwevende pil is weg zolang Slim visueel open is', meld.pilWeg, JSON.stringify(meld));
-    toets('…en komt terug in Slim', meld.pilTerug, JSON.stringify(meld));
+    toets('…en in Slim staat de rit-pil, niet de oude chip ernaast', meld.pilTerug && /Rit-monitor/.test(meld.pilTekst), JSON.stringify(meld));
+    toets('…en een tik op de rit-pil opent Slim visueel', meld.pilTik, JSON.stringify(meld));
     const dubbel = await app.ev(`(function(){
       const w=document.getElementById('wkStrook'), a=document.getElementById('aandrijfBalk');
       const weg=function(e){ return !e || getComputedStyle(e).display==='none'; };

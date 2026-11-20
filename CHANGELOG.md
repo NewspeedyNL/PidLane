@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 20-11-2026 — Rit-pil: caravanrit en rit-monitor buiten Slim visueel als één regel
+ ═════════════════════════════════════════════════════
+   • Het volle paneel (trekpaneel, rit-monitorring) staat alleen onder de meter in Slim visueel. In Overzicht, Slim en de andere tabbladen staat #ritPil in #fabLane: één regel met de stand (🚐 tijd · km · limiet, of 🛡️ kijkt mee / n meldingen / motorlampje AAN), randkleur naar ernst; tik = Live, Slim visueel. Vervangt daar de oude monitor-chip (geen twee pillen voor één monitor)
+   • De knop in het rit-monitorvenster (ritMonitorKnop) springt bij aanzetten naar Slim visueel en sluit het venster; uitzetten springt nergens heen. toggleRitMonitor() zelf springt niet: testrun en rail zetten hem ook aan. De caravanrit deed dit al (openCaravan)
+   • Model PLVisPaneel.ritPilModel/ritPilHtml (test-vispaneel.js), bproef-volscherm.js §7, bproef-visueel.js §5 aangepast, blok 5-proef, zes mutaties
+
+ ═════════════════════════════════════════════════════
  20-11-2026 — Slim visueel: de balk onderin boven de navigatie, rit-monitor óf caravanrit
  ═════════════════════════════════════════════════════
    • Volscherm: `.gg.view-visueel .vis { padding-bottom:0 }` won van de volschermregel en haalde de ruimte voor de navigatiebalk weg. De rit-monitor lag onder de Android-knoppen; volPas() kromp de meter tevergeefs (de meterbak groeit mee, het paneel bleef onderin). Die regel geldt nu alleen in de gewone weergave

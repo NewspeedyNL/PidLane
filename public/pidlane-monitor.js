@@ -431,6 +431,19 @@ window.toggleRitMonitor = function(){
         : (verbonden ? '🔔 Rit-monitor gestart' : '🔔 Rit-monitor aan — start zodra je verbonden bent')); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   window.updateMonitorBtn();
 };
+/* De knop in het rit-monitorvenster (20-11-2026): aanzetten brengt je naar
+   Slim visueel, de enige weergave met het volle paneel; elders staat alleen
+   de rit-pil. Eén keer: wissel je daarna zelf, dan blijft dat zo. Alleen de
+   knop, niet toggleRitMonitor() zelf: de testrun en de rail zetten hem ook
+   aan, en daar hoort het scherm niet weg te springen. */
+window.ritMonitorKnop = function(){
+  const was = PLMon.userAan;
+  window.toggleRitMonitor();
+  if (was || !PLMon.userAan) return;
+  try{ if(typeof monVensterSluit==='function') monVensterSluit(); }catch(e){ console.warn('PLMon: venster sluiten mislukt', e); }
+  try{ if(window.PLNav && PLNav.tab) PLNav.tab('live'); }catch(e){ console.warn('PLMon: naar Live mislukt', e); }
+  try{ if(typeof setPidView==='function') setPidView('visueel'); }catch(e){ console.warn('PLMon: Slim visueel openen mislukt', e); }
+};
 window.ritMonitorUitVoorCaravan = function(){
   if (!PLMon.userAan) return false;
   PLMon.userAan = false;

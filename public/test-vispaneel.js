@@ -83,5 +83,25 @@ r = P.ritModel({ tests, draait: false });
 ok(r.st === 'wacht' && r.ecu === 'ECU nog niet gelezen', 'zonder verbinding: wacht, en nog niet gelezen is geen "geen foutcodes"', r);
 ok(!/<img/i.test(P.ritHtml(P.ritModel({ tests: [{ id: 'x', naam: '<img onerror=1>' }], dekking: { x: { runs: 1, hits: 1 } }, draait: true }))), 'namen worden ontsnapt');
 
+console.log('\n— rit-pil buiten Slim visueel —');
+const car = { actief: true, sec: 125, km: 2.34, limiet: 90 };
+const mon = { aan: true, draait: true, meldingen: 0, ernstig: false, mil: false };
+ok(P.ritPilModel({ caravan: car, visueelInBeeld: true }) === null && P.ritPilModel({ mon, visueelInBeeld: true }) === null, 'Slim visueel in beeld: geen pil (het paneel staat er al)');
+ok(P.ritPilModel({}) === null && P.ritPilModel({ mon: { aan: false, draait: true } }) === null, 'niets loopt: geen pil');
+let pl = P.ritPilModel({ caravan: car });
+ok(pl.soort === 'caravan' && pl.tekst === 'Caravanrit · 2:05 · 2,3 km · max 90 km/u', 'caravanrit: tijd, afstand en de limiet', pl);
+ok(P.ritPilModel({ caravan: { actief: false } }).tekst === 'Caravanrit · start zodra de adapter klaar is', 'gekozen maar nog niet gestart: dat staat er', P.ritPilModel({ caravan: { actief: false } }));
+ok(P.ritPilModel({ caravan: car, mon }).soort === 'caravan', 'mochten ze toch allebei lopen: de caravanrit wint, zoals bij het starten');
+pl = P.ritPilModel({ mon });
+ok(pl.soort === 'monitor' && pl.st === 'ok' && pl.tekst === 'Rit-monitor · kijkt mee', 'rit-monitor rustig', pl);
+pl = P.ritPilModel({ mon: { aan: true, draait: true, meldingen: 0, mil: true } });
+ok(pl.st === 'ernstig' && /motorlampje AAN/.test(pl.tekst), 'motorlampje aan is nooit "kijkt mee"', pl);
+pl = P.ritPilModel({ mon: { aan: true, draait: true, meldingen: 1 } });
+ok(pl.st === 'let' && pl.tekst === 'Rit-monitor · 1 melding', 'één melding: oranje, enkelvoud', pl);
+ok(P.ritPilModel({ mon: { aan: true, draait: true, meldingen: 2, ernstig: true } }).st === 'ernstig', 'een ernstige melding: rood');
+pl = P.ritPilModel({ mon: { aan: true, draait: false, meldingen: 3 } });
+ok(pl.st === 'wacht' && pl.tekst === 'Rit-monitor · wacht op verbinding', 'zonder verbinding: wacht, ook met oude meldingen', pl);
+ok(P.ritPilHtml(null) === '' && !/<img/i.test(P.ritPilHtml({ ic: '🛡️', tekst: '<img onerror=1>' })), 'geen pil, geen html; tekst ontsnapt');
+
 console.log('\n' + (fouten ? fouten + ' van ' + n + ' FOUT' : 'Alle ' + n + ' goed'));
 process.exit(fouten ? 1 : 0);
