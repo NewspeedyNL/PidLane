@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 20-11-2026 — Accugezondheid (SoH) van de HV-accu als eigen uitkomst; Volvo 29-bit uit OBDb (#751)
+ ═════════════════════════════════════════════════════
+   • Accu & elektrisch → Stilstaande analyse: eerst een kaart "Accugezondheid (SoH)" met het percentage dat de auto zelf berekent, een oordeel (onder 70% rood = onder de gebruikelijke garantiegrens, 70–80 oranje, 80–90 gewone slijtage, vanaf 90 goed) en de bron. Geen code, geen antwoord of geen tractie-accu: dat staat er eerlijk. De AI krijgt de gelezen SoH mee en mag geen andere verzinnen
+   • PLEigen.hvRol/hvOordeel/hvLees: SoH, laadtoestand en temperatuur van de HV-accu herkend aan de OBDb-naam; "Battery state of charge" zonder HV-woord telt niet (bij Volvo is dat de 12V)
+   • Mijn voertuigen bewaart de laatst gelezen SoH (gezondheid.hvSoh) en zet het oordeel bij de punten
+   • Volvo 29-bit (D016/D01A, prioriteit 1D) wordt een adres: 1DD01635>1EC6AE80. Op een 11-bit bus (S60/XC60 praten OBD op 7DF) zet adresZet de ELM tijdelijk op protocol 7 en daarna terug; mislukt dat terugzetten, dan haalt de volgende vraag het in. De korte steunlijst van de S60 2019 ("D01A.224028") telt per kop
+   • Nep-auto: gemengde bus (11-bit OBD plus 29-bit ECU's met bus29)
+   • test-hvaccu.js (22), blok 5 #751, CAMPAGNE-regel voor een Volvo, acht mutaties; twee ankers in plmutate.sh bijgewerkt
+
+ ═════════════════════════════════════════════════════
  19-11-2026 — Oude weergaven: Neon weg, Rit-analyse als ring, checkpagina's in één opmaak
  ═════════════════════════════════════════════════════
    • Neon-dashboard weg (had geen ingang meer; Slim visueel toont hetzelfde). Met de terugknop-, datalog- en Escape-takken, de HUD-presets en de CSS. De naamafkorter en het herverbinden bij terugkeer blijven

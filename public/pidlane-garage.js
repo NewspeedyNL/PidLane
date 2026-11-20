@@ -103,6 +103,9 @@
     }
     try { if (window.PLEigen && PLEigen.accuOordeel) PLEigen.accuOordeel({ soc: g.accuSoc, leeftijd: g.accuLeeftijd }).forEach(function (x) { p.push(x); }); }
     catch (e) { console.warn('PLGarage: accuoordeel', e); }
+    // De HV-accu (#751): de laatst gelezen SoH, met de datum erbij.
+    try { if (window.PLEigen && PLEigen.hvOordeel && typeof g.hvSoh === 'number') PLEigen.hvOordeel({ soh: g.hvSoh }).forEach(function (x) { p.push(x); }); }
+    catch (e) { console.warn('PLGarage: HV-accuoordeel', e); }
     if (typeof g.maxKoelwater === 'number') {
       var kw = K ? K.koelwater(g.maxKoelwater, { prof: prof }) : (g.maxKoelwater >= 108 ? { niveau: 'fout', hard: true } : null);
       if (kw && (kw.niveau === 'fout' || kw.niveau === 'letop'))
@@ -1215,6 +1218,13 @@
           if (typeof ln.leeftijd === 'number') g2.accuLeeftijd = Math.round(ln.leeftijd);
         }
       } catch (e) { console.warn('PLGarage: accusensor', e); }
+      try {
+        var hn = window.PLEigen && PLEigen.hvNu ? PLEigen.hvNu() : {};
+        if (typeof hn.soh === 'number' && hn.soh >= 0 && hn.soh <= 105) {
+          var g3 = (v.gezondheid = v.gezondheid || {});
+          g3.hvSoh = Math.round(Math.min(hn.soh, 100)); g3.hvSohDatum = new Date().toISOString().slice(0, 10);
+        }
+      } catch (e) { console.warn('PLGarage: HV-accu', e); }
     } else if (_peil.stil || (_peil.buf && _peil.buf.length)) {
       _peil = {};   // weer verbinden = een nieuwe stilstand, met een nieuw eerste peil
     }

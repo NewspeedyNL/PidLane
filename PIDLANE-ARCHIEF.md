@@ -17,6 +17,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 20-11-2026 — Accugezondheid (SoH): wat de app wist, en waarom Volvo er niet bij kon (#751)
+
+**Aanleiding.** Een wegenwacht: "zorg dat je de SoH van accupakketten erop krijgt, dat wordt steeds interessanter voor publiek". Getoetst tegen een Volvo S60 uit 2019 (import, 184 kW, 1577 kg ledig).
+
+**Wat er al was.** `obdbWaarde()` zette een OBDb-signaal met "state of health" op 114, dus een EV met zo'n signaal in OBDb kreeg het als sensor. Er hing geen uitkomst aan: de EV-check liet de AI raden en raadde zelf "merkdealer voor een SoH-test" aan.
+
+**Waarom Volvo wegviel.** OBDb beschrijft Volvo (S60, XC60, XC40 Recharge) als `hdr D016`, `pri 1D`, `tst 35`, `rax 1EC6AE80`. Dat is dezelfde opbouw als VAG FC00 (#670): prioriteit, kop, doeladres. Het antwoordadres staat er voluit. `obdbAdres()` gaf `null`, met de opmerking "tellen we, maar bieden we nog niet aan". Dat het op echte auto's antwoordt, staat in `command_support.yaml` van de S60 2020: `D016.1EC6AE80.224801|ta=35,fc=1,c=1D`.
+
+**De val die erachter zat: een gemengde bus.** Dezelfde S60 antwoordt OBD op 7DF (11-bit). De ELM staat na het zoeken dus op protocol 6 en zendt dan een 11-bit kop, ook na een ATSH van zes tekens. VAG had dat probleem niet: een ID.3 praat alles op 29-bit. Daarom zet `adresZet()` de ELM tijdelijk op 7 (of 9 bij 250k) en daarna terug. Dat terugzetten is de kritieke stap. Mislukt het, dan zwijgt de hele pollus, en daarom haalt de volgende vraag het in (`_terug` is nu een lijst).
+
+**Wat níét geweten is.** (1) Dat de ELM-volgorde ATSP7 → ATCP1D → ATSH D01635 op een echte Volvo werkt. De nep-auto doet wat het datasheet zegt, en dat is een aanname tot een rit. (2) Of een S60/XC60 T8 de SoH geeft. OBDb heeft voor die modellen alleen laadtoestand, stroom, spanning en temperatuur van de HV-accu; 22 496D (SoH) staat alleen bij de XC40 Recharge. (3) De S60 2019 in OBDb noemt alleen `D01A.224028` zonder doeladres; dat telt nu per kop.
+
+**De auto van de aanleiding** heeft met 184 kW en 1577 kg vrijwel zeker een T5-benzinemotor: geen tractie-accu, dus geen SoH. Wat de update hem wél geeft: de Volvo-codes uit OBDb (12V-laadtoestand, stroom en temperatuur op 1DD01A01, wielsnelheden, remschijftemperatuur, turbo) worden aangeboden waar ze eerst wegvielen.
+
+**Bekende grens.** `hvRol()` telt een SoH-naam zonder HV-woord als HV-accu, behalve als er 12V/aux in staat. Een benzineauto waarvan OBDb een "Battery state of health" zonder meer noemt, krijgt die dus als HV-SoH in Mijn voertuigen. Het EV-scherm toont de bronnaam erbij.
+
 ## 19-11-2026 — Waarom het Voertuigoverzicht half leeg bleef, en waarom "niets te scrollen" toch onder de navigatiebalk lag
 
 **Dossier.** `PLGarage.dossier()` gaf alleen iets terug als er ook bewaard

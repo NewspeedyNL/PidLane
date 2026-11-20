@@ -1924,8 +1924,17 @@ MUTATIES=(
 # 11-bit bus geven, en moet ATCP echt toepassen.
 "public/pidlane-uitgebreid.js@@    if (cp) await sendCmd('ATCP' + p[0].slice(0, 2), 1500);\n@@@@test-mode21.js@@VAG 29-bit zonder ATCP: de vraag gaat op prioriteit 18 en de ID.3 hoort niets"
 "public/pidlane-uitgebreid.js@@    if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);\n@@@@test-mode21.js@@VAG FC00 valt weer weg uit de OBDb-kandidaten: de ID.3 terug naar 21 %"
-"public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];\n        }\n        // BMW/MINI@@          tx = a;\n        }\n        // BMW/MINI@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
-"public/nepauto.js@@ || (bit29 && fysiekVan(e) === st.cp + st.sh)) && (e.ea@@ || fysiekVan(e) === st.cp + st.sh) && (e.ea@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
+"public/pidlane-uitgebreid.js@@          tx = a.split('>')[0];\n        }\n        // Volvo:@@          tx = a;\n        }\n        // Volvo:@@test-mode21.js@@de steunlijst sleutelt FC00 op tx>rx in plaats van het zendadres: geen enkele ID.3-code past dit jaar"
+"public/nepauto.js@@ || (bit29nu() && fysiekVan(e) === st.cp + st.sh)) && (e.ea@@ || fysiekVan(e) === st.cp + st.sh) && (e.ea@@test-nepauto.js@@de nepauto beantwoordt een 29-bit vraag op een 11-bit bus"
+# Volvo 29-bit en de HV-accu (#751): adres, protocolwissel heen en terug, steunlijst, oordeel.
+"public/pidlane-uitgebreid.js@@    if (/^D0[0-9A-F]{2}$/.test(hdr)) return obdbVolvo(c.pri, hdr, c.tst, rax);\n@@@@test-hvaccu.js@@Volvo D016 valt weer weg uit de OBDb-kandidaten: geen SoH voor een XC40 Recharge"
+"public/pidlane-uitgebreid.js@@    const wissel = p[0].length === 8 && (bus === '6'@@    const wissel = false && (bus === '6'@@test-hvaccu.js@@geen ATSP7: de Volvo-vraag gaat als 11-bit de bus op en de BECM hoort niets"
+"public/pidlane-uitgebreid.js@@cp ? ['ATCP18'] : [], wissel ? ['ATSP' + bus] : [], [functioneel]);@@cp ? ['ATCP18'] : [], [functioneel]);@@test-hvaccu.js@@na de Volvo-vraag blijft de ELM op protocol 7 staan en zwijgt de 11-bit pollus"
+"public/pidlane-uitgebreid.js@@(y, j) => j === lijst.length - 1 || (j >= lijst.indexOf(c) && /^ATSP/.test(y))@@(y, j) => j === lijst.length - 1@@test-hvaccu.js@@mislukt ATSP6 bij het terugzetten, dan haalt niemand het in"
+"public/pidlane-uitgebreid.js@@ && !(kort && steun.codes[code + '@' + kort])@@@@test-hvaccu.js@@de korte Volvo-steunlijst (S60 2019) gooit elke Volvo-code weg"
+"public/pidlane-uitgebreid.js@@    if (soh < HV_GARANTIE) uit.push@@    if (soh <= HV_GARANTIE) uit.push@@test-hvaccu.js@@SoH van precies 70 % heet al onder de garantiegrens"
+"public/pidlane-uitgebreid.js@@starter|service battery)/.test(n)) return null;@@starter|service battery)/.test(n)) return 'soh';@@test-hvaccu.js@@een 12V-accu met een state of health telt als de HV-accu"
+"public/nepauto.js@@      if (gekozen !== proto && !op29()) {@@      if (gekozen !== proto) {@@test-hvaccu.js@@de gemengde bus van de nep-Volvo zwijgt ook op protocol 7"
 "public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
 "plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
 # BMW/MINI extended addressing 6F1:xx>6yy (#670): zonder ATCEA hoort geen

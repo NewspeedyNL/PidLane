@@ -98,7 +98,7 @@
     });
     const did = {};
     Object.keys(e.did || {}).forEach((k) => { did[k.toUpperCase()] = bytes(e.did[k]); });
-    return { adres: e.adres, tx: e.tx || null, ea: e.ea || null, naam: e.naam || '', pids: pids, did: did, opname: e.opname || {}, m09: e.m09 !== false && lijst.length > 0, m06: !!e.m06 };
+    return { adres: e.adres, tx: e.tx || null, ea: e.ea || null, bus29: !!e.bus29, naam: e.naam || '', pids: pids, did: did, opname: e.opname || {}, m09: e.m09 !== false && lijst.length > 0, m06: !!e.m06 };
   }
 
   // Bitmap 00/20/40/...: elk bit een PID, het laatste bit "er is nog een blok".
@@ -117,7 +117,16 @@
     const ecus = profiel.ecus.map((e) => bouwEcu(e, profiel));
     const proto = String(profiel.proto);
     const can = isCan(proto);
-    const bit29 = proto === '7' || proto === '9';
+    // Een gemengde bus (#751): Volvo praat OBD op 11-bit (7DF/7E8) en
+    // diagnose op 29-bit (1DD01635 > 1EC6AE80), op dezelfde draden en
+    // snelheid. Een ECU met "bus29" antwoordt alleen als de ELM op het
+    // 29-bit-protocol van dezelfde snelheid staat (6 → 7, 8 → 9), de rest
+    // alleen op het eigen protocol. AANNAME naar het datasheet: een ELM op
+    // protocol 6 zendt een 11-bit kop, ook na een ATSH van zes tekens.
+    const tweeling = { 6: '7', 8: '9' }[proto] || null;
+    const gemengd = !!tweeling && ecus.some((e) => e.bus29);
+    const op29 = () => gemengd && st.sp === tweeling;
+    const bit29nu = () => proto === '7' || proto === '9' || op29();
     // cra: ontvangstfilter (ATCRA). fcsh/fcsd/fcsm: flow control (ATFCSH,
     // ATFCSD, ATFCSM). Zonder ATCRA neemt de ELM hier alleen de OBD-
     // antwoordadressen aan (7E8–7EF, 18DAF1xx) — AANNAME: zo gedraagt een
@@ -182,7 +191,8 @@
       // eigen prioriteit (ATCP), en alleen op een 29-bit bus.
       // Extended addressing (BMW 6F1): alle ECU's delen de kop, het eerste
       // databyte (ATCEA) kiest er één — en zonder dat byte hoort geen van hen.
-      const doel = st.sh ? ecus.filter((e) => (fysiekVan(e) === st.sh || (bit29 && fysiekVan(e) === st.cp + st.sh)) && (e.ea || null) === st.cea) : ecus;
+      const opBus = gemengd ? ecus.filter((e) => e.bus29 === op29()) : ecus;
+      const doel = st.sh ? opBus.filter((e) => (fysiekVan(e) === st.sh || (bit29nu() && fysiekVan(e) === st.cp + st.sh)) && (e.ea || null) === st.cea) : opBus;
       const uit = [];
       const vast = (profiel.opname || {})[cmd];
       if (vast) return vast.map((f) => ({ adres: f[0], bytes: bytes(f[1]), ruw: !!f[2] }));
@@ -225,7 +235,7 @@
     function koppen(adres, data) {
       if (!st.H) return data;
       if (can) {
-        const h = bit29 ? adres.match(/../g).join(sep()) : adres;
+        const h = bit29nu() ? adres.match(/../g).join(sep()) : adres;
         return h + sep() + data;
       }
       return data; // (niet-CAN: kop + checksum, zie regels() hieronder)
@@ -307,7 +317,7 @@
       // Protocol: past het gekozen protocol niet bij de auto, dan zegt de
       // ELM wat hij op de lijn zag — en dat verschilt per soort.
       const gekozen = st.sp === '0' ? proto : st.sp;
-      if (gekozen !== proto) {
+      if (gekozen !== proto && !op29()) {
         if (isCan(gekozen)) return { tekst: echo(isCan(proto) ? 'NO DATA' : 'CAN ERROR'), ms: 300 };
         if (gekozen === '3') return { tekst: echo('UNABLE TO CONNECT'), ms: 3000 };
         return { tekst: echo('BUS INIT: ...ERROR'), ms: 3000 };
