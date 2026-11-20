@@ -325,7 +325,7 @@ var KRITIEK = [
   // van de caravancoach achter een guard: ontbreekt een van deze, dan blijft
   // het radertje of de verbruiksbalk leeg zonder dat iets het zegt.
   'caravanRenderLive','caravanRichtverbruik','caravanSchakel','caravanLimietWissel','caravanPedaal','caravanSchakelAdvies','caravanVerbruikNiveau',
-  'toggleRitMonitor','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
+  'toggleRitMonitor','ritMonitorUitVoorCaravan','startCaravan','stopCaravan','startRitAnalyse','stopRitAnalyse',
   // Aandachtspunten bij het voertuigdossier (pidlane-voertuigdata.js), gezet
   // door initConnection als de RDW-opzoeking mislukt.
   'plVoertuigLet','plVoertuigChipBij','plVoertuigWaarschuwingen',

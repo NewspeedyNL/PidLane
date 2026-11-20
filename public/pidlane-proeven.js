@@ -38,6 +38,30 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Onderin het volle scherm, en rit-monitor óf caravanrit (20-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Slim visueel volscherm: ruimte voor de navigatiebalk onderin; rit-monitor en caravanrit nooit tegelijk',
+    waarom: 'Op 20-11 lag de rit-monitor onder de Android-knoppen en kromp de meter tevergeefs: een regel voor de gewone weergave haalde op het volle scherm de opvulling weg.',
+    proef: async function () {
+      var uit = [];
+      if (typeof window.ritMonitorUitVoorCaravan !== 'function') return { staat: 'FOUT', detail: 'ritMonitorUitVoorCaravan ontbreekt — pidlane-monitor.js niet vers geladen (herladen?)' };
+      var car = (typeof caravanActive !== 'undefined') && caravanActive;
+      if (car && window.PLMon && PLMon.userAan) return { staat: 'FOUT', detail: 'caravanrit en rit-monitor lopen allebei' };
+      if (car && window.PLMon && !PLMon.userAan) {
+        toggleRitMonitor();
+        if (PLMon.userAan) { toggleRitMonitor(); return { staat: 'FOUT', detail: 'de rit-monitor ging tijdens de caravanrit aan (weer uitgezet)' }; }
+        uit.push('rit-monitor weigert tijdens de caravanrit');
+      }
+      var v = document.querySelector('.vis');
+      if (!document.body.classList.contains('pl-vis-vol') || !v) return { staat: 'LET OP', detail: (uit.length ? uit.join(' · ') + ' · ' : '') + 'open Slim visueel op het volle scherm en draai opnieuw: dan meet hij de ruimte onderin · rij: zet de rit-monitor aan en kijk of de ring boven de knoppen staat en de meter niet blijft krimpen; start de caravanrit en kijk of de rit-monitor uitgaat' };
+      var pb = parseFloat(getComputedStyle(v).paddingBottom) || 0;
+      if (pb < 16) return { staat: 'FOUT', detail: 'op het volle scherm is de ruimte onderin ' + pb + 'px — de rit-monitor valt onder de navigatiebalk' };
+      uit.push('ruimte onderin ' + Math.round(pb) + 'px');
+      return { staat: 'OK', detail: uit.join(' · ') + ' · rij: start de caravanrit met de rit-monitor aan en kijk of die uitgaat' };
+    }
+  },
+
   // ── Dienstenstand: RDW, AI en server (20-11-2026) ──
   {
     issue: '—',

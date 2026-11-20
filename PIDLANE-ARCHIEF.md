@@ -17,6 +17,32 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 20-11-2026 — Waarom de meter kromp en de balk onderin tóch onder de knoppen lag
+
+Uit de auto, drie weergaven: de rit-monitor onderin lag half onder de
+Android-navigatie, en bij Hyperlane over de tankregel. "Kleiner maken" werkte
+niet: de meter kromp, het paneel bleef waar het was.
+
+- **Specificiteit.** `.gg.view-visueel .vis { padding-bottom:0 }` (0,3,0, voor
+  de gewone weergave) won van `body.pl-vis-vol .vis` (0,2,1). Op het volle
+  scherm was de opvulling voor de navigatiebalk dus 0.
+- **Waarom krimpen niets deed.** `volPas()` zag dat het paneel onder de
+  veilige rand lag en zette `--vis-pas` lager. Maar `.vis-bak` heeft
+  `flex:1 0 auto`: hij groeit tot onderaan, dus een kleinere meter maakt
+  alleen lege ruimte in de bak en het paneel schuift niet op. Elke tik
+  kromp hij verder, tot het minimum van 0,55.
+- **Waarom de proef het niet zag.** `bproef-volscherm.js` zette `--pl-sab`
+  op `:root`. `body` rekent `--pl-sab` zelf uit `--pl-sab-fysiek` (de
+  zoomcorrectie), dus de opvulling bleef 0 terwijl `volPas()` — die op
+  `:root` leest — wél 48 zag. Proef en app meetten twee verschillende
+  dingen. Nu gaat de balk via `--safe-area-inset-bottom`, zoals Capacitor.
+- **Hyperlane** had een eigen strook voor bevindingen en trekpaneel, niet
+  voor de rit-monitor; die lag in de stroom, over de tanklichtbalk.
+- **Rit-monitor en caravanrit** sloten elkaar alleen bij de snelkoppelingen
+  uit (`MONITOREN`); via het run-paneel, het venster of de automatische
+  caravanstart liepen ze samen en stapelden twee panelen. Besluit eigenaar:
+  nooit tegelijk, de caravanrit wint.
+
 ## 20-11-2026 — Waarom een RDW-storing op een kapotte app leek
 
 Het RDW gaf 530 (een Cloudflare-code aan hun kant: de bron achter hun rand antwoordt niet). De app zei bij het kenteken "RDW antwoordde niet goed — probeer het zo opnieuw", en elders "RDW antwoordde met 530". Voor een klant is dat de app.

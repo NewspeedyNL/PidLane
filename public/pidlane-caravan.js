@@ -139,6 +139,9 @@ async function startCaravan(o){
   window._didCaravan=true;
   if(!connected && !demoMode){ showToast('Verbind eerst een adapter'); return; }
   if(!(await preAnalysisCheck())) return;
+  // Nooit tegelijk met de rit-monitor (20-11-2026): de caravanrit wint.
+  try{ if(typeof ritMonitorUitVoorCaravan==='function') ritMonitorUitVoorCaravan(); }
+  catch(e){ console.warn('caravan: rit-monitor uitzetten mislukt', e); }
   caravanAuto=!!(o && o.auto);
   caravanHandUit=false;
 
