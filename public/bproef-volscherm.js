@@ -8,9 +8,21 @@
 //   1. basis + trekpaneel op een kort scherm: alles in beeld, niets te scrollen;
 //   2. Hyperlane + trekpaneel: het paneel boven de navigatiebalk, niet over de
 //      ringen, en het middengetal maakt plaats;
-//   3. Motor zonder paneel: het profiel vult de hoogte.
+//   3. Motor zonder paneel: het profiel vult de hoogte;
+//   4./5. alles wat tegelijk mag lopen (20-11-2026): rit-monitor óf caravanrit,
+//      met bulk-recorder en waakronde erbij. Wat onder de meter staat blijft
+//      boven de navigatiebalk, op het volle scherm en gewoon; de meter krimpt
+//      niet voor niets, en bij Hyperlane blijft het boven de tanklichtbalk en
+//      onder het middengetal — ook op een kort scherm;
+//   6. rit-monitor en caravanrit staan nooit tegelijk aan.
+// De navigatiebalk gaat via --safe-area-inset-bottom, zoals Capacitor hem zet:
+// tot 20-11 stond hier --pl-sab op :root, en die haalt body niet op (body
+// rekent --pl-sab zelf uit). volPas() las 48, de opvulling was 0 — zo bleef
+// verborgen dat de opvulling op het volle scherm weg was.
 // Tegenproef: zonder volPas() (--vis-pas blijft 1) wordt 1 rood; zonder de
-// Hyperlane-regel ligt het paneel over het middengetal (2 rood).
+// Hyperlane-regel ligt het paneel over het middengetal (2 rood); met de oude
+// `.gg.view-visueel .vis { padding-bottom:0 }` worden 4 en 5 rood; zonder de
+// weigering in toggleRitMonitor() wordt 6 rood.
 // ══════════════════════════════════════════════════════════════════
 'use strict';
 const path = require('path');
@@ -39,7 +51,7 @@ const SAB = 48;
     await app.ev(`(function(){ const o = document.getElementById('loginOv'); if (o) o.style.display = 'none'; PLNav.tab('live'); return true; })()`);
     const zicht = await app.ev(`getComputedStyle(document.querySelector('.cc') || document.body).visibility`);
     if (zicht !== 'visible') { console.log('  FOUT de app staat niet in beeld (' + zicht + ') — deze proef meet dan niets'); process.exit(1); }
-    await app.ev(`document.documentElement.style.setProperty('--pl-sab','${SAB}px');
+    await app.ev(`document.documentElement.style.setProperty('--safe-area-inset-bottom','${SAB}px');
       if(!situatieActief().some(function(x){ return x.id==='caravan'; })) toggleSituatie('caravan');
       localStorage.setItem('pl_vis_profiel','basis'); setPidView('slim'); setPidView('visueel'); PLVisThema.aan(); true`);
     // volPas() loopt met de tik van één seconde mee
@@ -73,6 +85,59 @@ const SAB = 48;
     await W(3000);
     const v = await app.ev(`(function(){ const p=document.querySelector('.vpf').getBoundingClientRect(); return { onder:Math.round(p.bottom), h:innerHeight }; })()`);
     toets('het profiel loopt door tot onderin (geen lege onderste 40%)', v.onder >= (v.h - SAB) * 0.85, JSON.stringify(v));
+
+    // Wat er onder de meter staat (rit-monitor of trekpaneel) en wat het raakt.
+    const meetOnder = (vol) => app.ev(`(function(){ const v=document.querySelector('.vis'), k=document.querySelector('.vis .vis-onder');
+      if(${vol ? 'false' : 'true'}) document.querySelectorAll('*').forEach(function(e){ if(e.scrollHeight>e.clientHeight+2 && /auto|scroll/.test(getComputedStyle(e).overflowY)) e.scrollTop=1e5; }); scrollTo(0, 1e5);
+      if(!k || !k.getBoundingClientRect().height) return null;
+      const b=k.getBoundingClientRect(), t=document.querySelector('.vis .vhl-tank'), md=document.querySelector('.vis .vpf-hyper .vhl-mid'), nav=document.getElementById('plNav');
+      const mid = md ? Math.max.apply(null, [...md.querySelectorAll('*')].filter(function(e){ return e.getBoundingClientRect().height>0 && getComputedStyle(e).visibility!=='hidden'; })
+                                               .map(function(e){ return Math.round(e.getBoundingClientRect().bottom); })) : null;
+      const navBoven = nav && getComputedStyle(nav).display!=='none' ? Math.round(nav.getBoundingClientRect().top) : innerHeight;
+      return { boven:Math.round(b.top), onder:Math.round(b.bottom), h:innerHeight, pas:parseFloat(v.style.getPropertyValue('--vis-pas'))||1,
+               vrm:!!k.querySelector('.vrm'), vtp:!!k.querySelector('.vtp'), tank: t ? Math.round(t.getBoundingClientRect().top) : null, mid:mid, nav:navBoven,
+               lopend:Object.entries(PLRun.staat()).filter(function(x){ return x[1] && x[1].aan; }).map(function(x){ return x[0]; }).join(',') }; })()`);
+    // De bulk-recorder weigert de demo-auto ('neemt geen demo op'); voor de
+    // ruimte telt alleen dat hij als lopend gemeld wordt, dus die status is nep.
+    await app.ev(`(function(){ const echt=PLBulk.status; PLBulk.status=function(){ return window.__nepBulk ? { actief:true, gepauzeerd:false, regels:120, gestart:Date.now()-60000 } : echt.apply(this, arguments); }; return true; })()`);
+    const zet = (aan) => app.ev(`window.confirm=function(){ return true; }; window.__nepBulk=${JSON.stringify(aan)}.indexOf('bulk')>-1;
+      ['monitor','caravan','waak'].forEach(function(id){ const nu=!!(PLRun.staat()[id]||{}).aan; if(nu !== (${JSON.stringify(aan)}.indexOf(id)>-1)) PLRun.schakel(id); }); true`);
+    // Elke combinatie die mag: rit-monitor óf caravanrit, met recorder en waakronde erbij.
+    const rondje = async (kop, lopend, soort) => {
+      console.log('\n' + kop);
+      for (const [p, hoog, vol] of [['basis', 892, true], ['verbruik', 892, true], ['motor', 892, true], ['hyperlane', 892, true], ['hyperlane', 740, true], ['basis', 892, false], ['hyperlane', 892, false]]) {
+        await app.venster(412, hoog);
+        await app.ev(`localStorage.setItem('pl_vis_profiel','${p}'); setPidView('slim'); setPidView('visueel'); ${vol ? 'PLVisThema.aan()' : 'PLVisThema.uit()'}; true`);
+        await zet(lopend);
+        await W(4000);   // volPas() loopt met de tik mee: na vier tikken hoort hij stil te staan
+        const r = await meetOnder(vol);
+        const n = p + ' ' + hoog + 'px ' + (vol ? 'volscherm' : 'gewoon');
+        toets(n + ': ' + soort + ' staat onder de meter (' + lopend.join(' + ') + ')', r && r[soort === 'rit-monitor' ? 'vrm' : 'vtp'], JSON.stringify(r));
+        if (!r) continue;
+        toets(n + ': boven de navigatiebalk', r.onder <= (vol ? r.h - SAB : Math.min(r.h - SAB, r.nav)), JSON.stringify(r));
+        if (!vol) continue;
+        if (p === 'hyperlane') {
+          toets(n + ': boven de tanklichtbalk', r.tank !== null && r.onder <= r.tank, JSON.stringify(r));
+          if (soort === 'rit-monitor') toets(n + ': en niet over het middengetal', r.mid !== null && r.boven >= r.mid, JSON.stringify(r));
+        } else if (soort === 'rit-monitor') toets(n + ': de meter krimpt er niet voor niets voor', r.pas >= 0.95, JSON.stringify(r));
+      }
+    };
+    const situatie = (aan) => app.ev(`if(situatieActief().some(function(x){ return x.id==='caravan'; }) !== ${aan}) toggleSituatie('caravan'); true`);
+    await situatie(false);
+    await rondje('4. Rit-monitor, bulk-recorder en waakronde tegelijk', ['monitor', 'bulk', 'waak'], 'rit-monitor');
+    await situatie(true);
+    await rondje('5. Caravanrit, bulk-recorder en waakronde tegelijk', ['caravan', 'bulk', 'waak'], 'trekpaneel');
+
+    console.log('\n6. Rit-monitor en caravanrit nooit tegelijk');
+    await zet(['monitor']); await W(1500);
+    await app.ev(`PLRun.schakel('caravan'); true`); await W(2500);
+    let st = await app.ev(`JSON.stringify({ monitor:!!(PLRun.staat().monitor||{}).aan, caravan:!!(PLRun.staat().caravan||{}).aan })`);
+    toets('de caravanrit start en zet de rit-monitor uit', st === '{"monitor":false,"caravan":true}', st);
+    await app.ev(`PLRun.schakel('monitor'); true`); await W(1500);
+    st = await app.ev(`JSON.stringify({ monitor:!!(PLRun.staat().monitor||{}).aan, caravan:!!(PLRun.staat().caravan||{}).aan, ring:!!document.querySelector('.vis .vrm') })`);
+    toets('tijdens de caravanrit gaat de rit-monitor niet aan', st === '{"monitor":false,"caravan":true,"ring":false}', st);
+    await zet([]);
+    await situatie(false);
     await app.ev(`PLVisThema.uit(); localStorage.setItem('pl_vis_profiel','basis'); true`);
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally { await app.stop(); }

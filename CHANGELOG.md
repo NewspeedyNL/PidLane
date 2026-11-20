@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 20-11-2026 — Slim visueel: de balk onderin boven de navigatie, rit-monitor óf caravanrit
+ ═════════════════════════════════════════════════════
+   • Volscherm: `.gg.view-visueel .vis { padding-bottom:0 }` won van de volschermregel en haalde de ruimte voor de navigatiebalk weg. De rit-monitor lag onder de Android-knoppen; volPas() kromp de meter tevergeefs (de meterbak groeit mee, het paneel bleef onderin). Die regel geldt nu alleen in de gewone weergave
+   • Hyperlane: de rit-monitor krijgt een eigen strook boven de tanklichtbalk (zoals bevindingen en het trekpaneel); op een kort scherm worden de ringen kleiner zodat het middengetal vrij blijft
+   • Rit-monitor en caravanrit nooit tegelijk: aanzetten tijdens een caravanrit weigert met uitleg, een caravanstart zet de rit-monitor uit (ook de automatische via de rijsituatie)
+   • bproef-volscherm.js: alle combinaties die mogen (rit-monitor óf caravanrit, met bulk-recorder en waakronde), volscherm en gewoon, kort en lang scherm; zette de navigatiebalk voorheen op een plek waar body hem niet ophaalt. test-ritexclusief.js; zes mutaties
+
+ ═════════════════════════════════════════════════════
  20-11-2026 — Diensten: een venster in plaats van alleen een melding
  ═════════════════════════════════════════════════════
    • Tik op Diensten in het systeemmenu: venster (PLCheck-opmaak) met per dienst — internet, PidLane-server, RDW, AI — de stand, de reden, wanneer gecontroleerd en wat je ervan merkt; bovenaan wat er nu stoort, onderaan Nu controleren. Het venster ververst zichzelf na een controle

@@ -405,7 +405,17 @@ window.PLMon = PLMon;
    voor de gebruiker. Deze twee functies vullen dat gat; de knop zit sinds
    2026-07-26 op de Rit-monitor zelf (#monPaneToggle, sinds 19-11-2026 in het venster) i.p.v. in het
    ☰-menu, en de stand wordt niet meer bewaard tussen sessies. */
+/* Rit-monitor en caravanrit staan nooit tegelijk aan (20-11-2026, besluit
+   eigenaar). De caravanrit bewaakt de rit zelf en tekent zijn eigen paneel
+   onder de meter; twee wachters op één bus vragen dubbel en stapelen twee
+   panelen. De caravanrit wint: hij hangt aan een gekozen rijsituatie en start
+   vanzelf. Aanzetten tijdens een caravanrit weigert dus met uitleg; start de
+   caravanrit, dan gaat de rit-monitor uit (ritMonitorUitVoorCaravan). */
 window.toggleRitMonitor = function(){
+  if (!PLMon.userAan && typeof caravanActive!=='undefined' && caravanActive){
+    try{ if(typeof showToast==='function') showToast('🚐 De caravanrit loopt en bewaakt de rit al — rit-monitor en caravanrit staan nooit tegelijk aan'); }catch(e){ console.warn('PLMon: melding mislukt', e); }
+    return;
+  }
   PLMon.userAan = !PLMon.userAan;
   const verbonden = (typeof connected!=='undefined' && connected) &&
                     !(typeof demoMode!=='undefined' && demoMode);
@@ -420,6 +430,15 @@ window.toggleRitMonitor = function(){
         !PLMon.userAan ? '🔕 Rit-monitor uit'
         : (verbonden ? '🔔 Rit-monitor gestart' : '🔔 Rit-monitor aan — start zodra je verbonden bent')); }catch(e){ /* stil: melding mag nooit de stroom breken */ }
   window.updateMonitorBtn();
+};
+window.ritMonitorUitVoorCaravan = function(){
+  if (!PLMon.userAan) return false;
+  PLMon.userAan = false;
+  if (PLMon.active) PLMon.stop();
+  try{ if(typeof log==='function') log('🔕 Rit-monitor uit: de caravanrit neemt het over','info'); }catch(e){ console.warn('PLMon: log mislukt', e); }
+  try{ if(typeof showToast==='function') showToast('🔕 Rit-monitor uit — de caravanrit neemt het over (nooit tegelijk)'); }catch(e){ console.warn('PLMon: melding mislukt', e); }
+  window.updateMonitorBtn();
+  return true;
 };
 window.monitorStatusTekst = function(){
   if (!PLMon.userAan) return 'uit';

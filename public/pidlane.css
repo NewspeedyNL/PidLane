@@ -2237,6 +2237,14 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
      schuiven de ringen op (flex) in plaats van eronder te verdwijnen. */
   body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen { position:fixed; left:12px; right:12px; width:auto; max-width:none; bottom:calc(var(--pl-sab, 0px) + 11vh); z-index:3; }
   body.pl-vis-vol .vis:has(.vpf-hyper):has(.vis-meldingen:not(:empty)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 64px); }
+  /* De rit-monitor (20-11-2026) krijgt dezelfde strook; lag in de stroom en
+     daarmee over de tanklichtbalk. Bevindingen schuiven erboven. Zonder
+     trekpaneel: dat heeft zijn eigen regel onderaan (blijft winnen). */
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-onder { position:fixed; left:12px; right:12px; width:auto; max-width:none; bottom:calc(var(--pl-sab, 0px) + 11vh); z-index:3; }
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 11vh + 92px); }
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 92px); }
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-pod { width:min(46cqw, 20cqh); }   /* kort scherm: ringen kleiner, middengetal niet onder het paneel */
+  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)):has(.vis-meldingen:not(:empty)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 156px); }
   /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
   body.pl-vis-vol .vhl-tank { left:16cqw; right:16cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }   /* niet onder 🏁 door */
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
@@ -4130,7 +4138,12 @@ body:not(.pl-garage) .alleen-garage { display:none !important; }
    zweeft (tokenteller, remote-pil) zat onder Slim visueel; die hoort nu
    onder deze regel, want dit is het laatste wat er staat. */
 .pl-live-acties { display:flex; gap:6px; margin:12px 0 calc(64px + var(--pl-sab, 0px)); }
-.gg.view-visueel .vis { padding-bottom:0; }
+/* Alleen in de gewone weergave (20-11-2026): deze regel (0,3,0) won van
+   `body.pl-vis-vol .vis` (0,2,1) en haalde op het volle scherm de ruimte voor
+   de navigatiebalk weg. De rit-monitor lag dan onder de Android-knoppen, en
+   volPas() kromp de meter tevergeefs: .vis-bak groeit mee (flex:1), dus het
+   paneel bleef onderin. bproef-volscherm.js blok 4 meet dat. */
+body:not(.pl-vis-vol) .gg.view-visueel .vis { padding-bottom:0; }
 .pl-live-acties button { flex:1 1 0; min-width:0; display:flex; align-items:center; justify-content:center; gap:5px; padding:9px 4px;
   border-radius:10px; border:1px solid var(--bd); background:var(--sur); color:var(--tx); font:700 12.5px var(--f); cursor:pointer;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
