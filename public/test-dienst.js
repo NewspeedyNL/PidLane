@@ -106,10 +106,19 @@ const WK = new Function('BRON_TRAAG_MS', 'bronJson', '__name',
 
   console.log('\n6. Bedrading: plFetch geeft RDW-antwoorden door, de RDW-plekken gebruiken rdwTekst');
   const lees = (f) => fs.readFileSync(path.join(__dirname, f), 'utf8');
-  t('plFetch meldt /proxy-antwoorden van opendata.rdw.nl', /PLDienst\.zie\('rdw', resp\.status\)/.test(lees('pidlane-plfetch.js')), true);
-  // Het patroon in plFetch moet een echte encodeURIComponent-URL vangen.
-  const pf = lees('pidlane-plfetch.js').match(/if\((\/\^\\\/proxy[^)]*?\/i)\.test/);
-  t('dat patroon past op de vorm die de app echt verstuurt', !!pf && new Function('return ' + pf[1])().test('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=AB12CD')), true);
+  // De echte plFetch, met de echte PLDienst, tegen een RDW dat 530 geeft.
+  const p = bouw();
+  p.PROXY_URL = 'https://proxy.test'; p._http = 530;
+  p.fetch = async () => ({ status: p._http, ok: p._http < 300, headers: { get: () => null } });
+  vm.runInContext(lees('pidlane-plfetch.js'), p, { filename: 'pidlane-plfetch.js' });
+  await p.plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=AB12CD'));
+  t('plFetch: RDW 530 via /proxy = RDW-storing in de stand, met toast', (p.PLDienst.stand().rdw || {}).status + ' ' + p._toasts.length, 'storing 1');
+  p._http = 200;
+  await p.plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/8ys7-d773.json?kenteken=AB12CD'));
+  t('plFetch: een goed RDW-antwoord herstelt hem', p.PLDienst.stand().rdw.status, 'goed');
+  p._http = 530;
+  await p.plFetch('/proxy?url=' + encodeURIComponent('https://opendata.cbs.nl/x'));
+  t('plFetch: een 530 van het CBS is geen RDW-storing', p.PLDienst.stand().rdw.status, 'goed');
   t('vier RDW-plekken met rdwTekst', ['pidlane-bt.js', 'pidlane-koopcheck.js', 'pidlane-garage.js', 'pidlane-zonder.js'].filter((f) => /PLDienst\.rdwTekst\(/.test(lees(f))).length, 4);
   t('index.html laadt pidlane-dienst.js direct na plfetch', /pidlane-plfetch\.js"><\/script>[^\n]*\n<script src="pidlane-dienst\.js">/.test(lees('index.html')), true);
 
