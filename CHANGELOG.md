@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 20-11-2026 — Diensten: een venster in plaats van alleen een melding
+ ═════════════════════════════════════════════════════
+   • Tik op Diensten in het systeemmenu: venster (PLCheck-opmaak) met per dienst — internet, PidLane-server, RDW, AI — de stand, de reden, wanneer gecontroleerd en wat je ervan merkt; bovenaan wat er nu stoort, onderaan Nu controleren. Het venster ververst zichzelf na een controle
+   • Op verzoek zonder nieuwe tests; die volgen
+
+ ═════════════════════════════════════════════════════
  20-11-2026 — Dienstenstand: storing bij RDW, AI of server in gewone taal
  ═════════════════════════════════════════════════════
    • Aanleiding: het RDW gaf 530 en bij het kenteken stond "RDW antwoordde niet goed" — dat leek de app
