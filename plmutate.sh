@@ -1945,7 +1945,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    return (ea ? ['ATCEA'] : []).concat(@@    return [].concat(@@test-mode21.js@@ATCEA blijft na een BMW-code aan: elke volgende vraag draagt een verkeerd eerste byte"
 "public/pidlane-uitgebreid.js@@tst = String(tst || (hdr === '6F1' ? 'F1' : '')).toUpperCase();@@tst = String(tst || 'F1').toUpperCase();@@test-mode21.js@@een Toyota zonder tst gaat als BMW door: F1 als antwoordbyte, terwijl hij 2A draagt"
 "public/pidlane-uitgebreid.js@@ && tst === 'F1' ? hdr + ':' + eax + '>' + rax : null;@@ ? hdr + ':' + eax + '>' + rax : null;@@test-mode21.js@@een Toyota met eigen antwoordbyte (ATCER) gaat als BMW door en hoort zijn antwoord nooit"
-"public/nepauto.js@@ && (e.ea || null) === st.cea) : ecus;@@) : ecus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
+"public/nepauto.js@@ && (e.ea || null) === st.cea) : opBus;@@) : opBus;@@test-nepauto.js@@de nepauto laat elke BMW-ECU op 6F1 antwoorden, met of zonder ATCEA"
 "plnepvloot.js@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length + (ext ? 2 : 0));@@    if (rx && h.startsWith(rx)) h = h.slice(rx.length);@@test-nepvloot.js@@de generator houdt het F1-byte van BMW in de data: elke nagebouwde waarde schuift een byte"
 # Besluit d (#670): getallen zonder eenheid zijn data, ruw en onbekend niet.
 "public/pidlane-uitgebreid.js@@        const getal = fmt.unit === 'scalar' && !OBDB_RUW.test(String(g.name || ''));@@        const getal = false;@@test-mode21.js@@getallen zonder eenheid (misfire- en kloptellers) vallen weer weg uit de OBDb-kandidaten"
@@ -1972,7 +1972,7 @@ MUTATIES=(
 # De steunlijst van het bouwjaar (#670): zonder filter of mét de kap van 60
 # is het weer de gok die op de vloot 1515 weigeringen gaf; de Worker die
 # alleen het gevraagde jaar probeert vindt bij een gat in OBDb niets.
-"public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) {@@      if (false) {@@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
+"public/pidlane-uitgebreid.js@@      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]] && @@      if (false && @@test-mode21.js@@de steunlijst filtert niet meer: weer codes die dit bouwjaar niet heeft"
 "public/pidlane-uitgebreid.js@@    const kap = steun ? uit.length : 60;@@    const kap = 60;@@test-mode21.js@@ook met een steunlijst weer de kap van 60: een Tiguan houdt een vijfde van zijn codes over"
 # De preset als aanname (#616): een geldige waarde moet blijven, en zonder
 # geheugen van wat aangenomen was haalt de steunlijst niets weg.
@@ -2005,8 +2005,8 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(t.length<=m) return t;@@  return t;@@test-visueel.js@@een te breed getal op een plek loopt buiten zijn vak en over de boog ernaast"
 "public/pidlane-uitgebreid.js@@      if (typeof t === 'number' && nu - t < grens) ok.push(@@      if (typeof t === 'number') ok.push(@@test-mode21.js@@blok 5 noemt een eigen PID die een minuut niets meer zei nog steeds goed"
 "public/pidlane-uitgebreid.js@@      try { await sendCmd(c, 1500); }@@      try { void 0; }@@test-mode21.js@@na een vraag met ECU-adres blijft de adapter op 7E1 staan: de motor antwoordt niet meer"
-"public/pidlane-uitgebreid.js@@    const functioneel = 'ATSH' + (p[0].length === 8 ? '18DB33F1' : '7DF');@@    const functioneel = 'ATSH7DF';@@test-mode21.js@@een 29-bit auto krijgt na een eigen PID het 11-bit functionele adres terug"
-"public/pidlane-uitgebreid.js@@    if (_terug) { await sendCmd(_terug, 1500); _terug = null; }@@    _terug = null;@@test-mode21.js@@mislukt het terugzetten één keer, dan blijft de adapter op het fysieke adres staan"
+"public/pidlane-uitgebreid.js@@    const functioneel = 'ATSH' + (p[0].length === 8 && !wissel ? '18DB33F1' : '7DF');@@    const functioneel = 'ATSH7DF';@@test-mode21.js@@een 29-bit auto krijgt na een eigen PID het 11-bit functionele adres terug"
+"public/pidlane-uitgebreid.js@@    if (_terug) { const t = _terug; _terug = null; for (const c of t) await sendCmd(c, 1500); }@@    _terug = null;@@test-mode21.js@@mislukt het terugzetten één keer, dan blijft de adapter op het fysieke adres staan"
 "public/pidlane-plload.js@@  if(window.PLEigen && PLEigen.is(pid)) return PLEigen.vraag(pid);@@  if(false) return PLEigen.vraag(pid);@@bproef-garage.js@@de pollus negeert het ECU-adres van een eigen PID"
 "worker.js@@var KP_EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2}|[67][0-9A-F]{2}:[0-9A-F]{2}>[67][0-9A-F]{2})$/;@@var KP_EIGEN_ECU = /^[0-9A-Z;>]{3,20}$/;@@test-klantplatform.js@@de server bewaart een AT-commando als ECU-adres en stuurt het naar elk toestel"
 "worker.js@@\"kp_voorkeur\", \"kp_pid_stem\", \"kp_meekijk\", \"kp_expert\", \"kp_akkoord\"];@@\"kp_voorkeur\", \"kp_meekijk\", \"kp_expert\", \"kp_akkoord\"];@@test-klantplatform.js@@alles wissen laat de stemmen in de PID-bibliotheek staan"
@@ -2966,7 +2966,7 @@ MUTATIES=(
 "public/pidlane-koopcheck.js@@watVoor:'het onderhoudsadvies'});\n  if(!uit || !uit.ai){ res.innerHTML=''; return; }@@watVoor:'het onderhoudsadvies'});@@test-verzamelroutes.js@@sluiten zonder AI op het onderhoudsscherm vraagt toch een betaald advies"
 "public/pidlane-koopcheck.js@@  if(mm){\n    window._ddSteps=@@  if(false){\n    window._ddSteps=@@bproef-koopstroom.js@@de diepe storingsanalyse vraagt weer merk en model terwijl de app ze kent"
 "public/pidlane-koopcheck.js@@'onbekend';\n  // Wat de AI over de sensoren hoort is wat de klant net zag: de samenvatting\n  // over het meetvenster, niet de laatste waarde per sensor (#443).\n  const pdata=PLVerzamel.promptBlok(@@'onbekend';\n  const pdata=String(@@test-verzamelroutes.js@@de EV-check stuurt de samenvatting van het scherm niet meer mee"
-"public/pidlane-koopcheck.js@@||'geen'}\n\nFocus op: accu@@||'geen'}\${_qualityBlokFor([])}\n\nFocus op: accu@@test-verzamelroutes.js@@de EV-check plakt weer een eigen DATAKWALITEIT-blok naast dat van de aanlevering: hetzelfde oordeel twee keer betaald"
+"public/pidlane-koopcheck.js@@||'geen'}\n\${_evAccuRegel(hv)}\n\nFocus op: accu@@||'geen'}\${_qualityBlokFor([])}\n\${_evAccuRegel(hv)}\n\nFocus op: accu@@test-verzamelroutes.js@@de EV-check plakt weer een eigen DATAKWALITEIT-blok naast dat van de aanlevering: hetzelfde oordeel twee keer betaald"
 "public/pidlane-verzamel.js@@    if (zichtbaar.length) a.zichtbaar = zichtbaar;@@@@test-verzamelroutes.js@@de meetfase zegt niet meer welke sensoren de AI zag: het kwaliteitsoordeel krimpt stil tot het profiel"
 "public/pidlane-aanlevering.js@@      kwaliteit: kwaliteit(kwaliteitsPids(dek, o.zichtbaar)),@@      kwaliteit: kwaliteit(dek ? dek.geleverd : null),@@test-aanlevering.js@@een sensor uit de samenvatting krijgt weer een tweede kwaliteitsoordeel, op zijn live waarde van nu"
 "public/pidlane-aanlevering.js@@      if (pids === null || pids === undefined) {@@      if (!lijst.length) {@@test-aanlevering.js@@staat alles in de samenvatting, dan valt het kwaliteitsblok terug op de hele selectie en oordeelt het alsnog dubbel"
