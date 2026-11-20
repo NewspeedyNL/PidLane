@@ -3795,6 +3795,9 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
   background:radial-gradient(ellipse at 50% 0%, var(--bls), transparent 55%), var(--bg); }
 .plc-wrap { max-width:540px; margin:0 auto; display:flex; flex-direction:column; gap:12px; box-sizing:border-box;
   padding:calc(12px + var(--pl-sat, 0px)) 16px calc(28px + var(--pl-sab, 0px)); }
+/* Het Diensten-venster (20-11-2026) opent uit het systeemmenu, terwijl de
+   bovenbalk (9550) in beeld is: op de checklaag viel het kruisje erachter. */
+#dienstVenster.plc-ov { z-index:var(--z-modal); }
 .plc-balk { display:flex; justify-content:space-between; align-items:center; }
 .plc-x { width:40px; height:40px; border-radius:10px; border:1px solid var(--bd); background:var(--sur2); color:var(--tx); font-size:15px; font-weight:800; cursor:pointer; }
 .plc-kop { display:flex; flex-direction:column; align-items:center; text-align:center; gap:6px; margin-top:-18px; }
