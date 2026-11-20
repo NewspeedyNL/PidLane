@@ -116,6 +116,12 @@ window.plFetch = async function(pad, opties){
   // antwoord van de Worker mee. Tot #117 las alleen de AI-haak hem uit; alle
   // andere aanroepen lieten hem liggen terwijl de teller in beeld op een
   // schatting liep. volgServer() doet niets als de kop er niet is.
+  // ── een RDW-antwoord via /proxy: de dienstenstand weet het meteen ──
+  // (20-11-2026, RDW 530) — dan zegt de bovenbalk "storing bij het RDW"
+  // in plaats van dat de klant denkt dat de app kapot is.
+  try{ if(/^\/proxy\?url=https%3A%2F%2Fopendata\.rdw\.nl/i.test(String(pad||'')) && window.PLDienst) PLDienst.zie('rdw', resp.status); }
+  catch(e){ console.warn('plFetch: RDW-stand niet doorgegeven', e); }
+
   try{ if(window.PLCredits && PLCredits.volgServer) PLCredits.volgServer(resp.headers, null); }
   catch(e){ console.warn('plFetch: serversaldo niet overgenomen', e); }
 

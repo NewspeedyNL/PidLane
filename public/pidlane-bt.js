@@ -3448,7 +3448,7 @@ async function rdwLookup(showOverview, opties){
   if(st) st.textContent='RDW opzoeken...';
   try{
     const r=await plFetch('/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`));
-    if(!r.ok){ if(st) st.textContent='RDW antwoordde niet goed — probeer het zo opnieuw'; return {ok:false,reason:'http'}; }
+    if(!r.ok){ if(st) st.textContent=PLDienst.rdwTekst(r.status); return {ok:false,reason:'http',http:r.status}; }
     const data=await r.json();
     if(!data||!data.length){
       if(st) st.textContent=`Kenteken "${kent}" niet gevonden bij de RDW — controleer op een typefout`;

@@ -38,6 +38,53 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Dienstenstand: RDW, AI en server (20-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Diensten: een RDW-storing heet een storing bij het RDW, niet een fout van de app; de achtergrondcheck bereikt /v1/dienst',
+    waarom: 'Op 20-11 gaf het RDW 530 en de klant zag bij het kenteken alleen "RDW antwoordde niet goed" — dan lijkt de app kapot.',
+    proef: async function () {
+      var D = window.PLDienst;
+      if (!D || typeof D.rdwTekst !== 'function' || typeof D.check !== 'function') return { staat: 'FOUT', detail: 'PLDienst ontbreekt — pidlane-dienst.js niet geladen (herladen?)' };
+      if (!/storing \(code 530\)/.test(D.rdwTekst(530))) return { staat: 'FOUT', detail: 'rdwTekst(530) zegt geen storing: ' + D.rdwTekst(530) };
+      if (!document.getElementById('dienstChip')) return { staat: 'FOUT', detail: '#dienstChip ontbreekt in het systeemmenu' };
+      await D.check();
+      var st = D.stand();
+      if (!st.server) return { staat: 'LET OP', detail: 'geen check gedaan (offline of geen PROXY_URL)' };
+      if (st.server.status !== 'goed') return { staat: 'LET OP', detail: '/v1/dienst niet bereikt — Worker nog zonder deze route, of geen net' };
+      return { staat: 'ok', detail: 'RDW ' + (st.rdw ? st.rdw.status : '?') + ', AI ' + (st.ai ? st.ai.status : '?') + ', server goed' };
+    }
+  },
+
+  // ── Accugezondheid (SoH) van de HV-accu, Volvo 29-bit (20-11-2026) ──
+  {
+    issue: '#751',
+    naam: 'Volvo 29-bit uit OBDb wordt een adres (1DD01635>1EC6AE80); de SoH van de HV-accu krijgt een oordeel; met een auto: wat de HV-accu zegt',
+    waarom: 'Klanten vragen naar de SoH van de accu, en de app las hem hoogstens als losse sensor zonder uitkomst. Volvo (S60/XC60 T8, XC40/C40 Recharge) praat diagnose op 29-bit naast 11-bit OBD; die codes vielen weg.',
+    proef: async function () {
+      var E = window.PLEigen;
+      if (!E || typeof E.hvOordeel !== 'function' || typeof E.hvLees !== 'function') return { staat: 'FOUT', detail: 'PLEigen.hvOordeel/hvLees ontbreekt — pidlane-uitgebreid.js niet bijgewerkt (herladen?)' };
+      var a = E.obdbAdres({ hdr: 'D016', rax: '1EC6AE80', pri: '1D', tst: '35' });
+      if (a !== '1DD01635>1EC6AE80') return { staat: 'FOUT', detail: 'Volvo D016 geeft adres ' + a };
+      var g = E.hvOordeel({ soh: 69.9 }), o = E.hvOordeel({ soh: 70 });
+      if (!g.length || g[0].ernst !== 'rood' || !o.length || o[0].ernst !== 'oranje') return { staat: 'FOUT', detail: 'SoH-grens niet op ' + E.HV_GARANTIE + '%' };
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode)) return { staat: 'LET OP', detail: 'regels goed; niet verbonden, dus niets van de HV-accu gelezen' };
+      var hv = await E.hvLees(), rollen = Object.keys(hv);
+      // Geen HV-accu (een S60 T5): toets dan of de Volvo-adressen zelf antwoorden.
+      var volvo = (E.defs() || []).filter(function (x) { return /^1[0-9A-F]D0[0-9A-F]{4}>/.test(String(x.ecu || '')); });
+      if (!rollen.length && volvo.length) {
+        var lijst = (window.PLGarage && PLGarage.actief && PLGarage.actief() && PLGarage.actief().eigen_pids) || [];
+        var bron = lijst.filter(function (x) { return String(x.code || '').toUpperCase() === volvo[0].pid; })[0];
+        var t = bron ? await E.test(bron) : { ok: false, fout: 'definitie niet in Mijn voertuigen' };
+        return { staat: t.ok ? 'ok' : 'LET OP', detail: 'geen HV-accucode; Volvo 29-bit ' + volvo[0].pid + ' @' + volvo[0].ecu + ': ' + (t.ok ? t.waarde + ' ' + (t.eenheid || '') : t.fout + (t.raw ? ' [' + t.raw + ']' : '')) };
+      }
+      if (!rollen.length) return { staat: 'LET OP', detail: 'deze auto heeft geen HV-accucode in Mijn voertuigen (geen EV/PHEV, of niet in OBDb)' };
+      var d = rollen.map(function (r) { return r + ' ' + (hv[r].waarde === null ? '— (' + hv[r].fout + ')' : hv[r].waarde) + ' [' + hv[r].code + ']'; }).join(', ');
+      if (hv.soh && hv.soh.waarde === null) return { staat: 'LET OP', detail: 'SoH-code zonder antwoord: ' + d };
+      return { staat: 'ok', detail: d };
+    }
+  },
+
   // ── Telemetrie heuvelaf en de intro-tunnel (18-11-2026) ──
   {
     issue: '—',

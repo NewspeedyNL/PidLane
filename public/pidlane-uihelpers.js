@@ -292,7 +292,9 @@ function updateTopbarStatus(){
   // 4️⃣ Systeem-dot: de ernstigste van voertuig/OBD/AI. Run telt hier bewust
   // niet in mee — "niets draait op de achtergrond" is geen probleem, dat is
   // de normale staat — Run krijgt zijn eigen telbadge via PLRun.verversDot().
-  updateSysDot(Math.max(vSev, sSev, aSev));
+  // Diensten (RDW, AI, server, 20-11-2026): een storing daar is oranje of rood.
+  let dSev=0; try{ if(window.PLDienst) dSev=PLDienst.teken(); }catch(e){ console.warn('PLDienst.teken mislukt:', e); }
+  updateSysDot(Math.max(vSev, sSev, aSev, dSev));
   // De chip heette "Systeem" en zei daarmee niets. Nu één regel in gewone taal
   // (29-09-2026): met welke auto je verbonden bent, of wat er ontbreekt. De
   // kleur van de stip blijft het oordeel; de tekst zegt waarover.

@@ -103,6 +103,9 @@
     }
     try { if (window.PLEigen && PLEigen.accuOordeel) PLEigen.accuOordeel({ soc: g.accuSoc, leeftijd: g.accuLeeftijd }).forEach(function (x) { p.push(x); }); }
     catch (e) { console.warn('PLGarage: accuoordeel', e); }
+    // De HV-accu (#751): de laatst gelezen SoH, met de datum erbij.
+    try { if (window.PLEigen && PLEigen.hvOordeel && typeof g.hvSoh === 'number') PLEigen.hvOordeel({ soh: g.hvSoh }).forEach(function (x) { p.push(x); }); }
+    catch (e) { console.warn('PLGarage: HV-accuoordeel', e); }
     if (typeof g.maxKoelwater === 'number') {
       var kw = K ? K.koelwater(g.maxKoelwater, { prof: prof }) : (g.maxKoelwater >= 108 ? { niveau: 'fout', hard: true } : null);
       if (kw && (kw.niveau === 'fout' || kw.niveau === 'letop'))
@@ -1215,6 +1218,13 @@
           if (typeof ln.leeftijd === 'number') g2.accuLeeftijd = Math.round(ln.leeftijd);
         }
       } catch (e) { console.warn('PLGarage: accusensor', e); }
+      try {
+        var hn = window.PLEigen && PLEigen.hvNu ? PLEigen.hvNu() : {};
+        if (typeof hn.soh === 'number' && hn.soh >= 0 && hn.soh <= 105) {
+          var g3 = (v.gezondheid = v.gezondheid || {});
+          g3.hvSoh = Math.round(Math.min(hn.soh, 100)); g3.hvSohDatum = new Date().toISOString().slice(0, 10);
+        }
+      } catch (e) { console.warn('PLGarage: HV-accu', e); }
     } else if (_peil.stil || (_peil.buf && _peil.buf.length)) {
       _peil = {};   // weer verbinden = een nieuwe stilstand, met een nieuw eerste peil
     }
@@ -2624,7 +2634,7 @@
     if (k.length < 4) { if (st) st.textContent = 'Vul eerst een kenteken in.'; return; }
     if (st) st.textContent = '⏳ RDW…';
     try {
-      var q = function (res) { return plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/' + res + '.json?kenteken=' + k)).then(function (r) { if (!r.ok) throw new Error('RDW ' + r.status); return r.json(); }); };
+      var q = function (res) { return plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/' + res + '.json?kenteken=' + k)).then(function (r) { if (!r.ok) throw new Error(PLDienst.rdwTekst(r.status)); return r.json(); }); };
       var rij = (await q('m9d7-ebf2'))[0];
       if (!rij) { if (st) st.textContent = 'Dit kenteken staat niet bij het RDW.'; return; }
       var bs = [];
@@ -2639,7 +2649,7 @@
         }
       });
       if (st) st.textContent = '✓ Ingevuld vanuit het RDW: ' + [p.merk, p.model, p.bouwjaar].filter(Boolean).join(' ');
-    } catch (e) { if (st) st.textContent = 'RDW niet bereikbaar: ' + e.message; console.warn('PLGarage.rdw', e); }
+    } catch (e) { if (st) st.textContent = e.message; console.warn('PLGarage.rdw', e); }
   }
 
   /* Een beurt uit het formulier in het tabblad Conditie. `basis`: het eerste

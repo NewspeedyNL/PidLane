@@ -495,7 +495,7 @@ function haalZeef(isMode01) {
     t('obdbAdres: FC00 zonder pri of tst = adres onbekend', [E.obdbAdres({ hdr: 'FC00', rax: 'FE007B' }), E.obdbAdres({ hdr: 'FC00', rax: 'FE007B', pri: '17' })].join(','), ',');
     t('obdbAdres: FC00 met een antwoord buiten FE00xx (Tesla) = niet bruikbaar', E.obdbAdres({ hdr: 'FC00', rax: '7E8', pri: '17', tst: '76' }), null);
     t('EIGEN_ECU: VAG 29-bit tx>rx wel, een kale 8-tekenkop of een rommelpaar niet', [E.ECU.test('17FC0076>17FE0076'), E.ECU.test('17FC0076'), E.ECU.test('17FC0076>7E8')].join(','), 'true,false,false');
-    t('obdbAdres: Volvo D016 (eigen 29-bitschema) = niet bruikbaar', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
+    t('obdbAdres: Volvo D016 zonder pri en tst = adres onbekend (met: test-hvaccu.js)', E.obdbAdres({ hdr: 'D016', rax: '1EC60E80' }), null);
     t('obdbAdres: BMW/MINI extended addressing 6F1 eax 12 → 612 = 6F1:12>612 (#670)', E.obdbAdres({ hdr: '6F1', rax: '612', eax: '12' }), '6F1:12>612');
     t('obdbAdres: Toyota 750 eax 2A met antwoordbyte tst 2A (ATCER) = niet bruikbaar', E.obdbAdres({ hdr: '750', rax: '758', eax: '2A', tst: '2A' }), null);
     t('obdbAdres: Toyota 750 eax 2A zónder tst: het antwoord draagt 2A, geen F1 = niet bruikbaar', E.obdbAdres({ hdr: '750', rax: '758', eax: '2A' }), null);

@@ -236,7 +236,7 @@ async function koopRdwLookup(){
   try {
     // Hoofddata
     const r1 = await plFetch('/proxy?url='+encodeURIComponent(`https://opendata.rdw.nl/resource/m9d7-ebf2.json?kenteken=${encodeURIComponent(kent)}`));
-    if(!r1.ok){ st.textContent='⚠️ RDW antwoordde niet goed — probeer het zo opnieuw'; btn.disabled=false; return; }
+    if(!r1.ok){ st.textContent='⚠️ '+PLDienst.rdwTekst(r1.status); btn.disabled=false; return; }
     const d1 = await r1.json();
     if(!d1||!d1.length){ st.textContent = `❌ Kenteken "${kent}" niet gevonden bij RDW — controleer op een typefout`; btn.disabled=false; return; }
     const v = d1[0];
@@ -1276,13 +1276,52 @@ function runEVCheckRit(){
   closeExtraDash('evDash');
   openRitAnalyse('2min');
 }
+/* Accugezondheid (#751): wat de auto zelf over zijn HV-accu zegt, vóór de AI
+   en zonder de AI. Alleen codes die het voertuig al heeft (Mijn voertuigen →
+   OBDb); een rol zonder code staat er niet, en dat zegt de kaart eerlijk. */
+function _evAccuKaart(hv, isEV){
+  const e=(t)=>String(t==null?'':t).replace(/[&<>"]/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const kleur={rood:'#fca5a5',oranje:'#fcd34d',info:'#e2e8f0'};
+  const r=[], soh=hv&&hv.soh, n1=(x)=>(Math.round(x*10)/10).toString().replace('.',',');
+  if(soh && typeof soh.waarde==='number'){
+    const o=(window.PLEigen&&PLEigen.hvOordeel)?PLEigen.hvOordeel({soh:soh.waarde}):[];
+    r.push('<div style="font-size:26px;font-weight:800;color:#f8fafc">'+Math.round(Math.min(soh.waarde,100))+'%</div>');
+    o.forEach((x)=>r.push('<div style="color:'+(kleur[x.ernst]||kleur.info)+'">'+e(x.tekst)+'</div>'));
+    r.push('<div style="font-size:11px;color:#94a3b8;margin-top:6px">Bron: '+e(soh.naam)+' ('+e(soh.code)+'). Dit is de SoH die de accucomputer van de auto zelf berekent — geen capaciteitsmeting.</div>');
+  } else if(soh){
+    r.push('<div>De auto gaf geen antwoord op de SoH-code '+e(soh.code)+(soh.fout?' ('+e(soh.fout)+')':'')+'. Contact aan (READY) en opnieuw proberen.</div>');
+  } else if(hv && Object.keys(hv).length){
+    r.push('<div>Deze auto geeft via de bekende codes geen accugezondheid (SoH) — wel wat hieronder staat. Voor de SoH blijft de merkdealer nodig.</div>');
+  } else if(isEV){
+    r.push('<div>Voor deze auto kent de app (nog) geen code voor de HV-accu. Codes komen uit OBDb via Mijn voertuigen → deze auto; staat hij er niet in, dan zegt de merkdealer de SoH.</div>');
+  } else {
+    r.push('<div>Deze auto lijkt geen EV of plug-in: er is geen tractie-accu om een SoH van te lezen. De 12V-accu zit in de Accutest.</div>');
+  }
+  const extra=[];
+  if(hv&&hv.soc&&typeof hv.soc.waarde==='number') extra.push('laadtoestand HV-accu '+Math.round(hv.soc.waarde)+'%');
+  if(hv&&hv.temp&&typeof hv.temp.waarde==='number') extra.push('gemiddelde accutemperatuur '+n1(hv.temp.waarde)+' °C');
+  if(hv&&hv.tempmax&&typeof hv.tempmax.waarde==='number') extra.push('hoogste accutemperatuur '+n1(hv.tempmax.waarde)+' °C');
+  if(extra.length) r.push('<div style="font-size:12px;color:#cbd5e1;margin-top:4px">'+e(extra.join(' · '))+'</div>');
+  return '<div id="evSoh" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;margin-bottom:10px;font-size:13px;color:#e2e8f0;line-height:1.5">'+
+    '<div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:4px">🔋 Accugezondheid (SoH)</div>'+r.join('')+'</div>';
+}
+function _evAccuRegel(hv){
+  const soh=hv&&hv.soh;
+  if(soh&&typeof soh.waarde==='number') return 'Accugezondheid HV-accu (SoH, zelf door de auto berekend): '+Math.round(Math.min(soh.waarde,100))+'% — bron '+soh.naam+' ('+soh.code+')';
+  return 'Accugezondheid HV-accu (SoH): niet uitgelezen'+(soh&&soh.fout?' ('+soh.fout+')':' — geen code voor deze auto');
+}
 async function runEVCheck(){
   const res=document.getElementById('evResult');
   // Eerst het verzamelscherm (#443): de data en wat opvalt, dan pas de AI.
   // Is er net gereden, dan is die rit de meting.
   const uit=await PLVerzamel.meet({niveau:'normaal', profiel:'accu', watVoor:'de accu- en EV-check'});
-  if(!uit || !uit.ai){ res.innerHTML=''; return; }
-  res.innerHTML=`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
+  const ft0=(typeof vehicleFuelType==='function')?vehicleFuelType():'';
+  let hv=null;
+  try{ if(window.PLEigen&&PLEigen.hvLees&&typeof connected!=='undefined'&&connected) hv=await PLEigen.hvLees(); }
+  catch(e){ console.warn('EV-check: HV-accu niet gelezen', e); }
+  const kaart=(typeof connected!=='undefined'&&connected)?_evAccuKaart(hv, ft0==='elektrisch'||ft0==='hybride'):'';
+  if(!uit || !uit.ai){ res.innerHTML=kaart; return; }
+  res.innerHTML=kaart+`<div style="text-align:center;padding:20px;color:#cbd5e1;font-size:14px">🧠 AI analyseert accu & systemen…</div>`;
   // Geen ensurePIDsActive ná de meetfase: zie het onderhoudsadvies (#565).
   const v=getVehicle();
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'onbekend';
@@ -1295,6 +1334,7 @@ Voertuig: ${v.merk||'?'} ${v.model||''} ${v.year||''}
 Aandrijving: ${ft}
 Sensordata:${pdata||'\n(geen)'}
 Foutcodes: ${(typeof dtcCodes!=='undefined'?dtcCodes.join(', '):'')||'geen'}
+${_evAccuRegel(hv)}
 
 Focus op: accu/HV-systeem conditie, laad- en ontlaadgedrag, regeneratie, temperatuurbeheer. Wees eerlijk dat standaard OBD2 beperkte EV-data geeft en dat sommige waarden merk-specifiek zijn en kunnen ontbreken. Verzin geen waarden.
 
@@ -1302,14 +1342,14 @@ Geef in maximaal 150 woorden, Nederlands. Formaat:
 ACCU/SYSTEEM: [conditie o.b.v. beschikbare data, 1-2 zinnen]
 LADEN/REGENERATIE: [wat zichtbaar is, of "niet uitleesbaar via OBD2"]
 AANDACHTSPUNTEN: [afwijkingen of foutcodes, of "geen"]
-ADVIES: [concrete vervolgstap, bijv. merk-dealer voor accu-SoH-test]`;
+ADVIES: [concrete vervolgstap; is de SoH hierboven uitgelezen, gebruik die en verzin geen andere — anders bijv. merk-dealer voor accu-SoH-test]`;
   try{
     const text=await apiFetch(prompt,900,null,null,PLVerzamel.aanlevering(uit,
       'Accu- en systeemconditie van dit elektrische of hybride voertuig.','accu'))||'Geen reactie';
     const _tw=_plSensorTwijfel?_plSensorTwijfel.wat:null;
-    res.innerHTML=_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
+    res.innerHTML=kaart+_plSensorBanner()+`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px;font-size:13px;color:#e2e8f0;line-height:1.6;white-space:pre-line">${text.replace(/</g,'&lt;')}</div>`;
     scanLogAdd?.({type:'ev-check',msg:`${v.merk} ${v.model} (${ft}): ${text.slice(0,180)}`});
-    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:(_tw?'LET OP: '+_tw+' kon vlak vóór deze analyse niet ververst worden — de beoordeling kan op verouderde sensordata draaien.\n\n':'')+_withDisclaimer(text)}); }catch(e){ console.warn('EV/Hybride check niet in het rapportarchief gezet', e); }
+    try{ registerSessionReport({type:'ai', title:'EV/Hybride check — '+[v.merk,v.model].filter(Boolean).join(' '), text:_evAccuRegel(hv)+'\n\n'+(_tw?'LET OP: '+_tw+' kon vlak vóór deze analyse niet ververst worden — de beoordeling kan op verouderde sensordata draaien.\n\n':'')+_withDisclaimer(text)}); }catch(e){ console.warn('EV/Hybride check niet in het rapportarchief gezet', e); }
   }catch(e){ res.innerHTML=`<div style="color:#fca5a5;font-size:13px;text-align:center;padding:14px">AI niet beschikbaar: ${e.message}</div>`; }
 }
 

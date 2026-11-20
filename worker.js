@@ -1499,13 +1499,56 @@ async function handleProxy(request, env) {
     status: r.status,
     headers: {
       "Content-Type": r.headers.get("Content-Type") || "application/json",
-      "Cache-Control": "public, max-age=300",
+      // Een storing (RDW 530, 20-11-2026) niet vijf minuten vasthouden: dan
+      // ziet de klant hem nog als het RDW allang terug is.
+      "Cache-Control": r.ok ? "public, max-age=300" : "no-store",
       // RDW-data verandert zelden
       ...CORS
     }
   });
 }
 __name(handleProxy, "handleProxy");
+// ── /v1/dienst — staan de diensten erachter? (20-11-2026) ───────────
+// Op 20-11 gaf het RDW 530 en zag de klant bij het kenteken alleen een
+// foutcode: dan lijkt de app kapot. De app vraagt dit elke vijf minuten op de
+// achtergrond en zegt het in gewone taal (pidlane-dienst.js). Openbaar en
+// zonder sessie: de vraag "ligt het aan mij of aan hen" moet ook vóór het
+// inloggen kunnen. Een minuut in het geheugen van de isolate, zodat duizend
+// telefoons het RDW geen duizend keer vragen. Geen kenteken, niets van de
+// klant: een vaste vraag naar één rij.
+var DIENST_CACHE_MS = 6e4;
+var DIENST_RDW_URL = "https://opendata.rdw.nl/resource/m9d7-ebf2.json?$limit=1&$select=kenteken";
+var DIENST_AI_URL = "https://status.anthropic.com/api/v2/status.json";
+var _dienstStand = null;
+// Puur: één uitslag van bronHaal() naar goed | traag | storing.
+function dienstRdw(h) {
+  if (!h || !h.http) return { status: "storing", detail: (h && h.fout) || "geen antwoord" };
+  if (h.http >= 500) return { status: "storing", detail: "code " + h.http };
+  if (h.http === 429) return { status: "traag", detail: "overbelast (429)" };
+  if (h.http !== 200 || !Array.isArray(bronJson(h.tekst))) return { status: "storing", detail: "onverwacht antwoord (" + h.http + ")" };
+  return h.ms > BRON_TRAAG_MS ? { status: "traag", detail: Math.round(h.ms / 100) / 10 + " s" } : { status: "goed", detail: "" };
+}
+__name(dienstRdw, "dienstRdw");
+// De statuspagina van Anthropic: none = goed, minor = verstoord, major/critical
+// = storing. Is die pagina zelf weg, dan weten we het niet — en dat is geen alarm.
+function dienstAi(h) {
+  const j = h && h.http === 200 ? bronJson(h.tekst) : undefined;
+  const ind = j && j.status && j.status.indicator;
+  const tekst = j && j.status && String(j.status.description || "").slice(0, 120);
+  if (ind === "none") return { status: "goed", detail: "" };
+  if (ind === "minor" || ind === "maintenance") return { status: "verstoord", detail: tekst || ind };
+  if (ind === "major" || ind === "critical") return { status: "storing", detail: tekst || ind };
+  return { status: "onbekend", detail: "statuspagina niet te lezen" };
+}
+__name(dienstAi, "dienstAi");
+async function handleDienst() {
+  if (!_dienstStand || Date.now() - _dienstStand.ms > DIENST_CACHE_MS) {
+    const [rdw, ai] = await Promise.all([bronHaal(DIENST_RDW_URL), bronHaal(DIENST_AI_URL)]);
+    _dienstStand = { ms: Date.now(), uit: { ok: true, t: new Date().toISOString(), diensten: { rdw: dienstRdw(rdw), ai: dienstAi(ai) } } };
+  }
+  return json(_dienstStand.uit, 200, { "Cache-Control": "public, max-age=60" });
+}
+__name(handleDienst, "handleDienst");
 // ── Het weer voor de winterkaart (#556, 20-10-2026) ──────────────────
 // De app is sinds 21-08-2026 locatievrij (test-geen-gps.js): geen GPS, geen
 // postcode. De klant kiest een plaats uit deze lijst — de dichtstbijzijnde,
@@ -7804,6 +7847,8 @@ var worker_default = {
         return lockOrigin(request, await handleMessages(request, env, ctx));
       if (url.pathname === "/v1/ping" && request.method === "GET")
         return lockOrigin(request, await handlePing(request, env));
+      if (url.pathname === "/v1/dienst" && request.method === "GET")
+        return lockOrigin(request, await handleDienst());
       if (url.pathname === "/airtable/log" && request.method === "POST")
         return lockOrigin(request, await handleLog(request, env));
       if (url.pathname === "/airtable/veldlab" && request.method === "POST")

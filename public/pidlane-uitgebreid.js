@@ -310,7 +310,8 @@
   // Een ANDER antwoordadres (22-10-2026): "70E>778" — zenden op 70E, het
   // antwoord komt van 778. Zo praten VAG (70E>778), PSA en Opel (6A2>682) en
   // Nissan (740>760); de oude regel "antwoord = adres + 8" sloot ze uit.
-  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2}|[67][0-9A-F]{2}:[0-9A-F]{2}>[67][0-9A-F]{2})$/;
+  // Volvo SPA/CMA (#751): "1DD01635>1EC6AE80", 29-bit met prioriteit 1D.
+  const EIGEN_ECU = /^(7[0-9A-F]{2}|18DA[0-9A-F]{2}F1|[67][0-9A-F]{2}>[0-9A-F]{3}|[0-9A-F]{2}FC00[0-9A-F]{2}>[0-9A-F]{2}FE00[0-9A-F]{2}|1[0-9A-F]D0[0-9A-F]{4}>1[0-9A-F]{7}|[67][0-9A-F]{2}:[0-9A-F]{2}>[67][0-9A-F]{2})$/;
   const EIGEN_TEMPO = { snel: 1000, normaal: 2000, traag: 10000, minuut: 60000 };
   // Op verzoek is geen tempo: 999999 is hier "niet in de pollus", net als in
   // de EV-modus van pidPollInterval, en zo leest PLMon het ook (#396).
@@ -416,6 +417,65 @@
     }
     if (o.leeftijd !== null && o.leeftijd !== undefined && isFinite(jaar) && jaar >= 6 && jaar < 30)
       uit.push({ ernst: 'info', tekst: 'Accu ongeveer ' + Math.floor(jaar) + ' jaar in gebruik volgens de auto' });
+    return uit;
+  }
+  /* De hoogspanningsaccu (#751): gezondheid (SoH), laadtoestand en
+     temperatuur van de tractie-accu, herkend aan de naam. "Battery state of
+     charge" zonder meer telt hier niet: bij Volvo is D01A 224028 de
+     12V-sensor. Een SoH-naam zonder HV-woord telt wél, tenzij er 12V of aux
+     in staat: een state of health op een EV gaat over de tractie-accu, en
+     het EV-scherm toont de naam erbij. */
+  const HV_WOORD = /(high.voltage|\bhv\b|hvbat|traction|drive battery|hybrid battery|\bev battery|tractie|hoogspanning)/;
+  const HV_NIET = /(\b12 ?v\b|\baux(iliary)?\b|starter|service battery|\b48 ?v\b|fuse|contactor|pump|heater|coolant|inlet|outlet|cell|module|\bmin(imum)?\b|limit|request|target)/;
+  function hvRol(naam) {
+    const n = String(naam || '').toLowerCase();
+    if (/(\b12 ?v\b|\baux(iliary)?\b|starter|service battery)/.test(n)) return null;
+    if (/(state of health|\bsoh\b|gezondheid)/.test(n)) return /(cell|module|\bmin(imum)?\b|\bmax(imum)?\b)/.test(n) ? null : 'soh';
+    if (!HV_WOORD.test(n) || HV_NIET.test(n)) return null;
+    if (/(state of charge|\bsoc\b|laadtoestand)/.test(n)) return 'soc';
+    if (/temp/.test(n)) return /(average|avg|gemiddeld)/.test(n) ? 'temp' : (/(max|hoogst)/.test(n) ? 'tempmax' : null);
+    return null;
+  }
+  // 70 % noemen de meeste fabrikanten als ondergrens in hun accugarantie.
+  const HV_GARANTIE = 70;
+  function hvOordeel(o) {
+    o = o || {};
+    const uit = [], soh = Number(o.soh);
+    if (o.soh === null || o.soh === undefined || o.soh === '' || !isFinite(soh) || soh < 0 || soh > 105) return uit;
+    const s = Math.round(Math.min(soh, 100)) + '%';
+    if (soh < HV_GARANTIE) uit.push({ ernst: 'rood', tekst: 'Accugezondheid (SoH) ' + s + ' volgens de auto — onder de ' + HV_GARANTIE + '% die de meeste fabrikanten in hun accugarantie noemen. Laat de merkdealer een accutest doen' });
+    else if (soh < 80) uit.push({ ernst: 'oranje', tekst: 'Accugezondheid (SoH) ' + s + ' volgens de auto — merkbaar minder bereik dan nieuw. Vraag naar de accugarantie en een accucertificaat' });
+    else if (soh < 90) uit.push({ ernst: 'info', tekst: 'Accugezondheid (SoH) ' + s + ' volgens de auto — gewone slijtage voor een gebruikte EV of plug-in' });
+    else uit.push({ ernst: 'info', tekst: 'Accugezondheid (SoH) ' + s + ' volgens de auto — goed' });
+    return uit;
+  }
+  function hvCodes() {
+    const uit = {};
+    Object.keys(_eigen).forEach(c => { const r = hvRol(_eigen[c] && _eigen[c].name); if (r && !uit[r]) uit[r] = c; });
+    return uit;
+  }
+  function hvNu() {
+    const c = hvCodes(), uit = {};
+    Object.keys(c).forEach(r => { uit[r] = laadVers(c[r]); });
+    return uit;
+  }
+  /* Eén keer lezen wat de auto over zijn HV-accu weet (het EV-scherm). Wat
+     de pollus net vers had wordt niet opnieuw gevraagd. Geeft per rol
+     { code, naam, waarde, fout } — waarde null met een fout als de auto niet
+     antwoordde; een rol zonder code staat er niet in. */
+  async function hvLees() {
+    const c = hvCodes(), uit = {};
+    for (const r of Object.keys(c)) {
+      const d = _eigen[c[r]] || {}, w = { code: c[r], naam: d.name || c[r], waarde: laadVers(c[r]), fout: null };
+      if (w.waarde === null) {
+        try {
+          const bron = (Array.isArray(_laatst.lijst) ? _laatst.lijst : []).find(e => e && String(e.code || '').toUpperCase().replace(/\s+/g, '') === c[r]);
+          const t = bron ? await eigenTest(bron) : { ok: false, fout: 'definitie niet gevonden' };
+          if (t.ok && typeof t.waarde === 'number' && isFinite(t.waarde)) w.waarde = t.waarde; else w.fout = t.fout || 'geen getal';
+        } catch (x) { w.fout = (x && x.message) || String(x); btDiagSafe('HV-accu: ' + c[r] + ' niet te lezen — ' + w.fout); }
+      }
+      uit[r] = w;
+    }
     return uit;
   }
   // De codes van de eigen sensoren per rol, voor deze auto.
@@ -676,7 +736,7 @@
     code = String(code || '').toUpperCase();
     if (ecu === undefined) { const d = _eigen[code]; ecu = (d && d.ecu) || ''; }
     const cmd = (typeof pidCmd === 'function') ? pidCmd(code, true) : code + '1';
-    if (_terug) { await sendCmd(_terug, 1500); _terug = null; }
+    if (_terug) { const t = _terug; _terug = null; for (const c of t) await sendCmd(c, 1500); }
     if (!ecu) return sendCmd(cmd, 2500);
     const terug = await adresZet(ecu);
     try { return await sendCmd(cmd, 2500); }
@@ -691,8 +751,14 @@
      1.3; een kloon die '?' zegt krijgt nog wel de korte antwoorden. */
   async function adresZet(ecu) {
     const p = ecu.split('>');
-    const functioneel = 'ATSH' + (p[0].length === 8 ? '18DB33F1' : '7DF');
-    if (p.length === 1) { await sendCmd('ATSH' + ecu, 1500); return [functioneel]; }
+    // Een 29-bit adres op een 11-bit bus (#751): Volvo praat OBD op 7DF/7E8
+    // en diagnose op 1DD016xx, op dezelfde draden en dezelfde snelheid. De
+    // ELM zendt alleen 29-bit op protocol 7 (500k) of 9 (250k); daarna terug.
+    const bus = String((typeof selectedNetwork !== 'undefined' && selectedNetwork && selectedNetwork.id) || '').toUpperCase().replace(/^A/, '');
+    const wissel = p[0].length === 8 && (bus === '6' || bus === '8') ? (bus === '6' ? '7' : '9') : '';
+    const functioneel = 'ATSH' + (p[0].length === 8 && !wissel ? '18DB33F1' : '7DF');
+    if (wissel) await sendCmd('ATSP' + wissel, 1500);
+    if (p.length === 1) { await sendCmd('ATSH' + ecu, 1500); return (wissel ? ['ATSP' + bus] : []).concat([functioneel]); }
     // VAG 29-bit (17FC00xx > 17FE00xx, #670): de prioriteit (17, niet de
     // standaard 18) gaat met ATCP, de rest met een ATSH van zes tekens —
     // dat kent elke ELM vanaf 1.x; een ATSH van acht niet.
@@ -710,12 +776,14 @@
       try { r = String(await sendCmd(c, 1500) || ''); } catch (x) { r = '?'; }
       if (/\?/.test(r)) { btDiagSafe('Adapter kent ' + c + ' niet — lange antwoorden van ' + ecu + ' kunnen afbreken'); break; }
     }
-    return (ea ? ['ATCEA'] : []).concat(['ATFCSM0', 'ATCRA'], cp ? ['ATCP18'] : [], [functioneel]);
+    return (ea ? ['ATCEA'] : []).concat(['ATFCSM0', 'ATCRA'], cp ? ['ATCP18'] : [], wissel ? ['ATSP' + bus] : [], [functioneel]);
   }
   async function adresTerug(lijst, code) {
     for (const c of lijst) {
       try { await sendCmd(c, 1500); }
-      catch (x) { _terug = lijst[lijst.length - 1]; btDiagSafe(c + ' terugzetten na ' + code + ' mislukt — volgende vraag probeert het opnieuw: ' + (x && x.message || x)); }
+      // Het protocol en het functionele adres moeten terug, anders blijft de
+      // bus stil (#751): die twee probeert de volgende vraag opnieuw.
+      catch (x) { _terug = lijst.filter((y, j) => j === lijst.length - 1 || (j >= lijst.indexOf(c) && /^ATSP/.test(y))); btDiagSafe(c + ' terugzetten na ' + code + ' mislukt — volgende vraag probeert het opnieuw: ' + (x && x.message || x)); }
     }
   }
 
@@ -755,7 +823,7 @@
      Wat we overnemen: alleen leesdiensten 21/22, op 7xx met het antwoord op
      +8, op 29-bit, of met een ander antwoordadres als "tx>rx" (sinds
      22-10-2026: VAG, PSA, Opel, Nissan), VAG 29-bit 17FC00xx en BMW/MINI
-     extended addressing 6F1:xx (#670).
+     extended addressing 6F1:xx (#670), Volvo 29-bit 1DD016xx (#751).
      Hele bytes, ook voorbij H als [n], zonder teken of opzoektabel. Eén
      code per commando: de bibliotheek kent per code één formule. */
   const OBDB_EENHEID = {
@@ -1024,12 +1092,20 @@
      null. 11-bit: hdr 7E0, antwoord hdr+8. 29-bit staat in OBDb kort: hdr
      "DA10" met rax "10" is 18DA10F1, antwoord 18DAF110. Een ander
      antwoordadres wordt "tx>rx" (zie EIGEN_ECU). Extended addressing (BMW,
-     eax) zie obdbExt(); het 29-bit-schema van Volvo (D016) tellen we, maar
-     bieden we nog niet aan. VAG 29-bit (#670): hdr FC00 met pri 17 en tst 76, rax
+     eax) zie obdbExt(); Volvo 29-bit zie obdbVolvo(). VAG 29-bit (#670): hdr FC00 met pri 17 en tst 76, rax
      FE0076, is 17FC0076>17FE0076; zonder pri of tst weten we het adres niet. */
   function obdbVag29(pri, ta, rax) {
     pri = String(pri || '').toUpperCase(); ta = String(ta || '').toUpperCase(); rax = String(rax || '').toUpperCase();
     return /^[0-9A-F]{2}$/.test(pri) && /^[0-9A-F]{2}$/.test(ta) && /^FE00[0-9A-F]{2}$/.test(rax) ? pri + 'FC00' + ta + '>' + pri + rax : null;
+  }
+  /* Volvo SPA/CMA 29-bit (#751): hdr D016 met pri 1D en tst 35, rax
+     1EC6AE80, is 1DD01635>1EC6AE80 — dezelfde opbouw als VAG (prioriteit,
+     kop, doeladres), maar het antwoordadres staat in OBDb voluit. Dat dit
+     op een echte auto antwoordt, staat in command_support.yaml van de S60
+     2020 (D016.1EC6AE80.224801|ta=35,fc=1,c=1D). Zonder rax geen adres. */
+  function obdbVolvo(pri, hdr, ta, rax) {
+    pri = String(pri || '').toUpperCase(); hdr = String(hdr || '').toUpperCase(); ta = String(ta || '').toUpperCase(); rax = String(rax || '').toUpperCase();
+    return /^1[0-9A-F]$/.test(pri) && /^D0[0-9A-F]{2}$/.test(hdr) && /^[0-9A-F]{2}$/.test(ta) && /^1[0-9A-F]{7}$/.test(rax) ? pri + hdr + ta + '>' + rax : null;
   }
   /* Extended addressing (BMW/MINI, #670): hdr 6F1, eax 12, rax 612 is
      "6F1:12>612". Het antwoord draagt F1 (de tester) als eerste byte. Een
@@ -1047,6 +1123,7 @@
     if (/^DA[0-9A-F]{2}$/.test(hdr)) return (!rax || rax === hdr.slice(2)) ? '18' + hdr + 'F1' : null;
     if (/^18DA[0-9A-F]{2}F1$/.test(hdr)) return (!rax || rax.slice(-2) === hdr.slice(4, 6)) ? hdr : null;
     if (hdr === 'FC00') return obdbVag29(c.pri, c.tst, rax);
+    if (/^D0[0-9A-F]{2}$/.test(hdr)) return obdbVolvo(c.pri, hdr, c.tst, rax);
     if (!/^[67][0-9A-F]{2}$/.test(hdr)) return null;
     if (!rax || parseInt(rax, 16) === parseInt(hdr, 16) + 8) return /^7/.test(hdr) ? hdr : hdr + '>' + (parseInt(hdr, 16) + 8).toString(16).toUpperCase();
     // Een ander antwoordadres (VAG 70E → 778, PSA 6A2 → 682): "tx>rx", met
@@ -1089,6 +1166,14 @@
           if (!a) return;
           tx = a.split('>')[0];
         }
+        // Volvo: "D016.1EC6AE80.224801|ta=35,fc=1,c=1D" → 1DD01635 (#751).
+        // De korte vorm "D01A.224028" (S60 2019) blijft "D01A": zie obdbKandidaten().
+        if (/^D0[0-9A-F]{2}$/.test(tx) && d.length === 3) {
+          const mod = String(m[2] || '').toUpperCase(), ta = mod.match(/(?:^|,)TA=([0-9A-F]{2})/), pri = mod.match(/(?:^|,)C=([0-9A-F]{2})/);
+          const a = obdbVolvo(pri && pri[1], tx, ta && ta[1], d[1]);
+          if (!a) return;
+          tx = a.split('>')[0];
+        }
         // BMW/MINI: "6F1.612.22400B|e=12,fc=1" → 6F1:12 (#670).
         const ext = String(m[2] || '').toUpperCase().match(/(?:^|,)E=([0-9A-F]{2})(?=,|$)/);
         if (ext) {
@@ -1119,7 +1204,10 @@
       const hdr = obdbAdres(c);
       if (hdr === null) { if (telling) telling.adres = (telling.adres || 0) + 1; return; }
       const code = dienst + String(c.cmd[dienst]).toUpperCase();
-      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]]) { if (telling) telling.nietDitJaar = (telling.nietDitJaar || 0) + 1; return; }
+      // Volvo (#751): een oudere steunlijst noemt alleen de kop ("D01A.224028",
+      // S60 2019) — de code is dan wél op die kop beantwoord, het doeladres staat er niet bij.
+      const kort = /^1[0-9A-F]D0[0-9A-F]{4}>/.test(hdr) ? hdr.slice(2, 6) : '';
+      if (steun && !steun.codes[code + '@' + hdr.split('>')[0]] && !(kort && steun.codes[code + '@' + kort])) { if (telling) telling.nietDitJaar = (telling.nietDitJaar || 0) + 1; return; }
       // Eén code per commando, en dan de waardevolste: bij een Kona Electric
       // zit de laadtoestand van de HV-accu als zevende waarde in 22E003.
       const eSoort = (f) => !f ? 0 : (f.map || OBDB_STAND[f.unit]) ? 0 : f.unit === 'scalar' ? 1 : 2;
@@ -1315,7 +1403,7 @@
   }
 
   window.PLEigen = { CODE: EIGEN_CODE, VEEL: EIGEN_VEEL, formule, controleer: eigenControleer, zet: eigenZet, defs: eigenDefs, is: isEigen, test: eigenTest, oordeel: eigenOordeel,
-    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, drukOmrekening, standaardBereik,
+    ECU: EIGEN_ECU, TEMPO: EIGEN_TEMPO, interval: eigenInterval, opVerzoek: eigenOpVerzoek, herzet: eigenHerzet, bandRol, laadRol, wielRol, wielCodes, obdbWaarde, obdbAdres, laadOordeel, accuOordeel, laadCodes, laadNu, laad: laadLive, hvRol, hvOordeel, hvCodes, hvNu, hvLees, HV_GARANTIE, drukOmrekening, standaardBereik,
     scanBlokken, scanCodes, antwoordBytes, buurScan, buurScanStop, buurScanStaat, vraag: eigenVraag, obdbNamen, obdbKoppel, obdbFormule, obdbStanden, obdbJaarPast, obdbKandidaten, obdbSteun, zoekObdb };
   window.plEigenDefs = eigenDefs;
 
