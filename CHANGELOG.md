@@ -10,6 +10,16 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 20-11-2026 — Dienstenstand: storing bij RDW, AI of server in gewone taal
+ ═════════════════════════════════════════════════════
+   • Aanleiding: het RDW gaf 530 en bij het kenteken stond "RDW antwoordde niet goed" — dat leek de app
+   • Worker /v1/dienst (openbaar, een minuut gecachet): RDW (één vaste rij) en de statuspagina van Anthropic → goed · traag · verstoord · storing · onbekend. Is die statuspagina zelf weg, dan geen alarm
+   • /proxy houdt een mislukt antwoord niet meer vijf minuten in de cache (no-store), zodat het RDW meteen weer werkt als het terug is
+   • PLDienst (pidlane-dienst.js): achtergrondcheck elke vijf minuten in beeld en bij weer online; plFetch meldt elk RDW-antwoord. Server pas onbereikbaar na twee missers op rij. Eén melding per omslag, met wat er nog wel werkt
+   • Systeemmenu: nieuwe regel Diensten (stip en tekst; tik = nu controleren); de statusstip telt hem mee. De vier kentekenplekken zeggen "storing bij het RDW (code 530), ligt niet aan PidLane"
+   • test-dienst.js (30), blok 5, zes mutaties, handleiding (statusknop)
+
+ ═════════════════════════════════════════════════════
  20-11-2026 — Accugezondheid (SoH) van de HV-accu als eigen uitkomst; Volvo 29-bit uit OBDb (#751)
  ═════════════════════════════════════════════════════
    • Accu & elektrisch → Stilstaande analyse: eerst een kaart "Accugezondheid (SoH)" met het percentage dat de auto zelf berekent, een oordeel (onder 70% rood = onder de gebruikelijke garantiegrens, 70–80 oranje, 80–90 gewone slijtage, vanaf 90 goed) en de bron. Geen code, geen antwoord of geen tractie-accu: dat staat er eerlijk. De AI krijgt de gelezen SoH mee en mag geen andere verzinnen

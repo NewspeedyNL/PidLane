@@ -17,6 +17,14 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 20-11-2026 — Waarom een RDW-storing op een kapotte app leek
+
+Het RDW gaf 530 (een Cloudflare-code aan hun kant: de bron achter hun rand antwoordt niet). De app zei bij het kenteken "RDW antwoordde niet goed — probeer het zo opnieuw", en elders "RDW antwoordde met 530". Voor een klant is dat de app.
+
+Twee dingen maakten het erger dan nodig. (1) `/proxy` zette elk antwoord op `max-age=300`, ook de 530: was het RDW na een minuut terug, dan bleef de klant nog vier minuten de storing zien. (2) Er was nergens één plek die wist dat het om het RDW ging. De AI-stip kijkt alleen of onze Worker antwoordt; beheer heeft `/admin/bronnen`, maar alleen voor beheerders en alleen als je erom vraagt.
+
+Nu kijkt `/v1/dienst` (openbaar, een minuut in het geheugen van de isolate) naar het RDW en naar de statuspagina van Anthropic, en PLDienst vertaalt dat. Bewust níét erin: Cloudflare zelf. Ligt Cloudflare eruit, dan antwoordt onze Worker ook niet, en dat is precies wat "server onbereikbaar" al zegt. Een aparte check op cloudflarestatus.com zou alleen een tweede naam voor hetzelfde symptoom geven.
+
 ## 20-11-2026 — Accugezondheid (SoH): wat de app wist, en waarom Volvo er niet bij kon (#751)
 
 **Aanleiding.** Een wegenwacht: "zorg dat je de SoH van accupakketten erop krijgt, dat wordt steeds interessanter voor publiek". Getoetst tegen een Volvo S60 uit 2019 (import, 184 kW, 1577 kg ledig).

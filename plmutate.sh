@@ -1935,6 +1935,13 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@    if (soh < HV_GARANTIE) uit.push@@    if (soh <= HV_GARANTIE) uit.push@@test-hvaccu.js@@SoH van precies 70 % heet al onder de garantiegrens"
 "public/pidlane-uitgebreid.js@@starter|service battery)/.test(n)) return null;@@starter|service battery)/.test(n)) return 'soh';@@test-hvaccu.js@@een 12V-accu met een state of health telt als de HV-accu"
 "public/nepauto.js@@      if (gekozen !== proto && !op29()) {@@      if (gekozen !== proto) {@@test-hvaccu.js@@de gemengde bus van de nep-Volvo zwijgt ook op protocol 7"
+# Dienstenstand (20-11-2026, RDW 530): welke dienst stoort, één melding per omslag.
+"public/pidlane-dienst.js@@      if (mis >= DIENST_MIS_ROOD) s.server@@      if (mis >= 1) s.server@@test-dienst.js@@één gemiste check op 5G en de bovenbalk zegt al dat de server weg is"
+"public/pidlane-dienst.js@@      if (!was[m.dienst] && !_gemeld[m.dienst]) {@@      if (true) {@@test-dienst.js@@elke check van vijf minuten herhaalt dezelfde storingsmelding"
+"public/pidlane-dienst.js@@    if (online === false) return [{ dienst: 'net'@@    if (online === null) return [{ dienst: 'net'@@test-dienst.js@@zonder internet staan er drie storingen in plaats van één: geen internet"
+"worker.js@@  return { status: \"onbekend\", detail: \"statuspagina niet te lezen\" };@@  return { status: \"storing\", detail: \"statuspagina niet te lezen\" };@@test-dienst.js@@is de statuspagina van Anthropic zelf weg, dan meldt de app een AI-storing"
+"worker.js@@  if (h.http === 429) return { status: \"traag\", detail: \"overbelast (429)\" };\n@@@@test-dienst.js@@het RDW dat even afremt (429) heet een storing"
+"public/pidlane-plfetch.js@@ && window.PLDienst) PLDienst.zie('rdw', resp.status); }@@ && false) PLDienst.zie('rdw', resp.status); }@@test-dienst.js@@plFetch geeft een RDW-storing niet meer door: de bovenbalk blijft groen bij 530"
 "public/nepauto.js@@{ st.cp = a.slice(2); return 'OK'; }@@{ return 'OK'; }@@test-nepauto.js@@de nepauto negeert ATCP: zonder prioriteit 17 antwoordt de ID.3 toch niet, of altijd"
 "plnepvloot.js@@  return ta && c ? { tx: (c + 'FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@  return ta && c ? { tx: ('18FC00' + ta).toUpperCase(), rx: (c + a.rx).toUpperCase() } : null;@@test-nepvloot.js@@de generator negeert c=: de ID.3 krijgt prioriteit 18 en de proef meet een auto die niet bestaat"
 # BMW/MINI extended addressing 6F1:xx>6yy (#670): zonder ATCEA hoort geen

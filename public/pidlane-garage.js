@@ -2634,7 +2634,7 @@
     if (k.length < 4) { if (st) st.textContent = 'Vul eerst een kenteken in.'; return; }
     if (st) st.textContent = '⏳ RDW…';
     try {
-      var q = function (res) { return plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/' + res + '.json?kenteken=' + k)).then(function (r) { if (!r.ok) throw new Error('RDW ' + r.status); return r.json(); }); };
+      var q = function (res) { return plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/' + res + '.json?kenteken=' + k)).then(function (r) { if (!r.ok) throw new Error(PLDienst.rdwTekst(r.status)); return r.json(); }); };
       var rij = (await q('m9d7-ebf2'))[0];
       if (!rij) { if (st) st.textContent = 'Dit kenteken staat niet bij het RDW.'; return; }
       var bs = [];
@@ -2649,7 +2649,7 @@
         }
       });
       if (st) st.textContent = '✓ Ingevuld vanuit het RDW: ' + [p.merk, p.model, p.bouwjaar].filter(Boolean).join(' ');
-    } catch (e) { if (st) st.textContent = 'RDW niet bereikbaar: ' + e.message; console.warn('PLGarage.rdw', e); }
+    } catch (e) { if (st) st.textContent = e.message; console.warn('PLGarage.rdw', e); }
   }
 
   /* Een beurt uit het formulier in het tabblad Conditie. `basis`: het eerste

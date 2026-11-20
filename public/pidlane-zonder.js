@@ -237,8 +237,7 @@
   async function rdw(dataset, kent) {
     if (typeof plFetch !== 'function') throw new Error('plFetch ontbreekt');
     var r = await plFetch('/proxy?url=' + encodeURIComponent('https://opendata.rdw.nl/resource/' + dataset + '.json?kenteken=' + kent));
-    if (r.status === 401) throw new Error('log eerst in — het RDW loopt via je account');
-    if (!r.ok) throw new Error('RDW antwoordde met ' + r.status);
+    if (!r.ok) throw new Error(PLDienst.rdwTekst(r.status));
     return r.json();
   }
   async function haal(kent) {

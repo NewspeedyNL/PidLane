@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-19', app: '3.5.0' },
+  gecontroleerd: { datum: '2026-11-20', app: '3.5.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -288,17 +288,19 @@ var PL_HULP = {
       zie: ['winter', 'check'] },
 
     { id: 'status', groep: 'gebruik', titel: 'De statusknop bovenin',
-      icoon: '🟢', kort: 'Eén stip rechtsboven: de ernstigste kleur van auto-dossier, adapter en AI samen.',
+      icoon: '🟢', kort: 'Eén stip rechtsboven: de ernstigste kleur van auto-dossier, adapter, AI en de diensten samen.',
       schema: { soort: 'tegels', delen: [
         { i: '🗂️', t: 'Auto-dossier', u: 'wat PidLane over de auto weet' },
         { i: '🔌', t: 'Adapter (OBD)', u: 'hoe de verbinding het doet' },
         { i: '🤖', t: 'AI-uitleg', u: 'of de AI bereikbaar is, en wat tokens zijn' },
+        { i: '🌐', t: 'Diensten', u: 'storing bij het RDW, de AI of onze server' },
         { i: '⚙️', t: 'Achtergrond', u: 'wat er op de achtergrond loopt' }] },
       tekst:
         '<p>Rechtsboven staat één knop met een gekleurde stip en de naam van de auto, of <b>Niet verbonden</b>. ' +
-        'De kleur is de ernstigste van auto-dossier, adapter en AI samen.</p>' +
-        '<p>Tik erop voor vier regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
-        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is; één gemiste verbinding onderweg maakt hem nog niet rood, pas twee op rij — tik erop voor wat de AI doet, hoe tokens werken en hoe je ze aanvraagt, en hoe je ze niet verspilt aan onvolledige data) en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
+        'De kleur is de ernstigste van auto-dossier, adapter, AI en de diensten samen.</p>' +
+        '<p>Tik erop voor vijf regels, elk met een korte uitleg en hoe het nu staat: <b>Auto-dossier</b> (wat PidLane over de auto weet, met het percentage), ' +
+        '<b>Adapter (OBD)</b> (hoe de verbinding met de auto het doet), <b>AI-uitleg</b> (of de AI bereikbaar is; één gemiste verbinding onderweg maakt hem nog niet rood, pas twee op rij — tik erop voor wat de AI doet, hoe tokens werken en hoe je ze aanvraagt, en hoe je ze niet verspilt aan onvolledige data), <b>Diensten</b> en <b>Achtergrond</b> (wat er op de achtergrond loopt). ' +
+        '<b>Diensten</b> kijkt elke vijf minuten of het RDW (kentekenregister), de AI en de PidLane-server het doen. Heeft een van hen een storing, dan wordt de stip oranje of rood en zegt de app één keer wat er stoort en wat nog wel werkt: de meting via de adapter werkt altijd. Tik op Diensten om nu te controleren. ' +
         'Een getal bij de statusknop zegt hoeveel dingen er lopen.</p>',
       zie: ['verbinden'] },
 

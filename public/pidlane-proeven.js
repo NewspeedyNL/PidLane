@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Dienstenstand: RDW, AI en server (20-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Diensten: een RDW-storing heet een storing bij het RDW, niet een fout van de app; de achtergrondcheck bereikt /v1/dienst',
+    waarom: 'Op 20-11 gaf het RDW 530 en de klant zag bij het kenteken alleen "RDW antwoordde niet goed" — dan lijkt de app kapot.',
+    proef: async function () {
+      var D = window.PLDienst;
+      if (!D || typeof D.rdwTekst !== 'function' || typeof D.check !== 'function') return { staat: 'FOUT', detail: 'PLDienst ontbreekt — pidlane-dienst.js niet geladen (herladen?)' };
+      if (!/storing \(code 530\)/.test(D.rdwTekst(530))) return { staat: 'FOUT', detail: 'rdwTekst(530) zegt geen storing: ' + D.rdwTekst(530) };
+      if (!document.getElementById('dienstChip')) return { staat: 'FOUT', detail: '#dienstChip ontbreekt in het systeemmenu' };
+      await D.check();
+      var st = D.stand();
+      if (!st.server) return { staat: 'LET OP', detail: 'geen check gedaan (offline of geen PROXY_URL)' };
+      if (st.server.status !== 'goed') return { staat: 'LET OP', detail: '/v1/dienst niet bereikt — Worker nog zonder deze route, of geen net' };
+      return { staat: 'ok', detail: 'RDW ' + (st.rdw ? st.rdw.status : '?') + ', AI ' + (st.ai ? st.ai.status : '?') + ', server goed' };
+    }
+  },
+
   // ── Accugezondheid (SoH) van de HV-accu, Volvo 29-bit (20-11-2026) ──
   {
     issue: '#751',

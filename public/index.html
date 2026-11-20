@@ -23,6 +23,7 @@
 <script src="pidlane-schoon.js"></script><!-- PLSchoon: schone start en account-reset — vóór elke module die opslag leest: hij wist bij de start wat er bij het afsluiten nog terugkwam -->
 <script src="pidlane-rust.js"></script><!-- PLRust (#691): schermtimers slapen als de app uit beeld is — vóór totalcheck, monitor en bulk -->
 <script src="pidlane-plfetch.js"></script><!-- plFetch: basis-URL, tokenkop, 401 en het serversaldo op één plek (#117) -->
+<script src="pidlane-dienst.js"></script><!-- PLDienst: liggen RDW, AI of onze server eruit? Achtergrondcheck op /v1/dienst, in gewone taal -->
 <script>
   if(typeof ALL_PID_DEFS==='undefined'){ alert('pidlane-data.js ontbreekt of laadt niet — zet het bestand naast index.html en herlaad.'); }
   /* Vangnet: als config.js achterloopt of niet laadt, val terug op het juiste
@@ -965,6 +966,10 @@ function closeConnOv(){
       <!-- 3️⃣ AI-chip: dot (groen=AI bereikbaar, rood=geen AI) -->
       <div class="tchip" id="aiChip" onclick="closeSysStatus();try{openApiDialog()}catch(e){console.warn('AI-venster niet geopend',e)}" title="AI-verbinding">
         <div class="tdot r" id="adot"></div><span class="sys-naam"><b>AI-uitleg</b><small id="aiSub">geen AI-verbinding</small></span>
+      </div>
+      <!-- Diensten-chip (20-11-2026): RDW, AI (Anthropic) en onze server. Een storing daar is niet de app. Zie pidlane-dienst.js -->
+      <div class="tchip" id="dienstChip" onclick="closeSysStatus();try{PLDienst.uitleg()}catch(e){console.warn('Dienstenstatus niet getoond',e)}" title="RDW, AI en server">
+        <div class="tdot" id="ddot"></div><span class="sys-naam"><b>Diensten</b><small id="dSub">nog niet gecontroleerd</small></span>
       </div>
       <!-- 4️⃣ Run-chip: dot (grijs=niets draait, groen=achtergrondtaak actief).
            Vijf dingen konden aanstaan zonder dat het ergens zichtbaar was;
