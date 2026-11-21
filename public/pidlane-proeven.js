@@ -38,6 +38,33 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Buiten Slim visueel één regel: de rit-pil (20-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Rit-pil: caravanrit of rit-monitor buiten Slim visueel als één regel, tik = Slim visueel; aanzetten springt erheen',
+    waarom: 'Het volle paneel past alleen onder de meter in Slim visueel; in Overzicht en Slim zag je niet dat de caravanrit liep, en de rit-monitor alleen als chip met km/u.',
+    proef: async function () {
+      var P = window.PLVisPaneel;
+      if (!P || typeof P.ritPilModel !== 'function' || typeof window.ritPilOpen !== 'function' || typeof window.ritMonitorKnop !== 'function')
+        return { staat: 'FOUT', detail: 'rit-pil ontbreekt — pidlane-vispaneel.js, pidlane-totalcheck.js of pidlane-monitor.js niet vers geladen (herladen?)' };
+      if (P.ritPilModel({ caravan: { actief: true, sec: 60, km: 1, limiet: 90 }, visueelInBeeld: true }) !== null) return { staat: 'FOUT', detail: 'de rit-pil staat ook in Slim visueel, naast het paneel' };
+      var m = P.ritPilModel({ mon: { aan: true, draait: true, meldingen: 0, mil: true } });
+      if (!m || m.st !== 'ernstig') return { staat: 'FOUT', detail: 'motorlampje aan, en de rit-pil zegt ' + JSON.stringify(m) };
+      var car = (typeof caravanActive !== 'undefined') && caravanActive, mon = !!(window.PLMon && PLMon.userAan);
+      if (!car && !mon) return { staat: 'LET OP', detail: 'geen caravanrit en geen rit-monitor: het model klopt, de pil zelf niet gemeten · rij: zet de rit-monitor aan met de knop in zijn venster (de app gaat naar Visueel), wissel naar Overzicht en kijk of rechtsonder één regel staat; tik erop' };
+      var vorige = (typeof pidViewMode !== 'undefined') ? pidViewMode : 'visueel';
+      setPidView(vorige === 'visueel' ? 'slim' : vorige);
+      _ritPilTick(); _monChipTick();
+      var pil = document.getElementById('ritPil'), chip = document.getElementById('monChipFab');
+      var zicht = function (e) { return !!e && getComputedStyle(e).display !== 'none'; };
+      var tekst = pil ? pil.textContent : '', dubbel = zicht(chip);
+      setPidView(vorige); _ritPilTick(); _monChipTick();
+      if (!/Caravanrit|Rit-monitor/.test(tekst)) return { staat: 'FOUT', detail: 'buiten Slim visueel staat geen rit-pil (' + (car ? 'caravanrit' : 'rit-monitor') + ' loopt)' };
+      if (dubbel) return { staat: 'FOUT', detail: 'de rit-pil en de oude monitor-chip staan naast elkaar' };
+      return { staat: 'OK', detail: 'buiten Slim visueel: "' + tekst.replace('›', '').trim() + '" · rij: tik op de pil en kijk of Slim visueel opent' };
+    }
+  },
+
   // ── Onderin het volle scherm, en rit-monitor óf caravanrit (20-11-2026) ──
   {
     issue: '—',

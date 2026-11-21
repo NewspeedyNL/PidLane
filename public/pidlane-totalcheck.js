@@ -748,9 +748,58 @@ function _monChipMaak(){
   _monChipEl=c;
   return c;
 }
+/* ── De rit-pil (20-11-2026): caravanrit of rit-monitor buiten Slim visueel ──
+   Het volle paneel staat alleen onder de meter in Slim visueel; overal anders
+   één regel in #fabLane (model: PLVisPaneel.ritPilModel). Tik = Live, Slim
+   visueel. Staat hij er, dan neemt hij de plaats in van de monitor-chip
+   hierboven: twee pillen voor één monitor is dezelfde dubbeling als #371. */
+let _ritPilEl=null;
+function ritPilOpen(){
+  try{ if(window.PLNav && PLNav.tab) PLNav.tab('live'); }catch(e){ console.warn('Rit-pil: naar Live mislukt', e); }
+  try{ if(typeof setPidView==='function') setPidView('visueel'); }catch(e){ console.warn('Rit-pil: Slim visueel openen mislukt', e); }
+  try{ _ritPilTick(); _monChipTick(); }catch(e){ console.warn('Rit-pil: verversen mislukt', e); }
+}
+window.ritPilOpen=ritPilOpen;
+function _ritPilInvoer(){
+  const live=document.getElementById('pane-live');
+  const inBeeld=!!(live && live.classList.contains('active')) && (typeof pidViewMode!=='undefined' && pidViewMode==='visueel');
+  let caravan=null, mon=null;
+  try{ caravan=(window.PLVisueel && PLVisueel.caravanInvoer) ? PLVisueel.caravanInvoer(Date.now()) : null; }
+  catch(e){ console.warn('Rit-pil: caravanrit onleesbaar', e); }
+  try{
+    const r=(window.PLRun && PLRun.staat) ? PLRun.staat().monitor : null;
+    if(r && r.aan){
+      const M=window.PLMon||{}, o=M._order||[];
+      mon={ aan:true, draait:!!r.draait, meldingen:o.length, ernstig:o.some(k=>_MON_ERNSTIG.test(k)), mil:M.prev ? M.prev.mil : null };
+    }
+  }catch(e){ console.warn('Rit-pil: rit-monitor onleesbaar', e); }
+  return { caravan:caravan, mon:mon, visueelInBeeld:inBeeld };
+}
+function _ritPilTick(){
+  const P=window.PLVisPaneel;
+  const m=P ? P.ritPilModel(_ritPilInvoer()) : null;
+  if(!m && !_ritPilEl) return false;                    // nog nooit nodig geweest
+  if(!_ritPilEl){
+    const b=document.createElement('button');
+    b.type='button'; b.id='ritPil'; b.className='rit-pil';
+    b.onclick=ritPilOpen;
+    const lane=document.getElementById('fabLane');
+    if(!lane){ console.warn('Rit-pil: #fabLane ontbreekt'); return false; }
+    lane.appendChild(b);
+    _ritPilEl=b;
+  }
+  const b=_ritPilEl;
+  b.style.display=m ? 'flex' : 'none';
+  if(!m) return false;
+  const h=P.ritPilHtml(m);
+  if(b._sleutel!==h){ b.innerHTML=h; b._sleutel=h; }
+  b.dataset.st=m.st; b.dataset.soort=m.soort;
+  b.setAttribute('aria-label', m.tekst+'. Tik voor Slim visueel.');
+  return true;
+}
 function _monChipTick(){
   const M=window.PLMon;
-  const toon=!!(M&&M.active)&&!_monPaneZichtbaar();
+  const toon=!!(M&&M.active)&&!_monPaneZichtbaar()&&!(_ritPilEl && _ritPilEl.style.display!=='none');
   const c=_monChipEl||(toon?_monChipMaak():null);
   if(!c) return;                                        // nog nooit nodig geweest
   c.style.display=toon?'flex':'none';
@@ -769,7 +818,7 @@ function _monChipTick(){
 // Chip élke seconde verversen (ook buiten de pane); pane alleen indien zichtbaar
 // — die guard zit in _monTick zelf. Alleen zolang de app in beeld is (#691).
 (function(){
-  const tik=()=>{ try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } };
+  const tik=()=>{ try{ _ritPilTick(); }catch(e){ console.warn('_ritPilTick mislukt:', e); } try{ _monChipTick(); }catch(e){ console.warn('_monChipTick mislukt:', e); } try{ _monTick(); }catch(e){ console.warn('_monTick mislukt:', e); } };
   if(typeof window!=='undefined' && window.PLRust) PLRust.elke(1000, tik, 'monitorchip'); else setInterval(tik, 1000);
 })();
 

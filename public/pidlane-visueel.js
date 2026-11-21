@@ -2288,6 +2288,7 @@ function stop(){
 }
 
 window.PLVisueel = {
+  caravanInvoer:caravanInvoer,   // de rit-pil buiten Slim visueel leest dezelfde bron (pidlane-totalcheck.js)
   G:G, REM_MS:VIS_REM_MS, TRAAG_MS:VIS_TRAAG_MS, MIN_N:VIS_MIN_N, AANLOOP_MS:VIS_AANLOOP_MS,
   PLEKKEN:PLEKKEN, BOOG_SCHAAL:BOOG_SCHAAL, HOOFD:HOOFD, SCHAAL:SCHAAL,
   schaalVoor:schaalVoor, aandrijfLampjes:aandrijfLampjes, lampHtml:lampHtml, lampTik:lampTik, reserveKetens:reserveKetens, accuGetal:accuGetal, VIS_ACCU_VERGEET_MS:VIS_ACCU_VERGEET_MS, open:open,

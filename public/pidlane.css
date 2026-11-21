@@ -606,6 +606,17 @@ body:has(#connOv:not(.hidden)) .lade-handles { display:none; }
   pointer-events:none;
 }
 #fabLane > * { pointer-events:auto; }
+/* De rit-pil (20-11-2026): caravanrit of rit-monitor buiten Slim visueel, één
+   regel. Het volle paneel staat alleen onder de meter; zie pidlane-totalcheck.js. */
+.rit-pil { display:none; align-items:center; gap:7px; max-width:min(86vw, 360px); padding:8px 12px 8px 11px; border-radius:22px;
+  border:1.5px solid var(--bd); background:var(--sur); color:var(--tx); font-family:var(--f); font-size:13px; font-weight:800;
+  box-shadow:0 6px 18px rgba(0,0,0,.45); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.rit-pil .rp-ic { flex:none; }
+.rit-pil .rp-tx { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rit-pil .rp-pijl { flex:none; color:var(--tx3); font-size:16px; line-height:1; }
+.rit-pil[data-st="let"] { border-color:var(--or); }
+.rit-pil[data-st="ernstig"] { border-color:var(--rd); }
+.rit-pil[data-st="wacht"] .rp-tx { color:var(--tx2); }
 
 /* ══ VASTE / CODE-PIDs IN GEWONE WOORDEN ══
    2026-07-22: PIDs als brandstoftype of OBD-norm zijn geen meetwaarde maar een

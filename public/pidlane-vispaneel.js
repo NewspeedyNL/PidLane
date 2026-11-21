@@ -222,7 +222,33 @@ function ritHtml(m){
     '</span></button>';
 }
 
+/* De rit-pil (20-11-2026): het volle paneel staat alleen in Slim visueel.
+   In Overzicht, Slim en de andere tabbladen één regel in #fabLane met de
+   stand; een tik brengt je naar Slim visueel. Caravanrit en rit-monitor
+   lopen nooit tegelijk; mocht het toch, dan wint de caravanrit (zoals bij
+   het starten). null = geen pil: niets loopt, of Slim visueel is in beeld.
+   i = { caravan: caravanInvoer() of null, mon: { aan, draait, meldingen,
+   ernstig, mil } of null, visueelInBeeld }. */
+function ritPilModel(i){
+  i=i||{};
+  if(i.visueelInBeeld) return null;
+  const c=caravanModel(i.caravan);
+  if(c) return { soort:'caravan', ic:'🚐', st:'ok',
+    tekst:'Caravanrit · '+(c.actief ? c.tekst+' · max '+c.limiet+' km/u' : c.tekst) };
+  const mo=i.mon;
+  if(!mo || !mo.aan) return null;
+  const n=getal(mo.meldingen)||0;
+  const st=!mo.draait ? 'wacht' : (mo.ernstig || mo.mil===true) ? 'ernstig' : n>0 ? 'let' : 'ok';
+  const kop=!mo.draait ? 'wacht op verbinding' : n ? n+' melding'+(n===1 ? '' : 'en') : mo.mil===true ? 'motorlampje AAN' : 'kijkt mee';
+  return { soort:'monitor', ic:'🛡️', st:st, tekst:'Rit-monitor · '+kop };
+}
+function ritPilHtml(m){
+  if(!m) return '';
+  return '<span class="rp-ic" aria-hidden="true">'+esc(m.ic)+'</span><span class="rp-tx">'+esc(m.tekst)+'</span><span class="rp-pijl" aria-hidden="true">›</span>';
+}
+
 window.PLVisPaneel = { TEMP:TEMP, ZWAAR:ZWAAR, HELLING_BEELD:HELLING_BEELD, TIP_MS:TIP_MS,
   tempFrac:tempFrac, procent:procent, hellingTekst:hellingTekst, hellingBeeld:hellingBeeld, zwaarAandeel:zwaarAandeel,
-  tipKort:tipKort, tipVan:tipVan, caravanModel:caravanModel, trekModel:trekModel, trekHtml:trekHtml, ritModel:ritModel, ritHtml:ritHtml };
+  tipKort:tipKort, tipVan:tipVan, caravanModel:caravanModel, trekModel:trekModel, trekHtml:trekHtml, ritModel:ritModel, ritHtml:ritHtml,
+  ritPilModel:ritPilModel, ritPilHtml:ritPilHtml };
 })();

@@ -14,7 +14,9 @@
 //      boven de navigatiebalk, op het volle scherm en gewoon; de meter krimpt
 //      niet voor niets, en bij Hyperlane blijft het boven de tanklichtbalk en
 //      onder het middengetal — ook op een kort scherm;
-//   6. rit-monitor en caravanrit staan nooit tegelijk aan.
+//   6. rit-monitor en caravanrit staan nooit tegelijk aan;
+//   7. buiten Slim visueel geen paneel maar de rit-pil (20-11-2026), en de
+//      knop van de rit-monitor springt bij aanzetten naar Slim visueel.
 // De navigatiebalk gaat via --safe-area-inset-bottom, zoals Capacitor hem zet:
 // tot 20-11 stond hier --pl-sab op :root, en die haalt body niet op (body
 // rekent --pl-sab zelf uit). volPas() las 48, de opvulling was 0 — zo bleef
@@ -22,7 +24,8 @@
 // Tegenproef: zonder volPas() (--vis-pas blijft 1) wordt 1 rood; zonder de
 // Hyperlane-regel ligt het paneel over het middengetal (2 rood); met de oude
 // `.gg.view-visueel .vis { padding-bottom:0 }` worden 4 en 5 rood; zonder de
-// weigering in toggleRitMonitor() wordt 6 rood.
+// weigering in toggleRitMonitor() wordt 6 rood; zonder _ritPilTick() in de
+// tik, of met de sprong in ritMonitorKnop() weg, wordt 7 rood.
 // ══════════════════════════════════════════════════════════════════
 'use strict';
 const path = require('path');
@@ -143,6 +146,36 @@ const SAB = 48;
     await zet([]);
     await situatie(false);
     await app.ev(`PLVisThema.uit(); localStorage.setItem('pl_vis_profiel','basis'); true`);
+
+    // 20-11-2026: het volle paneel alleen in Slim visueel; elders de rit-pil.
+    console.log('\n7. Buiten Slim visueel: geen paneel, wel de rit-pil');
+    // Geen _ritPilTick() hier: de pil hoort met de tik van één seconde te komen.
+    const buiten = () => app.ev(`(function(){
+      const zicht=function(e){ return !!e && getComputedStyle(e).display!=='none' && e.getBoundingClientRect().height>0; };
+      const p=document.getElementById('ritPil'), r=p ? p.getBoundingClientRect() : null;
+      return { view:pidViewMode, pil:zicht(p), tekst:p ? p.textContent : '', paneel:[...document.querySelectorAll('.vtp, .vrm')].some(zicht),
+               chip:zicht(document.getElementById('monChipFab')), onder:r ? Math.round(r.bottom) : null, h:innerHeight,
+               venster:document.getElementById('monVenster').classList.contains('open') }; })()`);
+    await app.ev(`setPidView('overzicht'); true`);
+    await situatie(true); await W(2500);
+    let b = await buiten();
+    toets('caravanrit in Overzicht: de pil staat er, het trekpaneel niet', b.pil && /Caravanrit/.test(b.tekst) && !b.paneel, JSON.stringify(b));
+    toets('de pil staat boven de navigatiebalk', b.onder !== null && b.onder <= b.h - SAB, JSON.stringify(b));
+    await app.ev(`setPidView('visueel'); true`); await W(1800);
+    b = await buiten();
+    toets('in Slim visueel geen pil: daar staat het paneel', !b.pil && b.paneel, JSON.stringify(b));
+    await situatie(false); await W(2500);
+    await app.ev(`setPidView('overzicht'); openMonitorView(); true`);
+    await app.ev(`ritMonitorKnop(); true`); await W(1800);
+    b = await buiten();
+    toets('rit-monitor aanzetten met de knop: naar Slim visueel, het venster dicht', b.view === 'visueel' && !b.venster, JSON.stringify(b));
+    await app.ev(`setPidView('slim'); true`); await W(1800);
+    b = await buiten();
+    toets('zelf naar Slim: die keuze blijft, met de rit-pil en zonder de oude chip ernaast', b.view === 'slim' && b.pil && /Rit-monitor/.test(b.tekst) && !b.chip && !b.paneel, JSON.stringify(b));
+    await app.ev(`openMonitorView(); ritMonitorKnop(); true`); await W(1800);
+    b = await buiten();
+    toets('uitzetten springt nergens heen, en de pil verdwijnt', b.view === 'slim' && !b.pil, JSON.stringify(b));
+    await app.ev(`monVensterSluit(); true`);
     toets('geen fouten in de console', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally { await app.stop(); }
   console.log('\n' + (fouten ? 'bproef-volscherm: ' + fouten + ' FOUT' : 'bproef-volscherm: alles goed'));
