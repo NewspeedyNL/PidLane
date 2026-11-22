@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — Meetproeven zonder gedoe: een tip over elk scherm, het ritverslag naar D1
+ ═════════════════════════════════════════════════════
+   • PLMeetcoach.tipVoor(): geen vraag vooraf nodig. Past de situatie, dan één zin over elk scherm heen (ook Slim visueel op volledig scherm) met ✓ Gedaan en Niet nu: stil na 5 min rijden → contact even uit; contact uit → aftellen tot weer aan; rijdend hoogstens één tip per 3 min
+   • Ritverslag `meetcoach` naar D1 bij elk verzendmoment: per open proef waarom hij niet af kwam (16–22-11 kwamen 41, 44 en 45 er nooit in, zonder reden)
+   • meetproeven/oogst.sql: één query voor alle opdrachten sinds een datum, in plaats van een SQL per issue
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Hyperlane in trekmodus: schakellampjes naar het koppelbereik (#742)
  ═════════════════════════════════════════════════════
    • `schakelDoel()` krijgt `trek`: in trekmodus (PLVisueel.trekAan) loopt vol gas naar SCHAKEL.trek.max (benzine 4500, diesel 3500) in plaats van 90% van de rode streep; nooit voorbij dat racepunt
