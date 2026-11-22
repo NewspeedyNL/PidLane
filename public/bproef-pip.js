@@ -126,7 +126,7 @@ const NEP_BRIDGE = `(function(){
        kleine venster daardoor nooit aan: het besluit viel op "geen selectie"
        en niets vroeg het opnieuw. Blok 3 zag dat niet, want hij toetste de
        gunstige volgorde. */
-    console.log('\n3b. Eerst verbinden, dán sensoren kiezen — zoals de app het doet');
+    console.log('\n3b. Eerst verbinden, dán sensoren kiezen — zoals de app het doet (vlag al aan bij verbinden)');
     const volg = await app.ev(`(async function(){
       activePIDs.clear();
       connected = true; demoMode = false;
@@ -144,8 +144,12 @@ const NEP_BRIDGE = `(function(){
       return JSON.stringify({ voor: voor, na: na, alle: window.__pip.vlaggen });
     })()`);
     const v = JSON.parse(volg);
-    toets('bij verbinden zonder selectie staat de vlag uit', v.voor === false, volg);
-    toets('zodra de eerste meetwaarde binnenkomt, gaat hij aan', v.na === true,
+    // Sinds 22-11-2026 is "geen selectie" geen reden meer: op een scherm
+    // zonder ritgegevens bleef het venster anders uit, en kwam de verbinding
+    // na wegschakelen niet terug. Verbonden is genoeg.
+    toets('bij verbinden zonder selectie staat de vlag al aan', v.voor === true,
+      volg + ' — dan blijft het venster uit op het hoofdmenu en valt de verbinding weg na wegschakelen');
+    toets('en de eerste meetwaarde houdt hem aan', v.na === true,
       volg + ' — dan vraagt de app het venster nooit aan, en dat is wat er op 23-09 op het toestel gebeurde');
 
     console.log('\n4. De uitzetknop uit de Config werkt in de echte app');
