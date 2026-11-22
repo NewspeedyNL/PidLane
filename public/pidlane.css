@@ -2248,14 +2248,8 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
      schuiven de ringen op (flex) in plaats van eronder te verdwijnen. */
   body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen { position:fixed; left:12px; right:12px; width:auto; max-width:none; bottom:calc(var(--pl-sab, 0px) + 11vh); z-index:3; }
   body.pl-vis-vol .vis:has(.vpf-hyper):has(.vis-meldingen:not(:empty)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 64px); }
-  /* De rit-monitor (20-11-2026) krijgt dezelfde strook; lag in de stroom en
-     daarmee over de tanklichtbalk. Bevindingen schuiven erboven. Zonder
-     trekpaneel: dat heeft zijn eigen regel onderaan (blijft winnen). */
-  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-onder { position:fixed; left:12px; right:12px; width:auto; max-width:none; bottom:calc(var(--pl-sab, 0px) + 11vh); z-index:3; }
-  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-meldingen { bottom:calc(var(--pl-sab, 0px) + 11vh + 92px); }
-  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 92px); }
-  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-pod { width:min(46cqw, 20cqh); }   /* kort scherm: ringen kleiner, middengetal niet onder het paneel */
-  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)):has(.vis-meldingen:not(:empty)) .vhl-podium { padding-bottom:calc(var(--pl-sab, 0px) + 11cqh + 156px); }
+  /* De rit-monitor had hier tot 22-11-2026 een eigen strook boven de tanklichtbalk;
+     in volledig scherm staat hij niet meer in beeld, dus de ruimte ook niet. */
   /* Staand: de tanklichtbalk boven de navigatiebalk, het label in breedtematen. */
   body.pl-vis-vol .vhl-tank { left:16cqw; right:16cqw; bottom:calc(var(--pl-sab, 0px) + 2.4cqh); }   /* niet onder 🏁 door */
   body.pl-vis-vol .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }

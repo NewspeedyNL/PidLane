@@ -3045,7 +3045,7 @@ MUTATIES=(
 "public/pidlane.css@@.vis:not(.vhl-basis) .vis-ritmon, body.pl-vis-vol .vis .vis-ritmon { display:none; }@@@@bproef-volscherm.js@@de rit-monitor staat weer in volledig scherm en in elk profiel over de meters"
 # 22-11-2026: "rit-monitor over de tanklichtbalk bij Hyperlane" weggehaald — de
 # rit-monitor staat in volledig scherm en in profielen niet meer in beeld (bproef-volscherm §4 toetst dat).
-"public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-pod { width:min(46cqw, 20cqh); }@@@@bproef-volscherm.js@@op een kort scherm ligt de rit-monitor bij Hyperlane over het middengetal"
+# 22-11-2026: ook "rit-monitor bij Hyperlane over het middengetal" weggehaald — de ruimte die hij daar kreeg is weg.
 "public/pidlane-monitor.js@@  if (!PLMon.userAan && typeof caravanActive!=='undefined' && caravanActive){@@  if (false){@@test-ritexclusief.js@@de rit-monitor gaat tijdens een caravanrit gewoon aan"
 "public/pidlane-monitor.js@@  if (!PLMon.userAan) return false;\n  PLMon.userAan = false;@@  if (!PLMon.userAan) return false;\n  return true;@@test-ritexclusief.js@@de caravanrit start en de rit-monitor blijft ernaast lopen"
 "public/pidlane-caravan.js@@  try{ if(typeof ritMonitorUitVoorCaravan==='function') ritMonitorUitVoorCaravan(); }@@  try{ }@@bproef-volscherm.js@@de caravanrit start en de rit-monitor blijft ernaast lopen (in de echte app)"
