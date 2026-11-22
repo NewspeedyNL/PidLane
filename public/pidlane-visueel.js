@@ -700,6 +700,7 @@ function gearBij(){
   catch(x){ console.warn('PLVisueel: PLGear.toonbaar() mislukt', x); }
   const t=gearTekst(g), lg=el('visg-logo');
   zetTekst('vis-gear', t);
+  zetTekst('vpf-kl-gear', t || '—');   // Klassiek: de versnelling in de ring (22-11-2026)
   if(lg) lg.style.display = logoZien(t, window.PLGear) ? '' : 'none';
 }
 /* ── Schakeladvies op de meter (14-11-2026) ────────────────────────
@@ -2114,6 +2115,7 @@ function bij(pid, val){
     catch(e){ console.warn('PLVisueel: profiel '+ind.profiel.id+' bijwerken mislukt', e); }
     const pl=ind.profiel.plekken;
     if(pl && 'energie' in pl && (pid===pl.energie || pid===(pl.snel||'010D'))) energieProfielBij();
+    if(ind.profiel.id==='klassiek' && (pid===pl.snel || pid===pl.toeren)) gearBij();
   }
   if(ind.naaldSoort==='vermogen' && (pid===ind.naald || pid===ind.midden)){
     vermogenBij(pid===ind.naald ? val : (typeof pidVals!=='undefined' ? pidVals[ind.naald] : null));

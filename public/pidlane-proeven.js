@@ -38,6 +38,28 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Klassiek: een oude auto met weinig sensoren (22-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Slim visueel Klassiek: strook met versnelling, alleen de temperaturen die de auto geeft, werkgebied last × toeren met trim per gebied en lambdasonde',
+    waarom: 'Op een oude auto met tien PIDs stonden de profielen vol lege plekken. Klassiek toont alleen wat er is, en leest trims en sonde samen met het werkgebied.',
+    proef: async function () {
+      var W = window.PLWerkgebied, P = window.PLVisProfiel;
+      if (!W || typeof W.trimOordeel !== 'function' || !P || !P.geldig('klassiek'))
+        return { staat: 'FOUT', detail: 'Klassiek ontbreekt — pidlane-werkgebied.js of pidlane-visprofiel.js niet vers geladen (herladen?)' };
+      if (W.trimOordeel({ stationair: 14, deellast: 3, zwaar: null }).tekst !== 'arm bij stationair' || W.trimOordeel({ stationair: 12, deellast: 12, zwaar: 13 }).tekst !== 'overal wat arm')
+        return { staat: 'FOUT', detail: 'het trimoordeel onderscheidt valse lucht niet van "overal arm"' };
+      var ind = P.indeling('klassiek', function (q) { return q === '010C' || q === '010D' || q === '0104'; }, 'benzine', {});
+      var h = P.html('klassiek', ind);
+      if (/vpf-p-inlaat|vkl-trim|vkl-golf/.test(h)) return { staat: 'FOUT', detail: 'een auto zonder inlaatlucht, trims of sonde krijgt er lege plekken voor' };
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden: het profiel klopt, de meting niet gemeten · rij: Slim visueel, veeg naar Klassiek; kijk of de versnelling in de ring staat, het werkgebied zich vult en na 10 s warm rijden de trim per gebied een getal krijgt' };
+      var L = W.live(Date.now());
+      return { staat: L.model.totaal > 0 ? 'OK' : 'LET OP',
+        detail: 'werkgebied: ' + Math.round(L.model.totaal / 1000) + ' s geteld' + (L.model.totaal > 0 ? '' : ' — open Klassiek in Slim visueel en rijd') + ' · trim: ' + W.trimOordeel(W.trimPerGebied(L.model)).tekst + ' · sonde: ' + W.o2Oordeel(L.o2, Date.now(), L.warm).tekst };
+    }
+  },
+
   // ── Buiten Slim visueel één regel: de rit-pil (20-11-2026) ──
   {
     issue: '—',

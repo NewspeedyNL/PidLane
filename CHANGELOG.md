@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — Slim visueel: profiel Klassiek voor een oude auto met weinig sensoren
+ ═════════════════════════════════════════════════════
+   • Achtste profiel (na Hyperlane): strook met snelheid, versnelling (PLGear) in een toerenring, last en gas als staande balk; temperatuurbalken met normaalband, alleen voor wat de auto geeft (`weg`)
+   • Werkgebied last × toeren (12×8) met puntje voor nu, trim per gebied (stationair/deellast/zware last, alleen warm) met oordeel valse lucht/toevoer/overal, lambdasonde 0114 op bereik in 20 s
+   • Nieuwe module pidlane-werkgebied.js (PLWerkgebied, test-werkgebied.js); trim- en sondekaart verdwijnen zonder sensor en op een diesel. Liggend volledig scherm: twee kolommen naast de meldingen
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Bevinding-pop weg is echt weg, rit-monitor alleen in de basismeter, verbruik nu gedempt
  ═════════════════════════════════════════════════════
    • .vis-pop schoof bij verbergen -100%-20px omhoog maar staat op sat+10px: met een hoge statusbalk bleef de onderkant (rode rand, "toerental en belasting — mogelijk…") over de statusbalk hangen, in elke weergave. De verschuiving telt nu de sat mee en verborgen is visibility:hidden
