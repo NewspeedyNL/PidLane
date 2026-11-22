@@ -2357,7 +2357,7 @@ MUTATIES=(
 "public/pidlane-meetcoach.js@@      if (s.staat !== oud.staat)@@      if (false)@@test-meetcoach.js@@een proef die sluit tijdens de rit komt niet in het logboek (meetcoach)"
 "public/pidlane-meetcoach.js@@        if (w.toestand && w.maxS === undefined && g@@        if (w.toestand && g@@test-meetcoach.js@@contact uit met bovengrens krijgt een optelbalk die bij een te lange periode vol staat (meetcoach)"
 "public/pidlane-meetcoach.js@@    if (sp.act.length) S.huidig = sp.act[(sp.i + 1) % sp.act.length].soort;@@    if (sp.act.length) S.huidig = sp.act[sp.i % sp.act.length].soort;@@test-meetcoach.js@@Volgende blijft op dezelfde stap staan (meetcoach)"
-"public/pidlane-meetcoach.js@@    if (!S.ritStart) S.ritStart = Date.now();@@    S.ritStart = Date.now();@@test-meetcoach.js@@rit aanpassen onderweg zet de ritklok op nul (meetcoach)"
+"public/pidlane-meetcoach.js@@    if (!S.ritStart) S.ritStart = Date.now();   // aanpassen@@    S.ritStart = Date.now();   // aanpassen@@test-meetcoach.js@@rit aanpassen onderweg zet de ritklok op nul (meetcoach)"
 "public/pidlane-meetcoach.js@@' data-soort=\"' + esc(soort) + '\"'@@' data-soort=\"' + (soort) + '\"'@@test-meetcoach.js@@een soort uit een opdrachttekst komt ongeëscaped in een knop (meetcoach)"
 "public/pidlane-meetcoach.js@@    if (v.app && /^verzamel-/.test(v.app)) return@@    if (false) return@@test-meetcoach.js@@een verzamel-voorwaarde krijgt weer de restregel en zegt niet wat je moet doen (#650)"
 "public/pidlane-meetcoach.js@@    if (!(window._plVerbindingKlaar > 0)) return;@@@@test-meetcoach.js@@de meetcoach zet zijn sensoren weer aan terwijl het verbinden nog loopt, vóór de PID-lijst van deze auto er is (#733)"
