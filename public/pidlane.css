@@ -2073,6 +2073,99 @@ body.pl-vis-vol .vpf-telemetrie .vpf-g-svg { max-width:min(52vh, 440px); }
   body.pl-vis-vol .vpf-lambda .vpf-w { font-size:min(22vh, 120px); }
 }
 
+/* KLASSIEK — een oude auto met weinig sensoren (22-11-2026). Een strook met
+   snelheid, versnelling en toeren; de temperatuurbalken die de auto geeft;
+   het werkgebied last × toeren met de trim per gebied en de lambdasonde.
+   Eigen kleuren: cyaan voor snelheid/last, oranje voor toeren/gas. */
+.vpf-klassiek { --kl-c:#2fd4d0; --kl-o:#ff9f2e; --kl-ok:#1fd189; --kl-let:#ecb62a; --kl-slecht:#ff5a5a;
+  --kl-bak:#0f1625; --kl-rand:#1f2a40; --kl-tx2:#c3cee2; --kl-tx3:#8d99b3;
+  background:#0a0e17; color:#eef2fa; border:1px solid #1a2236; display:flex; flex-direction:column; gap:10px; padding-top:34px; }
+.vpf-klassiek small { font-size:10px; font-weight:600; letter-spacing:.16em; text-transform:uppercase; color:var(--kl-tx3); }
+.vkl-strook { container-type:inline-size; position:relative; display:grid; grid-template-columns:minmax(0,1fr) 16px auto 16px minmax(0,1fr); align-items:center; gap:8px;
+  padding:16px 10px 18px; border-radius:20px 20px 28px 28px; border:1px solid var(--kl-rand);
+  background:radial-gradient(120% 90% at 50% 0%, #141d30 0%, #0b101b 70%); box-shadow:inset 0 1px 0 rgba(255,255,255,.05); }
+.vkl-strook::before, .vkl-strook::after { content:""; position:absolute; top:0; width:34%; height:3px; border-radius:3px; opacity:.85; }
+.vkl-strook::before { left:6%; background:linear-gradient(90deg, transparent, var(--kl-c)); }
+.vkl-strook::after { right:6%; background:linear-gradient(270deg, transparent, var(--kl-o)); }
+.vkl-strook .vpf-w { display:block; font-family:var(--m); font-weight:600; line-height:.9; letter-spacing:-.04em; white-space:nowrap; }
+.vkl-strook #vpf-p-snel, .vkl-strook-rechts { text-align:center; min-width:0; }
+.vkl-strook #vpf-p-snel .vpf-w { font-size:clamp(28px, 14cqi, 84px); text-shadow:0 0 18px rgba(47,212,208,.25); }
+.vkl-strook-rechts .vpf-w { font-size:clamp(20px, 10cqi, 62px); text-shadow:0 0 18px rgba(255,159,46,.22); }
+.vkl-strook #vpf-p-snel small { color:var(--kl-c); } .vkl-strook-rechts small { color:var(--kl-o); }
+.vkl-staand { height:100%; min-height:96px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+.vkl-staand small { font-size:8.5px; letter-spacing:.08em; }
+.vkl-buis { position:relative; flex:1; width:14px; border-radius:7px; background:var(--kl-bak); border:1px solid var(--kl-rand); overflow:hidden; }
+.vkl-buis .vpf-f { position:absolute; left:0; right:0; bottom:0; border-radius:6px; transition:height .25s; }
+#vpf-p-last .vpf-f { background:linear-gradient(0deg, rgba(47,212,208,.3), var(--kl-c)); }
+#vpf-p-gas .vpf-f { background:linear-gradient(0deg, rgba(255,159,46,.3), var(--kl-o)); }
+.vkl-ring { position:relative; width:clamp(72px, 30cqi, 170px); aspect-ratio:1; display:grid; place-items:center; }
+.vkl-gear { position:absolute; inset:0; width:100%; height:100%; }
+.vkl-ring-bak, .vkl-ring-vul { fill:none; stroke-width:7; stroke-linecap:round; }
+.vkl-ring-bak { stroke:#18223a; } .vkl-ring-vul { stroke:var(--kl-o); transition:stroke-dasharray .2s; }
+.vkl-ring.warn .vkl-ring-vul { stroke:var(--kl-let); } .vkl-ring.danger .vkl-ring-vul { stroke:var(--kl-slecht); }
+.vkl-g { position:relative; display:flex; flex-direction:column; align-items:center; }
+.vkl-g small { font-size:8.5px; }
+.vkl-g b { font-family:var(--m); font-weight:600; font-size:clamp(28px, 13cqi, 64px); line-height:1; }
+.vkl-temps { display:flex; flex-direction:column; gap:8px; padding:2px 2px; }
+.vkl-balk { display:grid; grid-template-columns:92px minmax(0,1fr) 46px 22px; align-items:center; gap:8px; }
+.vkl-n { font-size:12.5px; color:var(--kl-tx2); line-height:1.15; }
+.vkl-n i { display:block; font-style:normal; font-size:10px; color:var(--kl-tx3); }
+.vkl-baan { position:relative; height:14px; border-radius:7px; background:var(--kl-bak); border:1px solid var(--kl-rand); overflow:hidden; }
+.vkl-baan .vpf-f { position:absolute; left:0; top:0; bottom:0; border-radius:6px; background:linear-gradient(90deg, rgba(31,209,137,.25), var(--kl-ok)); transition:width .3s; }
+.vkl-zone { position:absolute; top:0; bottom:0; background:rgba(31,209,137,.10); border-left:1px dashed rgba(31,209,137,.45); border-right:1px dashed rgba(31,209,137,.45); }
+#vpf-p-inlaat .vpf-f { background:linear-gradient(90deg, rgba(47,212,208,.25), var(--kl-c)); }
+#vpf-p-accu .vpf-f { background:linear-gradient(90deg, rgba(236,182,42,.25), var(--kl-let)); }
+.vkl-balk.warn .vpf-f { background:var(--kl-let); } .vkl-balk.danger .vpf-f { background:var(--kl-slecht); }
+.vkl-balk .vpf-w { font-family:var(--m); font-size:16px; font-weight:500; text-align:right; }
+.vkl-balk.danger .vpf-w { color:var(--kl-slecht); }
+.vkl-e { font-style:normal; font-size:11px; color:var(--kl-tx3); }
+.vkl-kaart { background:#131926; border:1px solid #28324a; border-radius:14px; padding:10px 12px; }
+.vkl-kop { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:6px; }
+.vkl-nu { font-size:11px; color:var(--kl-o); white-space:nowrap; flex:none; }
+.vkl-oordeel { font-size:12px; font-weight:600; color:var(--kl-tx3); text-align:right; }
+.vkl-oordeel.ok { color:var(--kl-ok); } .vkl-oordeel.let { color:var(--kl-let); } .vkl-oordeel.slecht { color:var(--kl-slecht); }
+.vkl-raster { display:grid; grid-template-columns:16px minmax(0,1fr); gap:4px; }
+.vkl-raster svg { width:100%; height:clamp(96px, 30vw, 150px); display:block; }
+.vkl-raster rect { fill:#2fd4d0; fill-opacity:.05; }
+.vkl-punt { fill:none; stroke:var(--kl-o); stroke-width:1.6; vector-effect:non-scaling-stroke; }
+.vkl-as-y { writing-mode:vertical-rl; transform:rotate(180deg); text-align:center; font-size:10px; color:var(--kl-tx3); }
+.vkl-as-x { display:flex; justify-content:space-between; padding-left:20px; font-size:10px; color:var(--kl-tx3); margin-top:3px; }
+.vkl-trimrij { display:grid; grid-template-columns:84px minmax(0,1fr) 58px; gap:8px; align-items:center; margin:5px 0; font-size:12px; color:var(--kl-tx2); }
+.vkl-trimrij b { font-family:var(--m); font-weight:500; text-align:right; }
+.vkl-baan.midden { height:12px; }
+.vkl-nul { position:absolute; left:50%; top:0; bottom:0; width:1px; background:var(--kl-tx3); }
+.vkl-tv { position:absolute; top:2px; bottom:2px; border-radius:4px; background:var(--kl-tx3); transition:left .3s, width .3s; }
+.vkl-tv.ok { background:var(--kl-ok); } .vkl-tv.let { background:var(--kl-let); } .vkl-tv.slecht { background:var(--kl-slecht); }
+.vkl-uitleg { margin:4px 0 0; font-size:11px; line-height:1.35; color:var(--kl-tx3); }
+.vkl-uitleg:empty { display:none; }
+.vkl-golfsvg { width:100%; height:40px; display:block; }
+.vkl-golfsvg .vkl-zone { fill:rgba(31,209,137,.06); stroke:none; }
+.vkl-mid { stroke:#2a344c; stroke-dasharray:3 3; vector-effect:non-scaling-stroke; }
+#vkl-golf { fill:none; stroke:var(--kl-c); stroke-width:1.6; stroke-linejoin:round; vector-effect:non-scaling-stroke; }
+/* Liggend op het volle scherm: de strook en de temperaturen links, het
+   werkgebied, de trims en de sonde rechts. */
+@media (orientation:landscape) {
+  /* De bak is liggend zo breed als het scherm hoog is — goed voor een ronde
+     meter, te smal voor twee kolommen. Klassiek neemt de breedte tot de
+     kolom van de meldingen (rechts, min(30%, 340px)). */
+  body.pl-vis-vol .vis-bak:has(.vpf-klassiek) { max-width:calc(100% - min(30%, 340px) - 16px); width:100%; margin-right:auto; }
+  body.pl-vis-vol .vpf-klassiek { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); grid-template-rows:auto 1fr; align-content:center; align-items:start; gap:8px 14px; padding:50px 12px 10px; margin-top:0; }
+  /* De kopjes op één regel: liggend is er geen hoogte voor een tweede. */
+  body.pl-vis-vol .vpf-klassiek .vkl-kop small { letter-spacing:.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  body.pl-vis-vol .vpf-klassiek .vkl-oordeel { white-space:nowrap; flex:none; }
+  body.pl-vis-vol .vpf-klassiek > .vkl-strook { grid-column:1; grid-row:1; }
+  body.pl-vis-vol .vpf-klassiek > .vkl-temps { grid-column:1; grid-row:2; }
+  body.pl-vis-vol .vpf-klassiek > .vkl-kaart, body.pl-vis-vol .vpf-klassiek > .vpf-geen { grid-column:2; }
+  body.pl-vis-vol .vpf-klassiek > .vkl-werk { grid-row:1 / span 2; align-self:stretch; }
+  body.pl-vis-vol .vpf-klassiek:has(> .vkl-trim, > .vkl-golf) > .vkl-werk { grid-row:auto; }
+  body.pl-vis-vol .vpf-klassiek .vkl-kaart { padding:7px 10px; }
+  body.pl-vis-vol .vpf-klassiek .vkl-uitleg { display:none; }
+  body.pl-vis-vol .vpf-klassiek .vkl-trimrij { margin:3px 0; }
+  body.pl-vis-vol .vkl-staand { min-height:min(24vh, 120px); }
+  body.pl-vis-vol .vkl-raster svg { height:min(20vh, 150px); }
+  body.pl-vis-vol .vkl-golfsvg { height:min(7vh, 40px); }
+}
+
 /* DIGITAAL — verbruik, in de Hyperlane-schil (28-10-2026): het grote getal
    dun en gloeiend, de segmenten lichten op in de kleur van het rijgedrag.
    Tot deze datum een groen LCD-paneel met scanlijnen. */

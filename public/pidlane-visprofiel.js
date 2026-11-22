@@ -15,6 +15,10 @@
 //   hyperlane    HYPER    de blikvanger: neon-tunnel, toeren en snelheid in
 //                         perspectief, kleur volgt het rijgedrag (27-10-2026;
 //                         de tekening zelf staat in pidlane-hyperlane.js)
+//   klassiek     KLASSIEK een oude auto met weinig sensoren: snelheid,
+//                         versnelling en toeren bovenin, de temperaturen die
+//                         hij geeft, en het werkgebied last × toeren met de
+//                         trim per gebied (22-11-2026; PLWerkgebied rekent)
 //
 // HET KADER BLIJFT. Lampjes bovenaan, meldingen en snelkoppelingen onderaan,
 // de trekstrook: dat tekent pidlane-visueel.js zoals altijd. Alleen het vak
@@ -222,6 +226,32 @@ const PROFIELEN = [
       { rol:'gy',        naam:'Lengte-G',  keten:['TL03'], eenheid:'g', soort:'hyper', lo:-1.5, hi:1.5, dec:2, cockpit:true },
       { rol:'helling',   naam:'Helling',   keten:['TL01'], eenheid:'°', soort:'hyper', lo:-45, hi:45, dec:0, cockpit:true },
       { rol:'kanteling', naam:'Kanteling', keten:['TL02'], eenheid:'°', soort:'hyper', lo:-45, hi:45, dec:0, cockpit:true }
+    ] },
+  // Klassiek (22-11-2026): een oude auto met weinig sensoren. Uit het gebruik:
+  // "auto met weinig pids, veel lege plekken". Boven een strook met snelheid,
+  // versnelling en toeren; daaronder alleen de temperatuurbalken die de auto
+  // geeft; onderin het werkgebied (last × toeren) met de trim per gebied en de
+  // lambdasonde — wat zo'n auto wél meet, samen gelezen (PLWerkgebied).
+  //   hud     alleen het getal          staand  staande balk, vult van onder
+  //   voed    geen eigen tekening: gaat naar PLWerkgebied
+  //   golf    het spoor van de sonde over de laatste 20 s
+  // Een temperatuurbalk of sonde zonder sensor wordt niet getekend (`weg`),
+  // en de trimkaart niet zonder trims: lege plekken waren precies de klacht.
+  // De strook en het werkgebied staan er altijd, met "—".
+  { id:'klassiek', naam:'Klassiek', stijl:'klassiek', ondertitel:'Weinig sensoren',
+    plekken:[
+      { rol:'snel',   naam:'Snelheid',    keten:['010D'], eenheid:'km/u', soort:'hud', lo:0, hi:240, dec:0 },
+      { rol:'toeren', naam:'Toerental',   keten:['010C'], eenheid:'tpm', soort:'ring', lo:0, hi:8000, dec:0, diesel:{ hi:6000 } },
+      { rol:'last',   naam:'Last',        keten:['0104','0143'], eenheid:'%', soort:'staand', lo:0, hi:100, dec:0 },
+      { rol:'gas',    naam:'Gas',         keten:['0111','0149','015A','014A'], eenheid:'%', soort:'staand', lo:0, hi:100, dec:0,
+        diesel:{ keten:['0149','015A','014A','0111'] } },
+      { rol:'koel',   naam:'Koelwater',   keten:['0105','0167'], eenheid:'°C', soort:'balk', lo:-40, hi:130, zone:[80,105], dec:0, weg:true },
+      { rol:'inlaat', naam:'Inlaatlucht', keten:['010F','0168'], eenheid:'°C', soort:'balk', lo:-20, hi:80, zone:[-10,50], dec:0, weg:true },
+      { rol:'accu',   naam:'Accu',        keten:['0142'], eenheid:'V', soort:'balk', lo:10, hi:16, zone:[13.2,14.8], dec:1, weg:true },
+      // Een diesel heeft geen trims en geen springende sonde (#393).
+      { rol:'kort',   naam:'Trim kort',   keten:['0106'], eenheid:'%', soort:'voed', lo:-25, hi:25, dec:1, diesel:false },
+      { rol:'lang',   naam:'Trim lang',   keten:['0107'], eenheid:'%', soort:'voed', lo:-25, hi:25, dec:1, diesel:false },
+      { rol:'o2',     naam:'Lambdasonde voor de kat', keten:['0114'], eenheid:'V', soort:'golf', lo:0, hi:1, dec:2, diesel:false, weg:true }
     ] }
 ];
 // De ringen van buiten naar binnen; de straal staat hier en niet in de CSS,
@@ -756,6 +786,112 @@ function tankHtml(p, ind){
    achtergrond, de kleur van het rijgedrag en het knopje van Hyperlane; zijn
    eigen instrument blijft, in neonstijl (pidlane.css .vhl-schil). De lus is
    die van pidlane-hyperlane.js; bij() voedt hem met toeren, snelheid en gas. */
+/* ── KLASSIEK (22-11-2026) ── */
+function klPlek(x, pid, binnen, extra){
+  return '<div class="vkl-'+x.soort+(pid?'':' leeg')+'" id="vpf-p-'+x.rol+'" title="'+titel(x, pid)+'"'+(extra||'')+'>'+binnen+'</div>';
+}
+function htmlKlassiek(p, ind){
+  const P=function(r){ return plekVan(p, r); }, pid=function(r){ return ind.plekken[r]; };
+  const staand=function(x){ return !x ? '' : klPlek(x, pid(x.rol),
+    '<span class="vkl-buis"><i class="vpf-f" id="vpf-f-'+x.rol+'" style="height:0%"></i></span><small>'+esc(x.naam)+'</small>'); };
+  const t=P('toeren'), s=P('snel');
+  let h='<div class="vkl-strook">'+
+    klPlek(s, pid('snel'), '<b class="vpf-w" id="vpf-w-snel">—</b><small>'+esc(s.eenheid)+'</small>')+
+    staand(P('last'))+
+    klPlek(t, pid('toeren'),
+      '<svg class="vkl-gear" viewBox="0 0 120 120" aria-hidden="true">'+
+        '<circle class="vkl-ring-bak" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="75 100" transform="rotate(135 60 60)"/>'+
+        '<circle class="vkl-ring-vul vpf-f" id="vpf-f-toeren" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="0 100" transform="rotate(135 60 60)"/></svg>'+
+      '<span class="vkl-g"><small>versn.</small><b id="vpf-kl-gear"></b></span>', ' data-rol="gear"')+
+    staand(P('gas'))+
+    '<div class="vkl-strook-rechts"><b class="vpf-w" id="vpf-w-toeren">—</b><small>'+esc(t.eenheid)+'</small></div>'+
+  '</div>';
+  // Alleen de balken die deze auto geeft (`weg`): geen lege plekken.
+  const balken=p.plekken.filter(function(x){ return x.soort==='balk' && (!x.weg || pid(x.rol)); });
+  if(balken.length) h+='<div class="vkl-temps">'+balken.map(function(x){
+    const a=deel(x.zone ? x.zone[0] : null, x.lo, x.hi), b=deel(x.zone ? x.zone[1] : null, x.lo, x.hi);
+    return klPlek(x, pid(x.rol),
+      '<span class="vkl-n">'+esc(x.naam)+'<i>'+esc(pid(x.rol)||'')+'</i></span>'+
+      '<span class="vkl-baan">'+(a!==null && b!==null ? '<i class="vkl-zone" style="left:'+a.toFixed(1)+'%;width:'+(b-a).toFixed(1)+'%"></i>' : '')+
+        '<i class="vpf-f" id="vpf-f-'+x.rol+'" style="width:0%"></i></span>'+
+      '<b class="vpf-w" id="vpf-w-'+x.rol+'">—</b><i class="vkl-e">'+esc(x.eenheid)+'</i>');
+  }).join('')+'</div>';
+  // Het werkgebied: een vast raster, de vulling zet klassiekTeken().
+  const W=window.PLWerkgebied, nx=W ? W.NX : 12, ny=W ? W.NY : 8;
+  let r='';
+  for(let j=0;j<ny;j++) for(let i=0;i<nx;i++)
+    r+='<rect id="vkl-c-'+(j*nx+i)+'" x="'+(i*10+1)+'" y="'+((ny-1-j)*10+1)+'" width="8" height="8" rx="1.6"/>';
+  h+='<div class="vkl-kaart vkl-werk"><div class="vkl-kop"><small>Werkgebied · deze rit</small><span class="vkl-nu">● nu</span></div>'+
+    '<div class="vkl-raster"><span class="vkl-as-y">last →</span>'+
+      '<svg viewBox="0 0 '+(nx*10)+' '+(ny*10)+'" preserveAspectRatio="none" role="img" aria-label="Tijd per vak van last en toerental">'+r+
+      '<circle id="vkl-punt" class="vkl-punt" cx="-20" cy="-20" r="3.2"/></svg></div>'+
+    '<div class="vkl-as-x"><span>0</span><span>toeren →</span><span>'+tekst(t.hi, 0)+'</span></div></div>';
+  // Trim per gebied: alleen als deze auto trims geeft (een diesel nooit).
+  if(pid('kort') || pid('lang')){
+    const W2=W ? W.GEBIEDEN : ['stationair','deellast','zwaar'], naam=W ? W.GEBIED_NAAM : {};
+    h+='<div class="vkl-kaart vkl-trim" id="vkl-trim"><div class="vkl-kop"><small>Trim per gebied</small><span class="vkl-oordeel" id="vkl-trim-o">meet nog</span></div>'+
+      W2.map(function(g){ return '<div class="vkl-trimrij"><span>'+esc(naam[g]||g)+'</span>'+
+        '<span class="vkl-baan midden"><i class="vkl-zone" style="left:30%;width:40%"></i><i class="vkl-nul"></i><i class="vkl-tv" id="vkl-t-'+g+'" style="left:50%;width:0%"></i></span>'+
+        '<b id="vkl-tw-'+g+'">—</b></div>'; }).join('')+
+      '<p class="vkl-uitleg" id="vkl-trim-u"></p></div>';
+  }
+  const o=P('o2');
+  if(o && pid('o2')) h+=klPlek(o, pid('o2'),
+    '<div class="vkl-kop"><small>Lambda voor de kat · '+esc(pid('o2')||'0114')+'</small><span class="vkl-oordeel" id="vkl-o2-o">meet nog</span></div>'+
+    '<svg class="vkl-golfsvg" viewBox="0 0 200 40" preserveAspectRatio="none" aria-hidden="true"><rect class="vkl-zone" x="0" y="16" width="200" height="12"/>'+
+      '<line x1="0" x2="200" y1="22" y2="22" class="vkl-mid"/><polyline id="vkl-golf" points=""/></svg>'+
+    '<p class="vkl-uitleg" id="vkl-o2-u"></p>', '').replace('class="vkl-golf', 'class="vkl-kaart vkl-golf');
+  return h;
+}
+/* Het werkgebied, de trims en de sonde op het scherm. Het raster hooguit één
+   keer per seconde (KL_MS); het puntje en het spoor bij elke waarde. */
+const KL_MS = 1000;
+let _klTeken=0;
+function klassiekTeken(p, nu){
+  const W=window.PLWerkgebied; if(!W) return;
+  const L=W.live(nu), m=L.model;
+  const pt=el('vkl-punt');
+  if(pt){
+    const c=L.rpm!==null && L.last!==null;
+    pt.setAttribute('cx', c ? (Math.min(1, L.rpm/L.rpmMax)*W.NX*10).toFixed(1) : '-20');
+    pt.setAttribute('cy', c ? ((1-Math.min(1, Math.max(0, L.last/100)))*W.NY*10).toFixed(1) : '-20');
+  }
+  const g=el('vkl-golf');
+  if(g){
+    const v=W.O2_VENSTER;
+    g.setAttribute('points', L.o2.filter(function(q){ return nu-q.t<=v; }).map(function(q){
+      return (200-(nu-q.t)/v*200).toFixed(1)+','+(40-klem(q.v, 0, 1)*40).toFixed(1); }).join(' '));
+  }
+  if(nu-_klTeken<KL_MS) return;
+  _klTeken=nu;
+  let max=0; m.ms.forEach(function(x){ if(x>max) max=x; });
+  m.ms.forEach(function(x, i){
+    const c=el('vkl-c-'+i); if(!c) return;
+    const a=max>0 && x>0 ? (0.12+0.83*Math.sqrt(x/max)).toFixed(2) : '';
+    if(c.style.fillOpacity!==a) c.style.fillOpacity=a;
+    c.classList.toggle('aan', !!a);
+  });
+  if(el('vkl-trim')){
+    const t=W.trimPerGebied(m), o=W.trimOordeel(t);
+    W.GEBIEDEN.forEach(function(gb){
+      const v=t[gb], b=el('vkl-t-'+gb);
+      zetTekst('vkl-tw-'+gb, v===null ? '—' : (v>0 ? '+' : '')+tekst(v, 1)+'%');
+      if(b){
+        const d=v===null ? 50 : deel(v, -25, 25), a=Math.min(d, 50), z=Math.max(d, 50);
+        b.style.left=a.toFixed(1)+'%'; b.style.width=(z-a).toFixed(1)+'%';
+        b.className='vkl-tv '+(v===null ? '' : Math.abs(v)>=20 ? 'slecht' : Math.abs(v)>=10 ? 'let' : 'ok');
+      }
+    });
+    klOordeel('vkl-trim', o);
+  }
+  if(el('vkl-o2-o')) klOordeel('vkl-o2', W.o2Oordeel(L.o2, nu, L.warm));
+}
+function klOordeel(pre, o){
+  const e=el(pre+'-o');
+  if(e){ e.className='vkl-oordeel '+o.st; zetTekst(pre+'-o', '● '+o.tekst+(o.bereik ? ' · '+o.bereik : '')); }
+  zetTekst(pre+'-u', o.uitleg);
+}
+
 const SCHIL = ['glas','licht','digitaal','neon','telemetrie'];
 function html(id, ind){
   const p=voorInd(id, ind);
@@ -763,7 +899,7 @@ function html(id, ind){
   const schil=SCHIL.indexOf(p.stijl)>=0;
   const binnen = p.stijl==='glas' ? htmlGlas(p, ind) : p.stijl==='licht' ? htmlLicht(p, ind)
                : p.stijl==='digitaal' ? htmlDigitaal(p, ind) : p.stijl==='telemetrie' ? htmlTelemetrie(p, ind)
-               : p.stijl==='hyper' ? htmlHyper(p, ind) : htmlNeon(p, ind);
+               : p.stijl==='hyper' ? htmlHyper(p, ind) : p.stijl==='klassiek' ? htmlKlassiek(p, ind) : htmlNeon(p, ind);
   const geen=p.plekken.every(function(x){ return !ind.plekken[x.rol]; });
   const ck=p.stijl==='hyper' && !!plekVan(p, 'rem');
   return '<div class="vpf vpf-'+p.stijl+(schil ? ' vhl-schil' : '')+(ck ? ' vhl-tablet' : '')+'" data-profiel="'+p.id+'">'+
@@ -796,6 +932,10 @@ function bij(id, ind, pid, val, st){
     if(x.soort==='energie' || x.soort==='afgeleid') return;
     // In de eigen eenheid (PLToon.omgerekend); het oordeel `st` bleef op de ruwe waarde.
     const w=ind.weergave && ind.weergave[x.rol], vx=w ? PLToon.omgerekend(val, w) : val;
+    // Klassiek: het werkgebied rekent met de ruwe waarde in de eenheid van de
+    // keten, nooit met een omgerekende of een met de hand gekozen sensor.
+    if(p.stijl==='klassiek' && window.PLWerkgebied && x.keten.indexOf(pid)>=0)
+      PLWerkgebied.voed(x.rol, val, Date.now(), x.rol==='toeren' ? x.hi : 0);
     const d=deel(vx, x.lo, x.hi);
     // De ring van het toerental: 0–8000, op een diesel 0–6000 (#393), net
     // als de schaal van de basismeter.
@@ -813,7 +953,7 @@ function bij(id, ind, pid, val, st){
     if(x.soort==='hyper'){ if(window.PLHyperlane) PLHyperlane.zet(x.rol, vx, st, !!(ind.vervang && ind.vervang[x.rol]) || !!(w && w.factor) || !!x.eigenRing); return; }
     if(!f) return;
     const v=d===null ? 0 : d;
-    if(x.soort==='thermo') f.style.height=v.toFixed(1)+'%';
+    if(x.soort==='thermo' || x.soort==='staand') f.style.height=v.toFixed(1)+'%';
     else if(x.soort==='balk') f.style.width=v.toFixed(1)+'%';
     else if(x.soort==='midden'){
       // Vanuit het midden: links van 50% is negatief (rijker), rechts positief.
@@ -824,6 +964,7 @@ function bij(id, ind, pid, val, st){
     else if(x.soort==='segment'){ const n=String(Math.round(v/100*SEG)); if(f.getAttribute('data-n')!==n) f.setAttribute('data-n', n); }
     else if(x.soort==='ring') f.setAttribute('stroke-dasharray', (v*0.75).toFixed(1)+' 100');
   });
+  if(p.stijl==='klassiek') klassiekTeken(p, Date.now());
 }
 function klem(v, lo, hi){ const n=Number(v); return isFinite(n) ? Math.max(lo, Math.min(hi, n)) : 0; }
 /* De G-cirkel (#407, 06-10-2026).
@@ -978,6 +1119,7 @@ window.PLVisProfiel = {
   indeling:indeling, ketens:ketens, deel:deel, tekst:tekst, html:html, bij:bij, dof:dof, pids:pids,
   STANDEN:STANDEN, STAND_NAAM:STAND_NAAM, STROOK:STROOK, strookRollen:strookRollen, inStand:inStand,
   KEUZE_SLEUTEL:KEUZE_SLEUTEL, keuzes:keuzes, zetKeuze:zetKeuze, ketenVan:ketenVan, voorInd:voorInd, weergaveVelden:weergaveVelden, nulstellen:nulstellen, kortVan:kortVan, cockpitHtml:cockpitHtml, TEMP_ROLLEN:TEMP_ROLLEN,
+  klassiekTeken:klassiekTeken, KL_MS:KL_MS,
   G_PIEK_MS:G_PIEK_MS, gPiek:gPiek, gPunt:gPunt, gWis:gWis, G_SPOOR_MS:G_SPOOR_MS, G_MAX_PAUZE_MS:G_MAX_PAUZE_MS, gSpoorBij:gSpoorBij, gSpoorPunten:gSpoorPunten, gMax:gMax
 };
 })();

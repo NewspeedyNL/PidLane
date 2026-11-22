@@ -43,15 +43,15 @@ function laad(bron) {
 console.log('\n1. Volgende loopt rond');
 function keurRond(bron) {
   const P = laad(bron).PLVisProfiel, uit = [];
-  if (P.PROFIELEN.length !== 7) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 7');
+  if (P.PROFIELEN.length !== 8) uit.push('er zijn ' + P.PROFIELEN.length + ' weergaven, verwacht 8');
   let id = 'basis'; const gezien = [id];
-  for (let i = 0; i < 7; i++) { id = P.volgende(id); gezien.push(id); }
-  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,hyperlane,basis') uit.push('de rondgang is ' + gezien.join(' → '));
+  for (let i = 0; i < 8; i++) { id = P.volgende(id); gezien.push(id); }
+  if (gezien.join(',') !== 'basis,temp,emissie,verbruik,motor,telemetrie,hyperlane,klassiek,basis') uit.push('de rondgang is ' + gezien.join(' → '));
   if (P.volgende('onzin') !== 'temp') uit.push('na een onbekende keuze komt ' + P.volgende('onzin'));
   return uit;
 }
 const r1 = keurRond(BRON);
-waar('basis → temperatuur → emissie → verbruik → motor → telemetrie (één scherm sinds 06-10-2026) → hyperlane (27-10-2026) → basis', r1.length === 0, r1.join('; '));
+waar('basis → temperatuur → emissie → verbruik → motor → telemetrie (één scherm sinds 06-10-2026) → hyperlane (27-10-2026) → klassiek (22-11-2026) → basis', r1.length === 0, r1.join('; '));
 waar('tegenproef: zonder de rond-modulo stopt hij na motor',
   keurRond(BRON.replace('% PROFIELEN.length].id', '] ? PROFIELEN[i+1].id : PROFIELEN[PROFIELEN.length-1].id')).length > 0);
 
@@ -110,6 +110,15 @@ waar('tegenproef: een verzonnen PID wordt gezien',
   onbekend(laad(BRON.replace("keten:['0146']", "keten:['01ZZ']")).PLVisProfiel).indexOf('temp/buiten: 01ZZ') >= 0);
 
 console.log('\n5. De tekening heeft voor elke plek een vak');
+// Klassiek (22-11-2026): een staande balk en het spoor van de sonde hebben
+// geen getal maar wel een vak; een trim heeft geen eigen vak maar voedt de
+// kaart "trim per gebied". Elk ander profiel valt hier nooit onder.
+function zonderGetal(h, x) {
+  if (x.soort === 'staand') return h.indexOf('id="vpf-f-' + x.rol + '"') >= 0;
+  if (x.soort === 'golf') return h.indexOf('id="vpf-p-' + x.rol + '"') >= 0 && h.indexOf('id="vkl-golf"') >= 0;
+  if (x.soort === 'voed') return h.indexOf('id="vkl-trim"') >= 0;
+  return false;
+}
 function vakkenMis(PP) {
   const uit = [];
   PP.PROFIELEN.filter(p => p.plekken).forEach(p => {
@@ -117,7 +126,7 @@ function vakkenMis(PP) {
     // Een getalvak, of — voor de horizon in het samengevoegde telemetriescherm,
     // die zijn getallen deelt met de autootjes — ten minste zijn tekening.
     // De plekken van de stand van nu (Auto): Hyperlane heeft er per stand meer (test-hyperlane.js).
-    PP.voor(p.id).plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
+    PP.voor(p.id).plekken.forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0) && !zonderGetal(h, x)) uit.push(p.id + '/' + x.rol); });
     if (h.indexOf('vpf-' + p.stijl) < 0) uit.push(p.id + ': stijl ' + p.stijl + ' ontbreekt');
   });
   return uit;
@@ -126,7 +135,7 @@ const vm1 = vakkenMis(P);
 waar('elke plek heeft een getalvak, elk profiel zijn stijl', vm1.length === 0, vm1.join(', '));
 const vmD = (() => { const uit = []; P.PROFIELEN.filter(p => p.plekken).forEach(p => {
   const i = P.indeling(p.id, () => true, 'diesel'), h = P.html(p.id, i);
-  P.plekkenVan(p, 'diesel').forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0)) uit.push(p.id + '/' + x.rol); });
+  P.plekkenVan(p, 'diesel').forEach(x => { if (h.indexOf('id="vpf-w-' + x.rol + '"') < 0 && !(/^hz-/.test(x.rol) && h.indexOf('id="vpf-f-' + x.rol + '"') >= 0) && !zonderGetal(h, x)) uit.push(p.id + '/' + x.rol); });
   const ids = [...h.matchAll(/id="([^"]+)"/g)].map(m => m[1]); if (ids.length !== new Set(ids).size) uit.push(p.id + ': dubbele id');
 }); return uit; })();
 waar('ook op een diesel heeft elke plek een vak, en geen id twee keer (#393)', vmD.length === 0, vmD.join(', '));
@@ -450,6 +459,59 @@ console.log('\nH. De energieweergave voor hybride en EV (#435)');
   waar('op de benzineweergave doet energie() niets', els['vpf-w-energie'].textContent === 'laden');
   Q.bij('motor', ind, '0149', 15, 'ok');
   waar('een ruwe pedaalwaarde (15% in rust) overschrijft de energiering niet', els['vpf-f-energie'].getAttribute('stroke-dasharray') === '30.0 100' && els['vpf-w-energie'].textContent === 'laden');
+}
+
+console.log('\n12. Klassiek: een oude auto met weinig sensoren (22-11-2026)');
+function klassiekLaad(bron) {
+  const c = laad(bron);
+  vm.runInContext(lees('pidlane-werkgebied.js'), c, { filename: 'pidlane-werkgebied.js' });
+  const els = {};
+  c.document = { getElementById: id => (els[id] = els[id] || { attr: {}, style: {}, textContent: '', className: '',
+    classList: { remove() {}, add() {}, toggle() {} }, setAttribute(k, v) { this.attr[k] = String(v); }, getAttribute(k) { return this.attr[k]; } }) };
+  return { P: c.PLVisProfiel, W: c.PLWerkgebied, els: els, c: c };
+}
+{
+  // Een Astra G uit 2002: geen 0142, geen 010F.
+  const oud = ['010C', '010D', '0104', '0111', '0105', '0106', '0107', '0114'];
+  const zonder = (bron) => { const K = klassiekLaad(bron); return K.P.html('klassiek', K.P.indeling('klassiek', q => oud.indexOf(q) >= 0)); };
+  const h = zonder(BRON);
+  waar('een temperatuurbalk zonder sensor wordt niet getekend: geen lege plekken', /id="vpf-p-koel"/.test(h) && !/id="vpf-p-inlaat"/.test(h) && !/id="vpf-p-accu"/.test(h));
+  waar('tegenproef: zonder de `weg`-regel staan inlaat en accu er leeg bij',
+    /id="vpf-p-inlaat"/.test(zonder(BRON.replace("(!x.weg || pid(x.rol))", "true"))));
+  waar('strook, werkgebied, trim per gebied en sonde staan erin', ['vpf-w-snel', 'vpf-w-toeren', 'vpf-kl-gear', 'vpf-f-last', 'vpf-f-gas', 'vkl-punt', 'vkl-c-0', 'vkl-c-95', 'vkl-trim', 'vkl-golf'].every(id => h.indexOf('id="' + id + '"') >= 0));
+
+  const D = klassiekLaad(BRON), iD = D.P.indeling('klassiek', () => true, 'diesel'), hD = D.P.html('klassiek', iD);
+  const geenTrim = (() => { const K = klassiekLaad(BRON); return K.P.html('klassiek', K.P.indeling('klassiek', q => ['010C', '010D', '0104'].indexOf(q) >= 0)); })();
+  waar('zonder trims en sonde: geen lege trimkaart en geen lege sondekaart', !/vkl-trim|vkl-golf/.test(geenTrim) && /vkl-werk/.test(geenTrim));
+  waar('tegenproef: zonder de pid-controle staat de trimkaart er leeg bij',
+    /vkl-trim/.test((() => { const K = klassiekLaad(BRON.replace("if(pid('kort') || pid('lang')){", "if(P('kort') || P('lang')){")); return K.P.html('klassiek', K.P.indeling('klassiek', q => ['010C', '010D', '0104'].indexOf(q) >= 0)); })()));
+  waar('diesel: geen trims en geen sonde (#393), wel het werkgebied tot 6000', !/vkl-trim|vkl-golf/.test(hD) && /vkl-werk/.test(hD) && />6000</.test(hD));
+  waar('diesel: het gaspedaal gaat vóór de gasklep', iD.plekken.gas === '0149', iD.plekken.gas);
+
+  // Waarden komen aan: de ring, het werkgebied, de trim.
+  const K = klassiekLaad(BRON), ind = K.P.indeling('klassiek', q => oud.indexOf(q) >= 0);
+  K.P.html('klassiek', ind);
+  K.P.bij('klassiek', ind, '010C', 4000, 'ok');
+  waar('4000 tpm = de ring om de versnelling half gevuld (37,5 van 75)', K.els['vpf-f-toeren'].attr['stroke-dasharray'] === '37.5 100', K.els['vpf-f-toeren'].attr['stroke-dasharray']);
+  waar('…en het getal ernaast', K.els['vpf-w-toeren'].textContent === '4000');
+  K.P.bij('klassiek', ind, '0104', 40, 'ok');
+  K.P.bij('klassiek', ind, '0105', 90, 'ok');
+  K.P.bij('klassiek', ind, '010C', 2600, 'ok');
+  const t0 = K.W.live(Date.now());
+  waar('toeren met verse last tellen in het werkgebied', t0.model.totaal >= 0 && t0.rpm === 2600 && t0.last === 40, JSON.stringify({ rpm: t0.rpm, last: t0.last }));
+  K.P.bij('klassiek', ind, '0104', 250, 'ok');
+  waar('de staande lastbalk blijft binnen 0–100 bij een kapotte waarde', K.els['vpf-f-last'].style.height === '100.0%', K.els['vpf-f-last'].style.height);
+
+  // Een met de hand gekozen sensor op een plek voedt het werkgebied niet:
+  // een andere grootheid als "last" zou het raster vervuilen.
+  const M = klassiekLaad(BRON), indM = M.P.indeling('klassiek', q => ['010C', '0104', '2201AB'].indexOf(q) >= 0, 'benzine', { keuze: { 'klassiek/last': '2201AB' }, defs: [{ pid: '2201AB', name: 'Iets anders', unit: 'bar', min: 0, max: 5 }] });
+  M.P.html('klassiek', indM);
+  M.P.bij('klassiek', indM, '2201AB', 3, 'ok');
+  waar('een eigen sensor op de plek Last gaat niet als last het werkgebied in', indM.plekken.last === '2201AB' && M.W.live(Date.now()).last === null);
+  const M2 = klassiekLaad(BRON.replace("x.keten.indexOf(pid)>=0)\n      PLWerkgebied.voed", "true)\n      PLWerkgebied.voed"));
+  const indM2 = M2.P.indeling('klassiek', q => ['010C', '0104', '2201AB'].indexOf(q) >= 0, 'benzine', { keuze: { 'klassiek/last': '2201AB' }, defs: [{ pid: '2201AB', name: 'Iets anders', unit: 'bar', min: 0, max: 5 }] });
+  M2.P.bij('klassiek', indM2, '2201AB', 3, 'ok');
+  waar('tegenproef: zonder de ketencontrole wordt 3 bar een last van 3%', M2.W.live(Date.now()).last === 3);
 }
 
 console.log('\n' + (fout ? 'FOUT: ' + fout + ' van ' + (ok + fout) : 'goed: ' + ok + ' ok, 0 fout'));

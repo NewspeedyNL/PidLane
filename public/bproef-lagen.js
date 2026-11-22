@@ -23,7 +23,7 @@ function toets(naam, waar, uitleg) {
   else { console.log('  FOUT ' + naam + (uitleg ? ' — ' + uitleg : '')); fouten++; }
 }
 
-const PROFIELEN = ['basis', 'temp', 'emissie', 'verbruik', 'motor', 'telemetrie', 'hyperlane'];
+const PROFIELEN = ['basis', 'temp', 'emissie', 'verbruik', 'motor', 'telemetrie', 'hyperlane', 'klassiek'];
 
 (async () => {
   let app;
@@ -59,7 +59,7 @@ const PROFIELEN = ['basis', 'temp', 'emissie', 'verbruik', 'motor', 'telemetrie'
             const knop = [...document.querySelectorAll(G + ':is(.vis-lamp:not(.leeg), .vt-knop, .vhl-vorm, .vhl-midden, .vhl-ritknop' + (${vol} ? ', .vis-lampen' : '') + ')')].filter(zicht);
             // De inhoud; rond = als cirkel meten
             const rond = new Set(['vhl-ring', 'vis-meter', 'vpf-g-svg', 'vpf-horizon-svg']);
-            const inhoud = [...document.querySelectorAll(G + ':is(.vhl-ring, .vis-meter, .vpf-g-svg, .vpf-horizon-svg, .vhl-held, .vhl-strook, .vhl-kop, .vhl-tank, .vpf-buis, .vpf-lcd-groot, .vpf-ringen, .vpf-lambda, .vpf-rij, .vpf-or-vak, .vpf-tel-nul, .vpf-tel-getallen > div, .vpf-neon-getallen > div)')].filter(zicht);
+            const inhoud = [...document.querySelectorAll(G + ':is(.vhl-ring, .vis-meter, .vpf-g-svg, .vpf-horizon-svg, .vhl-held, .vhl-strook, .vhl-kop, .vhl-tank, .vpf-buis, .vpf-lcd-groot, .vpf-ringen, .vpf-lambda, .vpf-rij, .vpf-or-vak, .vpf-tel-nul, .vpf-tel-getallen > div, .vpf-neon-getallen > div, .vkl-strook, .vkl-kaart, .vkl-balk)')].filter(zicht);
             const T = 4;   // een paar pixels rand telt niet
             const raak = (a, b) => {
               const p = a.getBoundingClientRect(), q = b.getBoundingClientRect();
