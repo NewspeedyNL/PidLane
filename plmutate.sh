@@ -3041,7 +3041,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(nu-uit.t>=SCHAKEL_STABIEL_MS) uit.toon=s;@@  uit.toon=s;@@test-visueel.js@@de schakelpijl springt bij elke kuil heen en weer"
 "public/pidlane-visueel.js@@    if(!pid && t.zoek) return;@@@@test-visueel.js@@zonder bakoliesensor staat er een lege rij Bakolie in het trekpaneel"
 "public/pidlane-visueel.js@@    if(z!==nu) v.style.setProperty('--vis-pas', String(z));@@    if(false) v.style.setProperty('--vis-pas', String(z));@@bproef-volscherm.js@@op het volle scherm loopt het trekpaneel weer onder de navigatiebalk door"
-"public/pidlane.css@@body:not(.pl-vis-vol) .gg.view-visueel .vis { padding-bottom:0; }@@.gg.view-visueel .vis { padding-bottom:0; }@@bproef-volscherm.js@@op het volle scherm valt de ruimte voor de navigatiebalk weg: de rit-monitor ligt onder de Android-knoppen en de meter krimpt tevergeefs"
+"public/pidlane.css@@body:not(.pl-vis-vol) .gg.view-visueel .vis { padding-bottom:0; }@@.gg.view-visueel .vis { padding-bottom:0; }@@bproef-volscherm.js@@op het volle scherm valt de ruimte voor de navigatiebalk weg: de meter loopt onder de Android-knoppen door"
 "public/pidlane.css@@.vis:not(.vhl-basis) .vis-ritmon, body.pl-vis-vol .vis .vis-ritmon { display:none; }@@@@bproef-volscherm.js@@de rit-monitor staat weer in volledig scherm en in elk profiel over de meters"
 # 22-11-2026: "rit-monitor over de tanklichtbalk bij Hyperlane" weggehaald — de
 # rit-monitor staat in volledig scherm en in profielen niet meer in beeld (bproef-volscherm §4 toetst dat).
