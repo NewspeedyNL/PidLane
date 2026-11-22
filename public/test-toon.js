@@ -87,6 +87,20 @@ console.log('\n3b. Overal hele procenten voor pedaal en tank');
   toets('geen getal: null', T.tekst('012F', null) === null);
 }
 
+console.log('\n3c. Verbruik nu: gemiddeld over 3 s, niet elk tikje gas');
+{
+  // Metingen elke seconde; de laatste 3 s vóór de nieuwste tellen (t=2..5).
+  c.pidHist['CA03'] = reeks([40, 2, 10, 4, 12, 2]);
+  toets('CA03: gemiddelde van 10, 4, 12, 2 = 7', r(T.waarde('CA03', 2)) === 7, T.waarde('CA03', 2));
+  toets('TEGENPROEF: de oude 40 en 2 buiten het venster tellen niet', r(T.waarde('CA03', 2)) !== r((40 + 2 + 10 + 4 + 12 + 2) / 6));
+  c.pidHist['015E'] = reeks([1, 3]);
+  toets('015E: nieuwe waarde nog niet in de historie telt mee (1, 3, 5 → 3)', T.waarde('015E', 5) === 3, T.waarde('015E', 5));
+  c.pidHist['CA03'] = [];
+  toets('zonder historie: de waarde zelf', T.waarde('CA03', 6.5) === 6.5);
+  c.pidHist['CA03'] = reeks([3, 9]); c.pidHist['0110'] = reeks([3, 9]);
+  toets('alleen verbruik: luchtmassa blijft ruw', T.waarde('0110', 9) === 9);
+}
+
 console.log('\n4. De rest blijft zoals hij is');
 {
   toets('koelwater, toerental: ongewijzigd', T.waarde('0105', 92) === 92 && T.waarde('010C', 2000) === 2000);

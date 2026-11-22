@@ -56,6 +56,11 @@
   const PEDAAL_BEREIK = 60;
   const TANK = '012F';
   const TANK_N = 3;
+  // Verbruik nu (22-11-2026, uit de auto): "springt te hard op en neer".
+  // CA03 (l/100 km) en 015E (l/u) volgen elk tikje gas; getoond wordt het
+  // gemiddelde over de laatste VERBRUIK_MS, zoals een boordcomputer dempt.
+  const VERBRUIK = ['CA03', '015E'];
+  const VERBRUIK_MS = 3000;
 
   const getal = v => typeof v === 'number' && isFinite(v);
   let _leer = {}, _sleutel = null;
@@ -84,6 +89,17 @@
     return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
   }
 
+  /* Het gemiddelde van de metingen in de laatste `ms` vóór de nieuwste, met
+     `val` erbij als die er nog niet als laatste in staat. Zonder tijdstempels
+     of met één meting: val zelf. */
+  function gemiddeldRecent(hist, val, ms) {
+    const a = (hist || []).filter(m => m && typeof m === 'object' && getal(m.t) && getal(m.v));
+    if (!a.length) return val;
+    const tot = a[a.length - 1].t, w = a.filter(m => m.t >= tot - ms).map(m => m.v);
+    if (w[w.length - 1] !== val) w.push(val);
+    return w.length >= 2 ? w.reduce((x, y) => x + y, 0) / w.length : val;
+  }
+
   /* hist: de historie van deze PID (standaard pidHist[pid]). */
   function waarde(pid, val, hist) {
     if (!getal(val)) return val;
@@ -100,6 +116,7 @@
       const a = (h || []).slice(-TANK_N).map(m => (m && typeof m === 'object') ? m.v : m).filter(getal);
       return a.length >= TANK_N ? mediaan(a) : val;
     }
+    if (VERBRUIK.indexOf(pid) >= 0) return gemiddeldRecent(h, val, VERBRUIK_MS);
     return val;
   }
 

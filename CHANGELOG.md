@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — Bevinding-pop weg is echt weg, rit-monitor alleen in de basismeter, verbruik nu gedempt
+ ═════════════════════════════════════════════════════
+   • .vis-pop schoof bij verbergen -100%-20px omhoog maar staat op sat+10px: met een hoge statusbalk bleef de onderkant (rode rand, "toerental en belasting — mogelijk…") over de statusbalk hangen, in elke weergave. De verschuiving telt nu de sat mee en verborgen is visibility:hidden
+   • Rit-monitor (#visRitMon) alleen in de basismeter in de gewone weergave; in volledig scherm (staand en liggend) en in de profielen (Aurora e.d.) niet. De pop-up bij een nieuwe bevinding blijft
+   • PLToon.waarde: CA03 en 015E tonen het gemiddelde over de laatste 3 s in plaats van elke meting (test-toon.js §3c). Ruwe waarde blijft voor AI en analyses
+
+ ═════════════════════════════════════════════════════
  20-11-2026 — Rit-pil: caravanrit en rit-monitor buiten Slim visueel als één regel
  ═════════════════════════════════════════════════════
    • Het volle paneel (trekpaneel, rit-monitorring) staat alleen onder de meter in Slim visueel. In Overzicht, Slim en de andere tabbladen staat #ritPil in #fabLane: één regel met de stand (🚐 tijd · km · limiet, of 🛡️ kijkt mee / n meldingen / motorlampje AAN), randkleur naar ernst; tik = Live, Slim visueel. Vervangt daar de oude monitor-chip (geen twee pillen voor één monitor)

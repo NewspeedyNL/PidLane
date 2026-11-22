@@ -3900,6 +3900,9 @@ html:not(.dark) .rit-ov { background:rgba(240,244,250,.94); }
 .vis-onder:not(:has(.vtp, .vrm)) { display:none; }
 .vis-trek, .vis-ritmon { width:100%; }
 .vis-ritmon:empty { display:none; }
+/* De rit-monitor alleen in de basismeter, niet volledig scherm en niet in een
+   profiel (22-11-2026): daar dekt hij de meters af. De pop-up blijft. */
+.vis:not(.vhl-basis) .vis-ritmon, body.pl-vis-vol .vis .vis-ritmon { display:none; }
 body.pl-vis-vol .vis-onder { max-width:min(100%, 560px); }
 .vis:has(.vrm) .vis-chip[data-id="monitor"] { display:none; }
 
@@ -3999,8 +4002,11 @@ body.pl-vis-vol .vtp-cel b { font-size:22px; } body.pl-vis-vol .vtp-rad { width:
 .vis-pop { position:fixed; left:50%; top:calc(var(--pl-sat, 0px) + 10px); z-index:var(--z-modal-hoog); display:flex; width:min(calc(100% - 24px), 520px);
   border-radius:14px; border:1px solid var(--or); background:rgba(14,18,30,.94); color:#fff; overflow:hidden;
   box-shadow:0 10px 30px rgba(0,0,0,.35); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
-  transform:translate(-50%, calc(-100% - 20px)); transition:transform .35s cubic-bezier(.3,.7,.2,1); }
-.vis-pop.aan { transform:translate(-50%, 0); }
+  transform:translate(-50%, calc(-100% - 20px - var(--pl-sat, 0px))); visibility:hidden;
+  transition:transform .35s cubic-bezier(.3,.7,.2,1), visibility 0s linear .35s; }
+/* Weg = helemaal weg (22-11-2026): de top staat sat+10px lager, dus zonder sat
+   in de verschuiving bleef een Samsung met hoge statusbalk de onderkant tonen. */
+.vis-pop.aan { transform:translate(-50%, 0); visibility:visible; transition:transform .35s cubic-bezier(.3,.7,.2,1); }
 .vis-pop.ernstig { border-color:var(--rd); }
 .vis-pop-tx { flex:1; display:flex; align-items:flex-start; gap:10px; min-width:0; padding:10px 12px; border:0; background:none; color:inherit; font-family:var(--f); text-align:left; cursor:pointer; }
 .vis-pop-ic { flex:none; font-size:18px; line-height:1.2; }
