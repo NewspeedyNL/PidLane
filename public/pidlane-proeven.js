@@ -52,6 +52,19 @@ const PROEVEN_B5 = [
     }
   },
 
+  // ── ATST-rand ook terug zonder pollronde in de stilte (22-11-2026) ──
+  {
+    issue: '#509',
+    naam: 'Contact uit: een ATST-stap vlak ervóór gaat terug bij de stilte zelf, ook als er geen pollronde langskomt',
+    waarom: 'Op 22-11 ging de stap bij de derde keer contact uit niet terug: het opruimen wachtte op een pollronde die in die stilte niet kwam, en opdracht 41 eindigde op FOUT.',
+    proef: async function () {
+      if (!window.PLVerbind || typeof PLVerbind.stilteBegin !== 'function') return { staat: 'FOUT', detail: 'PLVerbind.stilteBegin ontbreekt — oude pidlane-bt.js (herladen?)' };
+      if (typeof plStilteTerug !== 'function' || !/stilteBegin/.test(String(plStilteTerug))) return { staat: 'FOUT', detail: 'plStilteTerug roept stilteBegin niet aan — oude pidlane-plload.js (herladen?)' };
+      var log = PLVerbind.stapLog ? PLVerbind.stapLog() : [];
+      return { staat: 'OK', detail: 'stappen nu: ' + log.length + ' · rij: drie keer contact uit en weer aan (20–90 s); opdracht 41 hoort gesloten te eindigen' };
+    }
+  },
+
   // ── Meetcoach als tip over elk scherm, en het ritverslag naar D1 (22-11-2026) ──
   {
     issue: '#509',

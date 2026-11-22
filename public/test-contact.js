@@ -125,7 +125,9 @@ console.log('\n5. plStilteStand en plStilteTerug uit pidlane-plload.js');
   const mk = new Function('PLBus', 'PLLoad', 'window', '_noDataStreak', '_streakSince',
     'let _batchDips=0, _batchOffSince=0;\n' + src.slice(a, b) +
     '\nreturn { stand: plStilteStand, terug: plStilteTerug, dips: () => _batchDips, uit: () => _batchOffSince };');
-  w.PLVerbind = { nu: () => ({ st: V.st }), stTerug: h => { V.terug.push(h); V.st = h; } };
+  w.PLVerbind = { nu: () => ({ st: V.st }), stTerug: h => { V.terug.push(h); V.st = h; V.volg.push('stTerug'); },
+    stilteBegin: () => { V.volg.push('stilteBegin'); } };
+  V.volg = [];
   const streak = { '010C': 0, '0104': 0 }, sinds = {};
   const f = mk({ batchGroep: () => S.groep, batchVast: () => S.vast, batchZet: (g, v) => { S.zet.push(g); S.groep = g; } },
     L, w, streak, sinds);
@@ -138,6 +140,11 @@ console.log('\n5. plStilteStand en plStilteTerug uit pidlane-plload.js');
   toets('het pollbudget gaat terug', L._mult === 1.0);
   toets('de ATST gaat terug naar 0x1C', V.terug[0] === '1C', 'stTerug: ' + JSON.stringify(V.terug));
   toets('de NO DATA-reeksen per PID zijn leeg', streak['010C'] === 0 && !('010C' in sinds));
+  // #509, rit 22-11-2026: de derde keer contact uit bleef de rand staan, omdat
+  // het opruimen op de volgende pollronde wachtte. Nu bij de stilte zelf, en
+  // vóór stTerug: anders zet die de hex en ziet _randTerug niets meer te doen.
+  toets('de rand vóór de stilte wordt opgeruimd, vóór de ATST terug gaat (#509)',
+    V.volg.join(',') === 'stilteBegin,stTerug', 'volgorde: ' + V.volg.join(','));
   S.vast = true; S.zet = []; S.groep = 5;
   f.terug(Object.assign({}, snap, { vast: true }));
   toets('een met de hand vastgezette groep blijft staan', S.groep === 5 && S.zet.length === 0);

@@ -16,6 +16,12 @@
    • test-pip.js, blok 5 #228, één mutatie
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — ATST-rand ook terug zonder pollronde in de stilte (#509)
+ ═════════════════════════════════════════════════════
+   • PLVerbind.stilteBegin(): ruimt de ATST-stap vlak vóór contact uit op, één keer per stilte. plStilteTerug roept hem aan vóór stTerug, dus het wacht niet meer op een pollronde die in de stilte misschien niet komt (rit 22-11: derde keer contact uit bleef de stap staan)
+   • test-verbindprofiel.js, test-contact.js, blok 5 #509, drie mutaties (één anker bijgewerkt)
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Meetproeven zonder gedoe: een tip over elk scherm, het ritverslag naar D1
  ═════════════════════════════════════════════════════
    • PLMeetcoach.tipVoor(): geen vraag vooraf nodig. Past de situatie, dan één zin over elk scherm heen (ook Slim visueel op volledig scherm) met ✓ Gedaan en Niet nu: stil na 5 min rijden → contact even uit; contact uit → aftellen tot weer aan; rijdend hoogstens één tip per 3 min

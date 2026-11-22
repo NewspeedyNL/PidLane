@@ -2252,10 +2252,7 @@ const PLVerbind={
     if(demoMode || !connected || !this.profiel || _plSt.bron==='handmatig') return;
     // Contact uit: elke PID "mist", maar dat is geen timing (pidlane-contact.js).
     // Bij het begin de rand ervóór terugdraaien, erna even niet tellen (#509).
-    if(window.PLContact && PLContact.stil()){
-      if(!this._inStil){ this._inStil=true; this._randTerug(Date.now()); }
-      return;
-    }
+    if(window.PLContact && PLContact.stil()){ this.stilteBegin(Date.now()); return; }
     if(this._inStil){ this._inStil=false; this._stilEind=Date.now(); }
     if(plStNaContact(this._stilEind, Date.now())){ this._venster=[]; return; }
     // Net terug uit de achtergrond: ook geen timing (#509). Wat er vóór de
@@ -2287,6 +2284,15 @@ const PLVerbind={
     Promise.resolve(sendCmd('ATST'+nieuw,1500)).catch(e=>btDiag('ATST bijsturen: adapter niet bijgewerkt ('+(e.message||e)+')','warn'));
     // Bewust niet bewaren (#414): bijsturen geldt voor deze verbinding. In het
     // geheugen werd het de bodem van de volgende, en zo klom de ATST blijvend.
+  },
+  // Begin van een contactstilte: de rand ervóór terugdraaien, één keer per
+  // stilte. Ook vanuit plStilteTerug (de contactkern), niet alleen vanuit de
+  // volgende pollronde: kwam er in de stilte geen ronde langs, dan bleef de
+  // stap staan en telde hij mee (#509, rit 22-11-2026, derde contact uit).
+  stilteBegin(nu){
+    if(this._inStil) return;
+    this._inStil=true;
+    this._randTerug(nu||Date.now());
   },
   // De stappen in de rand vóór een stilte waren een uitlopende motor, geen
   // timing (#509): terug naar de stand ervóór, en ze tellen niet meer mee.
