@@ -3019,6 +3019,7 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(w && typeof w.min==='number' && getalKan(p, def)) return [w.min, w.max];@@@@test-weergave.js@@een eigen schaal maakt een sensor niet plaatsbaar op een boog van de Basismeter"
 "public/pidlane-visueel.js@@  if(w && typeof w.min==='number' && getalKan(p, def)) return [w.min, w.max];@@  if(w && typeof w.min==='number') return [w.min, w.max];@@test-weergave.js@@met een eigen schaal komt het toerental op een boog, dat al de naald is"
 "public/pidlane-toon.js@@    if (HEEL.indexOf(pid) < 0 || !getal(val)) return null;@@    return null;@@test-toon.js@@Overzicht toont weer 7.80 waar Visueel 8% zegt"
+"public/pidlane-toon.js@@    if (VERBRUIK.indexOf(pid) >= 0) return gemiddeldRecent(h, val, VERBRUIK_MS);\n@@@@test-toon.js@@verbruik nu springt weer bij elk tikje gas"
 "public/pidlane-pids.js@@  val=PLToon.waarde(pid,val);\n  let aandr=null;@@  let aandr=null;@@bproef-toon.js@@Overzicht toont het ruwe pedaal (20) waar Visueel 0 zegt"
 "public/pidlane-pids.js@@    const dicht=k.kl==='uit' && sec.dataset.open!=='1';@@    const dicht=false;@@bproef-overzicht.js@@de motorcategorie van een hybride op de accu blijft open met een rij nullen die uit zeggen — #718"
 "public/pidlane-visueel.js@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.\n  val=PLToon.waarde(pid, val);@@  // als Overzicht en Slim (PLToon). De naald rekent zelf met de ruwe waarde.@@bproef-toon.js@@Visueel toont het ruwe pedaal (20) waar Overzicht 0 zegt"
@@ -3040,9 +3041,11 @@ MUTATIES=(
 "public/pidlane-visueel.js@@  if(nu-uit.t>=SCHAKEL_STABIEL_MS) uit.toon=s;@@  uit.toon=s;@@test-visueel.js@@de schakelpijl springt bij elke kuil heen en weer"
 "public/pidlane-visueel.js@@    if(!pid && t.zoek) return;@@@@test-visueel.js@@zonder bakoliesensor staat er een lege rij Bakolie in het trekpaneel"
 "public/pidlane-visueel.js@@    if(z!==nu) v.style.setProperty('--vis-pas', String(z));@@    if(false) v.style.setProperty('--vis-pas', String(z));@@bproef-volscherm.js@@op het volle scherm loopt het trekpaneel weer onder de navigatiebalk door"
-"public/pidlane.css@@body:not(.pl-vis-vol) .gg.view-visueel .vis { padding-bottom:0; }@@.gg.view-visueel .vis { padding-bottom:0; }@@bproef-volscherm.js@@op het volle scherm valt de ruimte voor de navigatiebalk weg: de rit-monitor ligt onder de Android-knoppen en de meter krimpt tevergeefs"
-"public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-onder { position:fixed;@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vis-onder { position:relative;@@bproef-volscherm.js@@bij Hyperlane ligt de rit-monitor over de tanklichtbalk"
-"public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vrm):not(:has(.vtp)) .vhl-pod { width:min(46cqw, 20cqh); }@@@@bproef-volscherm.js@@op een kort scherm ligt de rit-monitor bij Hyperlane over het middengetal"
+"public/pidlane.css@@body:not(.pl-vis-vol) .gg.view-visueel .vis { padding-bottom:0; }@@.gg.view-visueel .vis { padding-bottom:0; }@@bproef-volscherm.js@@op het volle scherm valt de ruimte voor de navigatiebalk weg: de meter loopt onder de Android-knoppen door"
+"public/pidlane.css@@.vis:not(.vhl-basis) .vis-ritmon, body.pl-vis-vol .vis .vis-ritmon { display:none; }@@@@bproef-volscherm.js@@de rit-monitor staat weer in volledig scherm en in elk profiel over de meters"
+# 22-11-2026: "rit-monitor over de tanklichtbalk bij Hyperlane" weggehaald — de
+# rit-monitor staat in volledig scherm en in profielen niet meer in beeld (bproef-volscherm §4 toetst dat).
+# 22-11-2026: ook "rit-monitor bij Hyperlane over het middengetal" weggehaald — de ruimte die hij daar kreeg is weg.
 "public/pidlane-monitor.js@@  if (!PLMon.userAan && typeof caravanActive!=='undefined' && caravanActive){@@  if (false){@@test-ritexclusief.js@@de rit-monitor gaat tijdens een caravanrit gewoon aan"
 "public/pidlane-monitor.js@@  if (!PLMon.userAan) return false;\n  PLMon.userAan = false;@@  if (!PLMon.userAan) return false;\n  return true;@@test-ritexclusief.js@@de caravanrit start en de rit-monitor blijft ernaast lopen"
 "public/pidlane-caravan.js@@  try{ if(typeof ritMonitorUitVoorCaravan==='function') ritMonitorUitVoorCaravan(); }@@  try{ }@@bproef-volscherm.js@@de caravanrit start en de rit-monitor blijft ernaast lopen (in de echte app)"

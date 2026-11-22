@@ -117,6 +117,18 @@ const SAB = 48;
         await W(4000);   // volPas() loopt met de tik mee: na vier tikken hoort hij stil te staan
         const r = await meetOnder(vol);
         const n = p + ' ' + hoog + 'px ' + (vol ? 'volscherm' : 'gewoon');
+        // De rit-monitor alleen in de basismeter in de gewone weergave (22-11-2026):
+        // in volledig scherm en in een profiel dekt hij de meters af.
+        if (soort === 'rit-monitor' && !(p === 'basis' && !vol)) {
+          const hoogte = await app.ev(`(function(){ const e=document.querySelector('#visRitMon .vrm'); return e ? Math.round(e.getBoundingClientRect().height) : -1; })()`);
+          toets(n + ': rit-monitor niet in beeld (wel aan: ' + lopend.join(' + ') + ')', hoogte === 0, hoogte);
+          // De onderrand houdt ruimte voor de Android-knoppen, ook zonder paneel eronder.
+          if (vol) {
+            const pb = await app.ev(`Math.round(parseFloat(getComputedStyle(document.querySelector('.vis')).paddingBottom))`);
+            toets(n + ': de meter houdt ruimte voor de navigatiebalk (padding-bottom ' + pb + 'px)', pb >= SAB, pb);
+          }
+          continue;
+        }
         toets(n + ': ' + soort + ' staat onder de meter (' + lopend.join(' + ') + ')', r && r[soort === 'rit-monitor' ? 'vrm' : 'vtp'], JSON.stringify(r));
         if (!r) continue;
         toets(n + ': boven de navigatiebalk', r.onder <= (vol ? r.h - SAB : Math.min(r.h - SAB, r.nav)), JSON.stringify(r));
