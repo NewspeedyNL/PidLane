@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — Hyperlane in trekmodus: schakellampjes naar het koppelbereik (#742)
+ ═════════════════════════════════════════════════════
+   • `schakelDoel()` krijgt `trek`: in trekmodus (PLVisueel.trekAan) loopt vol gas naar SCHAKEL.trek.max (benzine 4500, diesel 3500) in plaats van 90% van de rode streep; nooit voorbij dat racepunt
+   • test-hyperlane.js (4), blok 5 #742, twee mutaties; handleiding bij de schakellampjes
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Slim visueel: profiel Klassiek voor een oude auto met weinig sensoren
  ═════════════════════════════════════════════════════
    • Achtste profiel (na Hyperlane): strook met snelheid, versnelling (PLGear) in een toerenring, last en gas als staande balk; temperatuurbalken met normaalband, alleen voor wat de auto geeft (`weg`)

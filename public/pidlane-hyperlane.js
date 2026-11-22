@@ -160,9 +160,12 @@ function leds(toeren, punt, n){
    toerental waarop CA11 opschakelen aanraadt), `hard` = vol gas of een
    belasting boven SCHAKEL.maxBelasting. Rustig rijden: het ecopunt; hard,
    of geen hogere versnelling bekend: RACE_FRAC van de rode streep. Nooit
-   voorbij die streep. Puur. */
-function schakelDoel(rood, eco, hard){
+   voorbij die streep. `trek` (#742) = de bovenkant van het koppelbereik in
+   trekmodus (SCHAKEL.trek): met een caravan is hard trekken tot het racepunt
+   geen advies, dus dan lopen de lampjes daarheen. Puur. */
+function schakelDoel(rood, eco, hard, trek){
   const race=rood>0 ? rood*RACE_FRAC : null;
+  if(hard && trek>0) return race ? Math.min(trek, race) : trek;
   if(hard || !(eco>0)) return race;
   return race ? Math.min(eco, race) : eco;
 }
@@ -753,7 +756,7 @@ function start(wortel){
   const bg=wortel.querySelector('.vhl-bg');
   _s={ wortel:wortel, bg:bg, gl:bg ? glOp(bg) : null, ringen:{}, doel:{}, toon:{ toeren:0, snel:0 },
        stem:0, Z:0, t0:performance.now(), last:performance.now(), piek:{ toeren:0, snel:0 },
-       nul:{ start:null, stil:null, los:null }, badgeT:0, tilt:[0,0], tiltDoel:[0,0], gearT:0, gear:'', schakel:{ eco:null, top:false }, maat:'' , raf:0, opt:opties(),
+       nul:{ start:null, stil:null, los:null }, badgeT:0, tilt:[0,0], tiltDoel:[0,0], gearT:0, gear:'', schakel:{ eco:null, top:false, trek:null }, maat:'' , raf:0, opt:opties(),
        // scènes: de gewichten lopen vloeiend naar hun doel, zodat geen scène aanspringt
        sc:'', g:{ B:0, K:0, A:0, F:0, Z:0, D:1 }, golf:99, vs:null, stilS:0, cruiseS:0, lat:0,
        ritPiek:0, topGemeld:0, klokT:0,
@@ -920,10 +923,11 @@ function maatBij(){
 function schakelLees(){
   try{
     const B=window.PLBerekend;
-    if(!B || typeof B.schakelBron!=='function') return { eco:null, top:false };
-    const b=B.schakelBron(), r=b.ratios||{};
-    return { eco:B.schakelPunt(b.gear, r, b.diesel), top:typeof b.gear==='number' && b.gear>=1 && !!r[b.gear] && !r[b.gear+1] };
-  }catch(e){ console.warn('PLHyperlane: schakelpunt niet te lezen', e); return { eco:null, top:false }; }
+    if(!B || typeof B.schakelBron!=='function') return { eco:null, top:false, trek:null };
+    const b=B.schakelBron(), r=b.ratios||{}, V=window.PLVisueel, T=B.SCHAKEL && B.SCHAKEL.trek;
+    const trek=V && typeof V.trekAan==='function' && V.trekAan() && T ? T[b.diesel ? 'diesel' : 'benzine'].max : null;
+    return { eco:B.schakelPunt(b.gear, r, b.diesel), top:typeof b.gear==='number' && b.gear>=1 && !!r[b.gear] && !r[b.gear+1], trek:trek };
+  }catch(e){ console.warn('PLHyperlane: schakelpunt niet te lezen', e); return { eco:null, top:false, trek:null }; }
 }
 function belastingHoog(){
   const v=(typeof window.pidVals==='object' && window.pidVals) ? window.pidVals['0104'] : null;
@@ -1123,7 +1127,7 @@ function frame(nu){
   // De flits over de rand alleen in de tunnel: in een rustige vorm knipperen alleen de lampjes
   // Het schakelpunt (31-10-2026): rustig het ecopunt van CA11, hard de rode
   // streep. De flits over de rand blijft voor de begrenzer zelf.
-  const hard=stand()==='sport' || (e.gas!=null && e.gas>=VOLGAS) || belastingHoog(), punt=live ? schakelDoel(rood, s.schakel.eco, hard) : null;
+  const hard=stand()==='sport' || (e.gas!=null && e.gas>=VOLGAS) || belastingHoog(), punt=live ? schakelDoel(rood, s.schakel.eco, hard, s.schakel.trek) : null;
   const l=leds(e.toeren, punt, 10), knip=l.max && (T*12|0)%2===0, flits=knip && av==='tunnel' && e.toeren>=rood*.98;
   const op=live && pijlOp(e.toeren, punt, s.schakel.top), pe=w.querySelector('.vhl-pijl');
   if(pe && pe.classList.contains('aan')!==op) pe.classList.toggle('aan', op);
