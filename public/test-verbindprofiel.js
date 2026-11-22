@@ -310,6 +310,23 @@ toets('plStRandTerug: een stap 30 s ervóór niet', s.plStRandTerug && s.plStRan
   toets('een stap 30 s vóór de stilte blijft staan', r._plSt.hex === '32' && r.V._stappen === 1, r._plSt.hex + ' stappen=' + r.V._stappen);
 }
 
+// #509, rit 22-11-2026: derde keer contact uit, en geen pollronde in de
+// stilte. De contactkern roept stilteBegin() zelf; de stap gaat terug zonder
+// dat noteAntwoord de stilte ooit ziet.
+{
+  let klok = 1e12;
+  const r = regelaar(ag(false, 0));
+  r.Date = { now: () => klok };
+  r.PLContact.stil = () => false;
+  for (let i = 0; i < 20; i++) { klok += 100; r.V.noteAntwoord(i < 4); }
+  const naStap = r._plSt.hex;
+  klok += 1000; r.V.stilteBegin(klok);
+  toets('stilteBegin zonder pollronde draait de rand terug (#509, 22-11)',
+    naStap === '32' && r._plSt.hex === '19' && r.V._stappen === 0, naStap + ' → ' + r._plSt.hex + ' stappen=' + r.V._stappen);
+  const n = r.d1.length; r.V.stilteBegin(klok + 500);
+  toets('en één keer per stilte: tweede aanroep doet niets', r.d1.length === n);
+}
+
 const sqlW = (W.match(/var VERBIND_SCHEMA = "([^"]+)";/) || [])[1];
 const sqlS = lees('../schema.sql').split('\n').filter(r => r.indexOf('CREATE TABLE IF NOT EXISTS verbindprofielen') === 0)[0];
 toets('schema.sql en worker.js beschrijven dezelfde tabel', !!sqlW && sqlS === sqlW + ';', 'worker: ' + sqlW + '\nschema: ' + sqlS);

@@ -38,6 +38,33 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Beeld-in-beeld ook zonder sensoren (22-11-2026) ──
+  {
+    issue: '#228',
+    naam: 'Beeld-in-beeld gaat aan zodra de adapter verbonden is, ook op een scherm zonder ritgegevens',
+    waarom: 'Op 22-11 ging het venster niet aan op een scherm zonder sensoren; na het wegschakelen viel de WebView stil en kwam de verbinding niet terug.',
+    proef: async function () {
+      if (!window.PLPip || typeof PLPip.besluit !== 'function') return { staat: 'FOUT', detail: 'PLPip.besluit ontbreekt — oude pidlane-pip.js (herladen?)' };
+      var b = PLPip.besluit({ toggleAan: true, beschikbaar: true, verbonden: true, demo: false, sensoren: 0 });
+      if (!b.aan) return { staat: 'FOUT', detail: 'verbonden zonder sensoren gaat het venster niet aan: ' + b.reden };
+      var nu = PLPip.besluit(PLPip.feiten());
+      return { staat: nu.aan ? 'OK' : 'LET OP', detail: 'nu: ' + nu.reden + ' · rij: verbind, blijf op het hoofdmenu en schakel weg; het venster hoort te komen' };
+    }
+  },
+
+  // ── ATST-rand ook terug zonder pollronde in de stilte (22-11-2026) ──
+  {
+    issue: '#509',
+    naam: 'Contact uit: een ATST-stap vlak ervóór gaat terug bij de stilte zelf, ook als er geen pollronde langskomt',
+    waarom: 'Op 22-11 ging de stap bij de derde keer contact uit niet terug: het opruimen wachtte op een pollronde die in die stilte niet kwam, en opdracht 41 eindigde op FOUT.',
+    proef: async function () {
+      if (!window.PLVerbind || typeof PLVerbind.stilteBegin !== 'function') return { staat: 'FOUT', detail: 'PLVerbind.stilteBegin ontbreekt — oude pidlane-bt.js (herladen?)' };
+      if (typeof plStilteTerug !== 'function' || !/stilteBegin/.test(String(plStilteTerug))) return { staat: 'FOUT', detail: 'plStilteTerug roept stilteBegin niet aan — oude pidlane-plload.js (herladen?)' };
+      var log = PLVerbind.stapLog ? PLVerbind.stapLog() : [];
+      return { staat: 'OK', detail: 'stappen nu: ' + log.length + ' · rij: drie keer contact uit en weer aan (20–90 s); opdracht 41 hoort gesloten te eindigen' };
+    }
+  },
+
   // ── Meetcoach als tip over elk scherm, en het ritverslag naar D1 (22-11-2026) ──
   {
     issue: '#509',

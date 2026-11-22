@@ -1031,6 +1031,9 @@ function plStilteTerug(s){
   window._batchSupported=s.batchAan; _batchOffSince=s.batchUitSinds; _batchDips=s.dips;
   if(typeof s.mult==='number') PLLoad._mult=s.mult;
   for(const pid of Object.keys(_noDataStreak)){ _noDataStreak[pid]=0; delete _streakSince[pid]; }
+  // Eerst de rand vóór de stilte opruimen (#509), dan pas de stand terug.
+  try{ if(window.PLVerbind && typeof window.PLVerbind.stilteBegin==='function') window.PLVerbind.stilteBegin(Date.now()); }
+  catch(e){ console.warn('PLVerbind.stilteBegin mislukt — een ATST-stap vlak vóór contact uit blijft tellen (#509)', e); }
   try{ if(s.st && window.PLVerbind && typeof window.PLVerbind.stTerug==='function') window.PLVerbind.stTerug(s.st); }
   catch(e){ console.warn('PLVerbind.stTerug mislukt — ATST blijft bijgestuurd', e); }
 }

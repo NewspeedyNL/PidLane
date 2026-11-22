@@ -104,7 +104,7 @@
   }
 
   /* HET BESLUIT. Feiten erin, ja/nee eruit, met de reden erbij — en de reden
-     is hier geen versiering: "PiP staat niet aan" heeft vijf oorzaken die elk
+     is hier geen versiering: "PiP staat niet aan" heeft vier oorzaken die elk
      iets anders betekenen, en zonder dat onderscheid gaat iemand de verkeerde
      zoeken.
 
@@ -121,9 +121,14 @@
       return { aan: false, sleutel: 'los', reden: 'geen adapter verbonden — er is niets om door te laten lopen' };
     if (f.demo)
       return { aan: false, sleutel: 'demo', reden: 'demomodus — er loopt geen echte meting die stil kan vallen' };
-    if (!f.sensoren)
-      return { aan: false, sleutel: 'geen-selectie', reden: 'geen sensoren geselecteerd — de meetlus draait niet' };
-    return { aan: true, sleutel: 'ja', reden: 'meting loopt; het venster blijft in beeld zodra je wegschakelt' };
+    /* Geen sensoren is GEEN reden meer (22-11-2026). Op een scherm zonder
+       ritgegevens (hoofdmenu, garage) staat er niets geselecteerd; dan ging
+       het venster niet aan, viel de WebView na het wegschakelen stil en kwam
+       de verbinding niet terug. PiP houdt de verbinding in leven, niet alleen
+       de meetlus: verbonden is genoeg. */
+    return { aan: true, sleutel: 'ja', reden: f.sensoren
+      ? 'meting loopt; het venster blijft in beeld zodra je wegschakelt'
+      : 'verbonden; het venster houdt de verbinding in leven zodra je wegschakelt' };
   }
 
   /* De vlag naar de native kant. Wordt aangeroepen bij elke verandering die
