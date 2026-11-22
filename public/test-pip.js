@@ -15,9 +15,9 @@
 //      over de navigatie heen, en dat bezwaar staat in #228 zelf. Een
 //      schakelaar die niet schakelt is erger dan geen schakelaar.
 //
-//   2. HET ONDERSCHEID. "PiP staat niet aan" heeft vijf oorzaken die elk iets
-//      anders betekenen: uitgezet, geen native schil, niet verbonden, demo,
-//      geen sensoren. Vallen die samen, dan zoekt de volgende het verkeerde
+//   2. HET ONDERSCHEID. "PiP staat niet aan" heeft vier oorzaken die elk iets
+//      anders betekenen: uitgezet, geen native schil, niet verbonden of
+//      demo. (Geen sensoren is sinds 22-11-2026 geen reden meer.) Vallen die samen, dan zoekt de volgende het verkeerde
 //      na — en dat is precies hoe #18 anderhalve week de verkeerde kant op
 //      keek.
 //
@@ -85,7 +85,7 @@ function laad(extra) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-console.log('\n1. het besluit onderscheidt vijf redenen, en de Config wint');
+console.log('\n1. het besluit onderscheidt vier redenen, en de Config wint');
 // ══════════════════════════════════════════════════════════════════
 {
   const s = laad();
@@ -107,8 +107,7 @@ console.log('\n1. het besluit onderscheidt vijf redenen, en de Config wint');
   const gevallen = [
     ['beschikbaar', false, 'geen-schil', 'geen native schil'],
     ['verbonden', false, 'los', 'geen adapter'],
-    ['demo', true, 'demo', 'demomodus'],
-    ['sensoren', 0, 'geen-selectie', 'geen sensoren']
+    ['demo', true, 'demo', 'demomodus']
   ];
   gevallen.forEach(function (g) {
     const f = Object.assign({}, goed); f[g[0]] = g[1];
@@ -118,7 +117,14 @@ console.log('\n1. het besluit onderscheidt vijf redenen, en de Config wint');
       'gaf: ' + JSON.stringify(b));
   });
 
-  // TEGENPROEF OP HET ONDERSCHEID: vijf verschillende oorzaken horen vijf
+  // VERBONDEN ZONDER SENSOREN → TOCH AAN (22-11-2026). Op het hoofdmenu staat
+  // niets geselecteerd; ging het venster dan niet aan, dan viel de WebView na
+  // het wegschakelen stil en kwam de verbinding niet terug.
+  const kaal = Object.assign({}, goed, { sensoren: 0 });
+  toets('verbonden zonder sensoren → toch aan: het venster houdt de verbinding in leven',
+    B(kaal).aan === true && B(kaal).sleutel === 'ja', 'gaf: ' + JSON.stringify(B(kaal)));
+
+  // TEGENPROEF OP HET ONDERSCHEID: vier verschillende oorzaken horen vier
   // verschillende sleutels te geven. Vallen er twee samen, dan is de melding
   // op de PR-pagina en in blok 5 niet meer terug te voeren op een oorzaak.
   const sleutels = gevallen.map(function (g) {

@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 22-11-2026 — Beeld-in-beeld ook zonder sensoren: de verbinding blijft in leven
+ ═════════════════════════════════════════════════════
+   • PLPip.besluit(): "geen sensoren" is geen reden meer om het venster niet te vragen. Op een scherm zonder ritgegevens ging PiP niet aan, viel de WebView na wegschakelen stil en kwam de verbinding niet terug
+   • test-pip.js, blok 5 #228, één mutatie
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Meetproeven zonder gedoe: een tip over elk scherm, het ritverslag naar D1
  ═════════════════════════════════════════════════════
    • PLMeetcoach.tipVoor(): geen vraag vooraf nodig. Past de situatie, dan één zin over elk scherm heen (ook Slim visueel op volledig scherm) met ✓ Gedaan en Niet nu: stil na 5 min rijden → contact even uit; contact uit → aftellen tot weer aan; rijdend hoogstens één tip per 3 min
