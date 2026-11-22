@@ -191,6 +191,43 @@ const flush = () => new Promise((r) => setImmediate(r));
     toets('verzenden zonder resultaat is niet stil', c3.logs.some((m) => /niets af om te verzenden \(tien minuten\)/.test(m)) && c3.logs.some((m) => /B: mist w0/.test(m)), c3.logs.join(' | '));
   }
 
+  console.log('\nY. De tip: rijden zonder gedoe (22-11-2026)');
+  {
+    const M3 = maak().PLMeetcoach, T0 = 1e9;
+    const pc = M3.plan([o('K', [{ toestand: 'contact-uit', minS: 20, maxS: 90 }]), o('H', [{ toestand: 'helling', minS: 10 }])], null);
+    const stil = { toestand: 'stil', sinds: T0 - 10000 };
+    toets('stil na een rit van 5 min: tip contact uit, tel tot 30', (M3.tipVoor(pc, stil, { nu: T0, ritS: 400 }) || {}).soort === 'contact' && /tel tot 30/.test(M3.tipVoor(pc, stil, { nu: T0, ritS: 400 }).tekst));
+    toets('stil in de eerste minuten: geen tip', M3.tipVoor(pc, stil, { nu: T0, ritS: 100 }) === null);
+    toets('net gestopt (2 s): nog geen tip', M3.tipVoor(pc, { toestand: 'stil', sinds: T0 - 2000 }, { nu: T0, ritS: 400 }) === null);
+    toets('Gedaan: die tip niet meer bij stilstand', M3.tipVoor(pc, stil, { nu: T0, ritS: 400, gedaan: { contact: true } }) === null);
+    toets('Niet nu: tien minuten rust, daarna weer', M3.tipVoor(pc, stil, { nu: T0, ritS: 400, nietNu: { contact: T0 + 1 } }) === null &&
+      !!M3.tipVoor(pc, stil, { nu: T0 + 2, ritS: 400, nietNu: { contact: T0 + 1 } }));
+    const cu = (s) => M3.tipVoor(pc, { toestand: 'contact-uit', sinds: T0 - s * 1000 }, { nu: T0, ritS: 400, gedaan: { contact: true } });
+    toets('contact uit: telt af, ook na Gedaan, zonder knoppen', /nog 18 s/.test(cu(12).tekst) && cu(12).knoppen === false, JSON.stringify(cu(12)));
+    toets('na 30 s: nu weer aan (de rit van 21-11 stond 148 s uit, buiten 20–90)', /nu weer aan/.test(cu(31).tekst));
+    const rij = { toestand: 'rijden', sinds: T0 - 60000 };
+    toets('rijdend: de hellingtip', (M3.tipVoor(pc, rij, { nu: T0, ritS: 400 }) || {}).soort === 'helling');
+    toets('rijdend: hoogstens één nieuwe tip per drie minuten', M3.tipVoor(pc, rij, { nu: T0, ritS: 400, laatst: T0 - 60000 }) === null &&
+      !!M3.tipVoor(pc, rij, { nu: T0, ritS: 400, laatst: T0 - 60000, huidig: 'helling' }));
+    toets('rijdend: geen stilstandtip', !M3.tipVoor(M3.plan([o('K', [{ toestand: 'contact-uit', minS: 20, maxS: 90 }])], null), rij, { nu: T0, ritS: 400 }));
+    toets('de tip escapet en heeft Gedaan en Niet nu', /tipGedaan/.test(M3.tipHtml({ soort: 'x', knoppen: true, tekst: '<b>' })) && !/<b>/.test(M3.tipHtml({ soort: 'x', knoppen: true, tekst: '<b>' })));
+
+    const c4 = maak(), d1 = [];
+    c4.logToSheets = (t, m, x) => d1.push({ t, m, x });
+    c4.PLTestrunLive.verzendAlle = () => ({ ok: false, aantal: 0 });
+    c4.alle = [o('K', [{ toestand: 'contact-uit', minS: 20, maxS: 90 }])];
+    c4.alle[0].vonnis.reden = 'contact 148 s uit, buiten 20–90';
+    c4.PLMeetcoach.tik(); await flush();
+    c4.stand = { toestand: 'stil', sinds: Date.now() - 10000 }; c4.PLMeetcoach._staat().ritStart = Date.now() - 400000; c4.PLMeetcoach.tik();
+    toets('in de app: na het laden staat de tip klaar, zonder vraag vooraf', c4.PLMeetcoach._staat().tip && c4.PLMeetcoach._staat().tip.soort === 'contact', JSON.stringify(c4.PLMeetcoach._staat().tip));
+    c4.PLMeetcoach.tipGedaan('contact');
+    toets('Gedaan haalt de tip weg', c4.PLMeetcoach._staat().tip === null);
+    c4.PLMeetcoach.verzend('contact uit');
+    toets('ritverslag naar D1: per open proef waarom', d1.length === 1 && d1[0].t === 'meetcoach' && /148 s/.test(d1[0].x.open[0]) && d1[0].x.gedaan[0] === 'contact', JSON.stringify(d1));
+    c4.PLMeetcoach.verzend('tien minuten');
+    toets('dezelfde stand gaat niet twee keer naar D1', d1.length === 1, JSON.stringify(d1));
+  }
+
   console.log('\n' + n + ' toetsen, ' + fout + ' fout');
   process.exit(fout ? 1 : 0);
 })().catch((e) => { console.log('FOUT  test gooide: ' + (e.stack || e)); process.exit(1); });

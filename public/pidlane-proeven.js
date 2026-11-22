@@ -38,6 +38,26 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Meetcoach als tip over elk scherm, en het ritverslag naar D1 (22-11-2026) ──
+  {
+    issue: '#509',
+    naam: 'Meetproeven zonder gedoe: één tip over elk scherm met Gedaan en Niet nu, aftellen bij contact uit, en waarom een proef niet af kwam naar D1',
+    waarom: 'De balk stond alleen in Live. Op 16 t/m 22-11 kwamen de opdrachten 41, 44 en 45 nooit in D1, en op 21-11 stond het contact 148 s uit terwijl 41 om 20–90 s vroeg.',
+    proef: async function () {
+      var M = window.PLMeetcoach;
+      if (!M || typeof M.tipVoor !== 'function' || typeof M.tipGedaan !== 'function')
+        return { staat: 'FOUT', detail: 'PLMeetcoach zonder tip — pidlane-meetcoach.js niet vers geladen (herladen?)' };
+      var T0 = 1e9, p = { acties: [{ soort: 'contact', actief: true, tel: 30, tekst: 'x' }] };
+      var t = M.tipVoor(p, { toestand: 'contact-uit', sinds: T0 - 12000 }, { nu: T0, ritS: 400, gedaan: { contact: true } });
+      if (!t || !/nog 18 s/.test(t.tekst)) return { staat: 'FOUT', detail: 'contact uit telt niet af: ' + JSON.stringify(t) };
+      if (M.tipVoor(p, { toestand: 'stil', sinds: T0 - 10000 }, { nu: T0, ritS: 60 }) !== null) return { staat: 'FOUT', detail: 'stilstandtip in de eerste minuut' };
+      if (typeof connected === 'undefined' || !connected || (typeof demoMode !== 'undefined' && demoMode))
+        return { staat: 'LET OP', detail: 'niet verbonden: de regels kloppen, de rit niet gemeten · rij: gewoon rijden in Slim visueel; na 5 min bij een stop komt de tip "contact even uit", tik Gedaan, zet uit, volg het aftellen en zet weer aan' };
+      var s = M._staat();
+      return { staat: s.geladen ? 'OK' : 'LET OP', detail: (s.geladen ? 'opdrachten geladen' : 'opdrachten nog niet geladen') + ' · tip nu: ' + (s.tip ? s.tip.tekst : 'geen') + ' · gedaan: ' + (Object.keys(s.tipGedaan).join(', ') || 'niets') };
+    }
+  },
+
   // ── Schakellampjes in trekmodus (22-11-2026) ──
   {
     issue: '#742',

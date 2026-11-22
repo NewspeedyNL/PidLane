@@ -38,7 +38,12 @@
     verzendMs: 600000,      // elke tien minuten, voor het geval de rit niet netjes eindigt
     contactUitS: 60,        // zo lang contact uit = einde van een rit
     stilVraagS: 8,          // zo lang stil voor de bus-vraag
-    laterMs: 300000         // "Later" bij de bus-vraag: vijf minuten rust
+    laterMs: 300000,        // "Later" bij de bus-vraag: vijf minuten rust
+    // De tip (22-11-2026): rijden zonder balk, af en toe één zin over elk scherm heen.
+    tipNaRitS: 300,         // eerst zo lang gereden voor een tip bij stilstand
+    tipStilS: 5,            // zo lang stil voor de stilstand-tip
+    tipRijS: 180,           // rijdend hoogstens één nieuwe tip per drie minuten
+    tipNietNuMs: 600000     // "Niet nu": tien minuten niet die tip
   };
   var DUUR = { kort: 600, middel: 1800, lang: 3600 };
   var SITUATIES = [
@@ -58,7 +63,7 @@
     v = v || {};
     if (v.toestand === 'contact-uit') {
       var tel = Math.max(v.minS || 20, Math.min((v.minS || 20) + 10, (v.maxS || 999) - 10));
-      return { soort: 'contact', sit: 'stoplicht', actief: true, tekst: '🚦 Bij stilstand: contact uit, tel tot ' + tel + ', weer aan' };
+      return { soort: 'contact', sit: 'stoplicht', actief: true, tel: tel, tekst: '🚦 Bij stilstand: contact uit, tel tot ' + tel + ', weer aan' };
     }
     if (v.toestand === 'stil') return { soort: 'stil', sit: 'stilstaan', actief: true, tekst: '⏸ Sta ' + (v.minS || 30) + ' s stil met de motor aan' };
     if (v.toestand === 'helling') return { soort: 'helling', sit: 'helling', actief: true, tekst: '⛰ Rij een helling of oprit op' };
@@ -105,7 +110,7 @@
       if (keuze && keuze.sit && acties.some(function (a) { return a.sit && !keuze.sit[a.sit]; })) { uit++; uitNamen.push(r.naam); return; }
       open++;
       acties.forEach(function (a) {
-        var x = per[a.soort] || (per[a.soort] = { soort: a.soort, tekst: a.tekst, actief: a.actief, sit: a.sit, opdrachten: [] });
+        var x = per[a.soort] || (per[a.soort] = { soort: a.soort, tekst: a.tekst, actief: a.actief, sit: a.sit, tel: a.tel, opdrachten: [] });
         if (x.opdrachten.indexOf(r.naam) < 0) x.opdrachten.push(r.naam);
         // Het verst gevorderde telt: dat is de eerste die klaar komt.
         if (typeof a.frac === 'number' && !(x.frac >= a.frac)) { x.frac = a.frac; x.nogS = a.nogS; }
@@ -154,6 +159,46 @@
       open.push('   • ' + r.naam + ': ' + (reden.length > 200 ? reden.slice(0, 199) + '…' : reden));
     });
     return { kop: (klaar + open.length) + ' meetproeven lopen mee op deze rit — ' + klaar + ' af, ' + open.length + ' open', open: open };
+  }
+
+  /* ── DE TIP (puur, 22-11-2026) ──────────────────────────────────
+     Rijden zonder gedoe: geen vraag vooraf, geen balk lezen. Op het moment
+     dat de situatie past, één zin over elk scherm heen met Gedaan en Niet
+     nu; de toeschouwer ziet zelf of het gelukt is. Waarom: de balk stond
+     alleen in Live, en daar kijkt niemand tijdens het rijden. De rit van
+     21-11 stond 148 s met het contact uit terwijl opdracht 41 20–90 s vroeg,
+     en die opdracht kwam daardoor nooit af — de tip telt nu mee af.
+     p: plan(). st: PLToeschouwer.stand(). c: { nu, ritS, gedaan: {soort},
+     nietNu: {soort: tot-ms}, laatst: ms van de vorige rijdende tip, huidig }.
+     Geeft null of { soort, tekst, knoppen }. */
+  function tipVoor(p, st, c) {
+    c = c || {};
+    var nu = c.nu || 0, ritS = c.ritS || 0, gedaan = c.gedaan || {}, nietNu = c.nietNu || {};
+    if (!p || !p.acties || !st || !st.toestand) return null;
+    var open = {};
+    p.acties.forEach(function (a) { if (a.actief && !gedaan[a.soort] && !(nietNu[a.soort] > nu)) open[a.soort] = a; });
+    var sindsS = st.sinds ? (nu - st.sinds) / 1000 : 0;
+    // Contact uit: aftellen, zodat de stilte in het venster van de opdracht valt.
+    // Ook na Gedaan: dat tik je juist vlak vóór het contact uitgaat.
+    var cu = p.acties.filter(function (a) { return a.soort === 'contact'; })[0];
+    if (st.toestand === 'contact-uit' && cu) {
+      var nog = Math.ceil((cu.tel || 30) - sindsS);
+      return { soort: 'contact', knoppen: false, tekst: nog > 0 ? '🔑 Contact uit — nog ' + nog + ' s, dan weer aan' : '🔑 Zet het contact nu weer aan' };
+    }
+    if (st.toestand === 'stil' && sindsS >= CFG.tipStilS && ritS >= CFG.tipNaRitS) {
+      if (open.contact) return { soort: 'contact', knoppen: true, tekst: '🚦 Je staat stil: zet het contact even uit, tel tot ' + (open.contact.tel || 30) + ', en weer aan' };
+      if (open.stil) return { soort: 'stil', knoppen: true, tekst: open.stil.tekst };
+    }
+    if (st.toestand === 'rijden' && ritS >= 120) {
+      var r = open.toeren || open.helling;
+      if (r && (c.huidig === r.soort || nu - (c.laatst || 0) >= CFG.tipRijS * 1000)) return { soort: r.soort, knoppen: true, tekst: r.tekst };
+    }
+    return null;
+  }
+  function tipHtml(t) {
+    if (!t) return '';
+    return '<div class="mc-tip-t">' + esc(t.tekst) + '</div>' + (t.knoppen
+      ? '<div class="mc-rij">' + _knop('tipGedaan', t.soort, '✓ Gedaan', 'mc-go') + _knop('tipNietNu', t.soort, 'Niet nu') + '</div>' : '');
   }
 
   /* ── HTML (puur) ───────────────────────────────────────────────── */
@@ -227,7 +272,8 @@
   // ── de staat van deze sessie ───────────────────────────────────────
   var S = { geladen: false, laden: false, keuze: null, uit: false, overslaan: [], verzondenN: 0,
             laatsteVerzend: 0, wasVerbonden: false, contactVerzonden: false,
-            bus: null, busLaterTot: 0, busGedaan: {}, timer: null, huidig: null, lijst: false, ritStart: 0, verloop: null };
+            bus: null, busLaterTot: 0, busGedaan: {}, timer: null, huidig: null, lijst: false, ritStart: 0, verloop: null,
+            tip: null, tipGedaan: {}, tipNietNu: {}, tipLaatst: 0 };
 
   function _diag(m, n) {
     try { if (typeof log === 'function') log(m, n || 'info'); }
@@ -253,11 +299,30 @@
     if (r && r.aantal) { S.verzondenN += r.aantal; _diag('🧪 Meetcoach: ' + r.aantal + ' uitkomst(en) verzonden (' + waarom + ')', 'ok'); }
     else if (r) {
       // Niet stil (17-11-2026): "niets af" is ook een uitkomst, met per proef waarom.
-      var sr = standRegels(_alle());
-      _diag('🧪 Meetcoach: niets af om te verzenden (' + waarom + ') — ' + sr.kop, 'info');
-      sr.open.forEach(function (t) { _diag(t, 'info'); });
+      var sr0 = standRegels(_alle());
+      _diag('🧪 Meetcoach: niets af om te verzenden (' + waarom + ') — ' + sr0.kop, 'info');
+      sr0.open.forEach(function (t) { _diag(t, 'info'); });
     }
+    if (r) ritverslag(waarom);
     return r;
+  }
+
+  /* Het ritverslag naar D1 (22-11-2026): per open proef waarom hij niet af
+     kwam, één regel `meetcoach` per verzendmoment. Tot nu stond dat alleen in
+     het logboek op de telefoon, en op 16, 17, 18, 21 en 22-11 kwamen 41, 44
+     en 45 nooit in D1 — zonder dat te zien was waarom. Alleen als er iets
+     open staat, en hoogstens één keer per stand. */
+  function ritverslag(waarom) {
+    var sr = standRegels(_alle());
+    if (!sr.open.length) return;
+    var sleutel = sr.open.join('|');
+    if (sleutel === S.verslagLaatst) return;
+    S.verslagLaatst = sleutel;
+    try {
+      if (typeof logToSheets === 'function')
+        logToSheets('meetcoach', '🧪 ' + sr.kop + ' (' + waarom + ')', { open: sr.open.map(function (t) { return t.replace(/^\s*•\s*/, '').slice(0, 90); }),
+          ritS: S.ritStart ? Math.round((Date.now() - S.ritStart) / 1000) : 0, gedaan: Object.keys(S.tipGedaan) });
+    } catch (e) { console.warn('meetcoach: ritverslag niet naar D1', e); }
   }
 
   function laad() {
@@ -293,6 +358,7 @@
       teken(); return;
     }
     S.wasVerbonden = true;
+    if (!S.ritStart) S.ritStart = Date.now();
     laad();
     if (S.geladen) {
       var alle = _alle(), vl = verloop(S.verloop, alle);
@@ -318,6 +384,12 @@
     if (!S.bus && S.keuze && !S.uit && st && st.toestand === 'stil' && st.sinds && nu - st.sinds >= CFG.stilVraagS * 1000 &&
         nu >= S.busLaterTot && _busProeven().length) S.bus = 'vraag';
     if (S.bus === 'vraag' && st && st.toestand !== 'stil') S.bus = null;
+    if (S.geladen && !S.uit) {
+      var t = tipVoor(plan(_alle(), S.keuze), st, { nu: nu, ritS: (nu - S.ritStart) / 1000, gedaan: S.tipGedaan, nietNu: S.tipNietNu,
+        laatst: S.tipLaatst, huidig: S.tip && S.tip.soort });
+      if (t && st && st.toestand === 'rijden' && !(S.tip && S.tip.soort === t.soort)) S.tipLaatst = nu;
+      S.tip = t;
+    } else S.tip = null;
     teken();
   }
 
@@ -332,7 +404,23 @@
     pane.insertBefore(el, pane.firstChild);
     return el;
   }
+  function _tipEl() {
+    if (typeof document === 'undefined' || !document.getElementById) return null;
+    var el = document.getElementById('mcTip');
+    if (el || !S.tip || !document.body || !document.createElement) return el;
+    el = document.createElement('div'); el.id = 'mcTip'; el.className = 'mc-tip'; el.setAttribute('role', 'status');
+    document.body.appendChild(el);
+    return el;
+  }
+  function tekenTip() {
+    var el = _tipEl();
+    if (!el) return;
+    var t = _mag() ? S.tip : null, html = tipHtml(t);
+    el.hidden = !t;
+    if (el._html !== html) { el.innerHTML = html; el._html = html; }
+  }
   function teken() {
+    tekenTip();
     var el = _el();
     if (!el) return;
     if (!_mag() || S.uit) { el.innerHTML = ''; el.hidden = true; return; }
@@ -355,6 +443,11 @@
     teken();
   }
   function nietNu() { S.uit = true; teken(); }
+  function tipGedaan(soort) {
+    if (soort) { S.tipGedaan[soort] = true; _diag('🧪 Meetcoach: tip gedaan — ' + soort, 'info'); }
+    S.tip = null; teken();
+  }
+  function tipNietNu(soort) { if (soort) S.tipNietNu[soort] = Date.now() + CFG.tipNietNuMs; S.tip = null; teken(); }
   function overslaan(soort) { if (S.overslaan.indexOf(soort) < 0) S.overslaan.push(soort); teken(); }
   function _stappen() { return stappen(plan(_alle(), S.keuze), { overslaan: S.overslaan, huidig: S.huidig }); }
   function volgende() {
@@ -397,6 +490,7 @@
 
   window.PLMeetcoach = {
     plan: plan, actieVoor: actieVoor, verloop: verloop, standRegels: standRegels, vraagHtml: vraagHtml, balkHtml: balkHtml, stappen: stappen,
+    tipVoor: tipVoor, tipHtml: tipHtml, tipGedaan: tipGedaan, tipNietNu: tipNietNu, CFG: CFG,
     tik: tik, teken: teken, verzend: verzend,
     kiesDuur: kiesDuur, kiesSit: kiesSit, start: start, nietNu: nietNu, overslaan: overslaan,
     volgende: volgende, kies: kies, lijst: lijst, terug: terug, aanpassen: aanpassen,

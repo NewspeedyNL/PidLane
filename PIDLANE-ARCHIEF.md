@@ -17,6 +17,15 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 
 
+## 22-11-2026 — Waarom de meetproeven na 16-11 niets opleverden, en de methode die ervoor in de plaats kwam
+
+**Gemeten in D1.** Tussen 16 en 22-11 waren er negen ritsessies met de beheerdersrol. Alleen opdracht 38 en 40 gaven een uitkomst. 41 (#509), 44 (#669) en 45 (#667) stonden er nooit in, ook niet als "nog niet": `verzendAlle()` stuurt alleen wat af is, en waarom iets niet af kwam stond alleen in het logboek op de telefoon. Op 21-11 ging het contact twee keer uit. De eerste keer duurde dat 148 s, terwijl 41 om 20–90 s vraagt; de balk die "tel tot 30" zei stond in Live, en daar kijkt niemand tijdens het rijden. Bij beide keren stapte ATST bovendien nog één stap aan de rand van contact uit (`0x0C → 0x19`, `missers=3`). Dat hoort bij #509.
+
+**De methode die ervoor in de plaats kwam:**
+1. *Rijden.* Er is geen vraag meer vooraf nodig. Past de situatie, dan staat er één zin over elk scherm heen met Gedaan en Niet nu, en bij contact uit telt die zin af.
+2. *Verslag.* Elk verzendmoment geeft een regel `meetcoach` in D1 met per open proef waarom hij niet af is.
+3. *Oogsten.* `meetproeven/oogst.sql` is één query voor alle opdrachten. Claude draait hem via de D1-koppeling en zet ook nieuwe opdrachten zelf in D1; met de hand SQL plakken is niet meer nodig.
+
 ## 20-11-2026 — Waarom de meter kromp en de balk onderin tóch onder de knoppen lag
 
 Uit de auto, drie weergaven: de rit-monitor onderin lag half onder de
