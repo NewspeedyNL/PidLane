@@ -2730,6 +2730,8 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@  while(i<3 && m>=MODUS_GRENS[i]+MODUS_HYST) i++;@@  while(i<3 && m>=MODUS_GRENS[i]) i++;@@test-hyperlane.js@@de hysterese omhoog is weg: net boven een grens wisselt het label al"
 "public/pidlane.css@@.vis.vhl-menu-open .vis-lampen { visibility:hidden; }@@@@bproef-hyperlane.js@@het standmenu valt weer achter de lampjes van motor en accu"
 "public/pidlane-hyperlane.js@@  if(x.ev) return { w:'EV', e:'', l:'ELEKTRISCH' };@@@@test-hyperlane.js@@een hybride op de accu toont verbruik 0,0 of gas groot in het midden — #716"
+"public/pidlane-hyperlane.js@@  if(hard && trek>0) return race ? Math.min(trek, race) : trek;@@@@test-hyperlane.js@@trekmodus vergeten: met een caravan lopen de lampjes bij vol gas weer naar het racepunt — #742"
+"public/pidlane-hyperlane.js@@  if(hard && trek>0) return race ? Math.min(trek, race) : trek;@@  if(hard && trek>0) return trek;@@test-hyperlane.js@@trekmodus voorbij het racepunt: de lampjes lopen voorbij 90% van de rode streep — #742"
 # 19-11-2026 weggehaald: "staand op volledig scherm ligt een bevinding midden over het hoofdgetal" (#716).
 # Sinds #746 staat een bevinding niet meer als kaart in het vak (een pop-up bovenin), en staand vult
 # Hyperlane de hoogte vanaf boven: zonder position:fixed komt het vak boven de ringen en niet over het

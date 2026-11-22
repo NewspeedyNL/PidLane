@@ -38,6 +38,24 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Schakellampjes in trekmodus (22-11-2026) ──
+  {
+    issue: '#742',
+    naam: 'Hyperlane in trekmodus: bij vol gas lopen de schakellampjes naar de bovenkant van het koppelbereik, niet naar het racepunt',
+    waarom: 'Met een caravan erachter is doortrekken tot 90% van de rode streep geen advies. In trekmodus nemen de lampjes bij vol gas de bovengrens uit SCHAKEL.trek.',
+    proef: async function () {
+      var H = window.PLHyperlane, B = window.PLBerekend;
+      if (!H || typeof H.schakelDoel !== 'function' || !B || !B.SCHAKEL || !B.SCHAKEL.trek)
+        return { staat: 'FOUT', detail: 'PLHyperlane of PLBerekend.SCHAKEL.trek ontbreekt — herladen?' };
+      var max = B.SCHAKEL.trek.benzine.max;
+      if (H.schakelDoel(6800, 2400, true, max) !== max) return { staat: 'FOUT', detail: 'trekmodus vol gas: verwacht ' + max + ', kreeg ' + H.schakelDoel(6800, 2400, true, max) };
+      if (H.schakelDoel(6800, 2400, true, null) !== 6800 * H.RACE_FRAC) return { staat: 'FOUT', detail: 'zonder trekmodus hoort vol gas het racepunt te blijven' };
+      var trek = window.PLVisueel && typeof PLVisueel.trekAan === 'function' && PLVisueel.trekAan();
+      return { staat: trek ? 'OK' : 'LET OP', detail: trek ? 'trekmodus aan: de lampjes lopen bij vol gas naar ' + max + ' tpm (benzine)'
+        : 'trekmodus staat uit · rij: kies rijsituatie caravan, open Hyperlane, geef vol gas en kijk of de lampjes rond ' + max + ' tpm (diesel ' + B.SCHAKEL.trek.diesel.max + ') vol zijn' };
+    }
+  },
+
   // ── Klassiek: een oude auto met weinig sensoren (22-11-2026) ──
   {
     issue: '—',

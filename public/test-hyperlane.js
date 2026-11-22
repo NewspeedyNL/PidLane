@@ -92,6 +92,11 @@ waar('rustig: het ecopunt', H.schakelDoel(6800, 2400, false) === 2400);
 waar('vol gas of hoge belasting: 90% van de rode streep', H.schakelDoel(6800, 2400, true) === 6800 * H.RACE_FRAC);
 waar('geen hogere versnelling bekend: de rode streep', H.schakelDoel(6800, null, false) === 6800 * H.RACE_FRAC);
 waar('een ecopunt voorbij de rode streep wordt de rode streep', H.schakelDoel(3000, 4000, false) === 3000 * H.RACE_FRAC);
+// Trekmodus (#742): vol gas loopt naar de bovenkant van het koppelbereik, niet naar het racepunt
+waar('trekmodus, vol gas: bovenkant koppelbereik', H.schakelDoel(6800, 2400, true, 4500) === 4500);
+waar('trekmodus, rustig: gewoon het ecopunt', H.schakelDoel(6800, 2400, false, 4500) === 2400);
+waar('trekmodus voorbij het racepunt: het racepunt', H.schakelDoel(4000, 2400, true, 4500) === 4000 * H.RACE_FRAC);
+waar('geen trekmodus (null): vol gas blijft het racepunt', H.schakelDoel(6800, 2400, true, null) === 6800 * H.RACE_FRAC);
 // Bij gewoon rijden moet je ze zien: tot 31-10 gingen ze pas op 70% van de rode streep aan
 waar('rustig optrekken naar 2300 tpm: de lampjes branden al', H.leds(2300, H.schakelDoel(6800, 2400, false)).aan >= 7);
 waar('pijl omhoog op het schakelpunt', H.pijlOp(2400, 2400, false) === true);
