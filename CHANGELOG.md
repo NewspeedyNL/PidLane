@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 23-11-2026 — Aircocheck weg: niet professioneel genoeg
+ ═════════════════════════════════════════════════════
+   • Stap 4b (Airco) uit de koopcheck, de keuze "Warm weer en airco" uit de wizard, de airco-knop uit de seizoenscheck
+   • Seizoenscheck heet Wintercheck en opent hem meteen; `openClimateCheck()` opent altijd de wintercheck (ook een oude aanroep met 'airco')
+   • De scenario-optie "Airco / verwarming continu aan" bij het meten blijft: dat is meetcontext, geen check
+
+ ═════════════════════════════════════════════════════
  23-11-2026 — AI-rapport knipt geen zinnen meer op kopwoorden
  ═════════════════════════════════════════════════════
    • pidlane-fuel.js: _aiSecties() deelt het AI-venster en het brandstofrapport op; een kop telt alleen aan het begin van een regel. "geen foutcodes en geen recall" werd een sectie Foutcodes, de zin ervoor brak af. Tekst vóór de eerste kop viel weg, nu niet meer

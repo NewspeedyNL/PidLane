@@ -717,23 +717,10 @@ function openKoopKeuze(){
   m.style.display='flex';
 }
 function koopKeuzeStart(mode){ const m=document.getElementById('koopKeuzeModal'); if(m) m.style.display='none'; startChoice(mode); }
-function openSeizoensCheck(){
-  let m=document.getElementById('seizoenKeuzeModal');
-  if(!m){
-    m=document.createElement('div'); m.id='seizoenKeuzeModal';
-    m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;padding:24px';
-    m.onclick=(e)=>{ if(e.target.id==='seizoenKeuzeModal') m.style.display='none'; };
-    m.innerHTML='<div style="background:var(--sur);border:1px solid var(--bd);border-radius:14px;padding:20px;max-width:320px;width:100%">'+
-      '<div style="font-weight:800;font-size:15px;margin-bottom:4px;text-align:center">Seizoenscheck</div>'+
-      '<div style="font-size:12px;color:var(--tx3);margin-bottom:14px;text-align:center">Wat wil je checken voor het seizoen?</div>'+
-      '<div style="display:flex;flex-direction:column;gap:8px">'+
-      '<button onclick="seizoenStart(\'winter\')" style="padding:11px;border-radius:9px;border:1px solid var(--bd);background:var(--sur2);color:var(--tx);font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;text-align:left">❄️ Wintercheck<div style="font-size:12px;color:var(--tx3);font-weight:400;margin-top:2px">Thermostaat, opwarming, accu — klaar voor de kou</div></button>'+
-      '<button onclick="seizoenStart(\'airco\')" style="padding:11px;border-radius:9px;border:none;background:#00b4cc;color:#fff;font-family:var(--f);font-size:14px;font-weight:700;cursor:pointer;text-align:left">🌬️ Airco-check<div style="font-size:12px;color:rgba(255,255,255,.75);font-weight:400;margin-top:2px">Koelvermogen + compressorwerking</div></button>'+
-      '</div></div>';
-    document.body.appendChild(m);
-  }
-  m.style.display='flex';
-}
+/* De seizoenscheck is sinds 23-11-2026 alleen de wintercheck: de aircocheck
+   (koelen afgeleid uit toerendip en belasting, zonder druk of temperatuur aan
+   het rooster) was niet professioneel genoeg en is weg. */
+function openSeizoensCheck(){ seizoenStart('winter'); }
 function seizoenStart(mode){ const m=document.getElementById('seizoenKeuzeModal'); if(m) m.style.display='none'; document.getElementById('welcomeScreen')?.classList.add('hidden'); openClimateCheck(mode); }
 // ── Diepe storingsanalyse ──
 var _ddStep=0;
@@ -1482,7 +1469,8 @@ let _climateMode='airco';      // 'airco' | 'winter'
 let _climateTimer=null;
 let _climateData={};
 
-function openClimateCheck(mode='airco'){
+function openClimateCheck(mode='winter'){
+  mode='winter';   // aircocheck weg (23-11-2026); een oude link opent de wintercheck
   _climateMode=mode;
   _climateData={ mode, t0:null, samples:[], thermoT1:null, thermoT2:null };
   document.getElementById('welcomeScreen')?.classList.add('hidden');

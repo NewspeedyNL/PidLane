@@ -212,7 +212,6 @@ var BOOM = {
     sub:'',
     opt:[
       {t:'❄️ De winter',              d:'Accu, koelsysteem, verwarming',      set:{voorb:'winter',    meting:'stil'},  next:null},
-      {t:'☀️ Warm weer en airco',     d:'Aircoprestatie en koeling',          set:{voorb:'airco',     meting:'stil'},  next:null},
       {t:'🛣️ Een lange rit',          d:'Alles wat onderweg kan opbreken',    set:{voorb:'langerit',  meting:'rit10'}, next:null},
       {t:'🔧 Een onderhoudsbeurt',    d:'Wat is er nodig, en wanneer',        set:{voorb:'onderhoud', meting:'stil'},  next:null}
     ]
@@ -233,8 +232,8 @@ var MODULES = {
   diep:      {n:'Storing vangen met een opname', d:'Uitgebreide vragenlijst, daarna neemt de app op tot het probleem zich voordoet', t:'tot de storing optreedt',     run:function(){ openDeepDiag(); }},
   markt:     {n:'Koop- of verkooprapport', d:'Kenteken, RDW en de elektronica, met een stoplicht en vragen voor de verkoper', t:'± 5 min',
               run:function(j){ koopVoorbereiden(j); openAnalysis('koop'); }},
-  klimaat:   {n:'Airco- of winterklaar-check', d:'Welke van de twee hangt af van het seizoen',
-              run:function(j){ openClimateCheck(j.voorb==='winter'?'winter':'airco'); }},
+  klimaat:   {n:'Winterklaar-check', d:'Hoe snel de motor opwarmt, met accu en laadspanning',
+              run:function(){ openClimateCheck('winter'); }},
   accu:      {n:'Accu en laadsysteem',   d:'Rustspanning, starten en laden', t:'± 3 min',                       run:function(){ openEVCheck(); }},
   evaccu:    {n:'Accupakket (EV/hybride)', d:'Cellen, laadstatus en spreiding', t:'± 3 min',                              run:function(){ openEVCheck(); }},
   trekken:   {n:'Caravan of aanhanger',  d:'Belasting en verbruik tijdens het trekken', t:'tijdens de rit',                run:function(){ openCaravan(); }},
@@ -370,7 +369,7 @@ function bouwPlan(j){
     if(j.diepte==='volledig'){ voeg('verbruik'); voeg('aimonteur'); }
   }
   if(j.doel==='voorbereiding'){
-    if(j.voorb==='winter'||j.voorb==='airco') voeg('klimaat');
+    if(j.voorb==='winter') voeg('klimaat');
     if(j.voorb==='langerit') voeg('langerit');
     if(j.voorb==='caravan')  voeg('trekken');
     if(j.voorb==='onderhoud')voeg('onderhoud');
