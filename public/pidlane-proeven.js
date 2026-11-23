@@ -61,7 +61,7 @@ const PROEVEN_B5 = [
     waarom: 'Elke testrit op de CX-5 meldde een vuile luchtmassameter, ook na reinigen: bij optrekken stond een verse 2000 tpm naast de luchtmassa van stationair van een tel eerder.',
     proef: async function () {
       var r = (window.CORRELATION_RULES || []).filter(function (x) { return x.id === 'maf'; })[0];
-      if (!r || typeof _mafLaagZelfdeMoment !== 'function') return { staat: 'FOUT', detail: '_mafLaagZelfdeMoment ontbreekt — oude pidlane-data.js (herladen?)' };
+      if (!r || !/_mafLaagZelfdeMoment/.test(String(r.oordeel))) return { staat: 'FOUT', detail: 'de MAF-regel kijkt niet naar hetzelfde moment — oude pidlane-data.js (herladen?)' };
       var nu = Date.now(), bew = {};
       ['0110', '010C', '0104'].forEach(function (p) { bew[p] = pidHist[p]; });
       try {
