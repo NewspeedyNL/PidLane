@@ -38,6 +38,22 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Onderzoek: luchtmassa stationair per liter (23-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Onderzoek, stap stationair: een gezonde 2,0 liter op 1,2 g/s verdenkt de luchtmassameter niet',
+    waarom: 'De grens "laag onder 0,9 g/s per liter" bleef staan na #232; een gezonde CX-5 2.0 (0,4–0,85) kreeg bij elk onderzoek punten voor een vuile MAF.',
+    proef: async function () {
+      var O = window.PLOnderzoek, S = O && O.STAPPEN && O.STAPPEN.filter(function (x) { return x.id === 'stationair'; })[0];
+      if (!S || typeof O.nieuw !== 'function') return { staat: 'FOUT', detail: 'PLOnderzoek of de stap stationair ontbreekt (herladen?)' };
+      var d = function (gs) { return S.beoordeel({ reeks: { '0110': [gs, gs, gs, gs, gs, gs] } }, O.nieuw({ klachten: ['onrustig'], liters: 2.0 }))
+        .filter(function (x) { return x.h === 'maf'; }).reduce(function (a, x) { return a + x.d; }, 0); };
+      if (d(1.2) > 0) return { staat: 'FOUT', detail: '1,2 g/s op 2,0 l telt weer als laag voor de MAF' };
+      if (!(d(0.3) > 0)) return { staat: 'FOUT', detail: '0,3 g/s op 2,0 l telt niet meer als laag' };
+      return { staat: 'OK', detail: '1,2 g/s normaal, 0,3 g/s laag · rij: een onderzoek op de CX-5 hoort de MAF niet bovenaan te zetten' };
+    }
+  },
+
   // ── Bevinding vuile MAF alleen op hetzelfde moment (23-11-2026) ──
   {
     issue: '—',

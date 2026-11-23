@@ -31,6 +31,12 @@ nog op de 1–2 g/s van stationair staat tot hij weer aan de beurt is. Eén
 pollronde is genoeg voor de banner. Het is dezelfde vorm als #337, maar die fix
 zat alleen in `PLBerekend` en niet in de bevindingen.
 
+**Een tweede bron, in het onderzoek.** De stap *stationair* in
+`pidlane-onderzoek.js` noemde alles onder 0,9 g/s per liter "laag". Die grens
+is na #232 blijven staan, terwijl de onderdeelcheck naar 0,2–2,5 ging. Op de
+CX-5 (0,4–0,85 g/s/l gemeten) kreeg de MAF dus bij elk onderzoek +1,5. Nu
+geldt dezelfde band op beide plekken.
+
 Niet gemeten: hoe oud de luchtmassa op die momenten was. De verklaring past bij
 "elke rit" en bij gezonde trims. Blijft de bevinding na deze fix komen, dan is
 de luchtmassa echt laag onder belasting, en dan klopt deze verklaring niet.

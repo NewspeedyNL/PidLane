@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 23-11-2026 — Onderzoek: luchtmassa stationair met dezelfde band als de onderdeelcheck
+ ═════════════════════════════════════════════════════
+   • pidlane-onderzoek.js, stap stationair: laag onder 0,2 g/s per liter (was 0,9), normaal tot en met 2,5 (was < 3). Een gezonde CX-5 2.0 (0,4–0,85 g/s/l) telde elk onderzoek mee voor een vuile MAF
+   • test-onderzoek.js blok 6a, blok 5, twee mutaties
+
+ ═════════════════════════════════════════════════════
  23-11-2026 — Bevinding "vuile MAF" alleen bij metingen van hetzelfde moment
  ═════════════════════════════════════════════════════
    • CORRELATION_RULES maf: _mafLaagZelfdeMoment() vraagt twee luchtmassamonsters over ≥ 1 s, elk met toerental en belasting van binnen 1 s. De momentopname uit pidVals koppelde bij wegrijden een verse 2000 tpm aan de stationaire luchtmassa: elke testrit op de CX-5 heette vuile MAF
