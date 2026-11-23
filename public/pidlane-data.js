@@ -717,6 +717,19 @@ function _bevPoort(voorwaarden){
   try{ return (window.PLKenmerk && PLKenmerk.geldtLive) ? PLKenmerk.toepassen('fout', PLKenmerk.geldtLive(voorwaarden)) : 'fout'; }
   catch(e){ console.warn('bevinding: kenmerkpoort onleesbaar — oud gedrag', e); return 'fout'; }
 }
+// Het monster van pid dat het dichtst bij tijdstip t ligt, binnen 1 s; anders null.
+function _bevBij(pid, t){
+  const h=pidHist[pid]||[]; let b=null;
+  for(let i=h.length-1;i>=0;i--){ const d=Math.abs(h[i].t-t);
+    if(d<=1000 && (!b || d<Math.abs(b.t-t))) b=h[i]; if(h[i].t<t-1000) break; }
+  return b;
+}
+function _mafLaagZelfdeMoment(nu){
+  const m=(pidHist['0110']||[]).filter(x=>x.t>=nu-5000 && x.t<=nu);
+  if(m.length<2 || m[m.length-1].t-m[0].t<1000) return false;
+  return m.every(x=>{ const r=_bevBij('010C', x.t), l=_bevBij('0104', x.t);
+    return x.v<3 && r && r.v>1500 && l && l.v>40; });
+}
 function _bevRegel(r){
   r.test=function(){ const o=r.oordeel(); return !!o && (o.niveau==='fout' || o.niveau==='letop'); };
   return r;
@@ -749,8 +762,13 @@ window.CORRELATION_RULES =[
     // Een hybride rijdt elektrisch met toerental en belasting van vlak ervoor
     // nog in pidVals, en de luchtmassa al op nul (15-11-2026, Hyundai-demo):
     // dan ging dit af tijdens het rijden op de accu. Zonder bewijs het gewone geval.
-    oordeel:()=>{ const maf=pidVals['0110'], rpm=pidVals['010C'], load=pidVals['0104'];
-      if(!(maf!==undefined&&rpm!==undefined&&rpm>1500&&load>40&&maf<3)) return null;
+    // Tot 23-11-2026 een momentopname uit pidVals: elke testrit op de CX-5
+    // ging hij af. Bij wegrijden zijn toerental en belasting al vers terwijl
+    // de luchtmassa nog de stationaire 1–2 g/s van een tel eerder draagt
+    // (dezelfde vorm als #337). Nu: minstens twee luchtmassamonsters over
+    // ≥ 1 s in de laatste 5 s, elk < 3 g/s, en elk met een toerental > 1500
+    // en belasting > 40 % van binnen 1 s. Kost dekking bij een trage MAF.
+    oordeel:()=>{ if(!_mafLaagZelfdeMoment(Date.now())) return null;
       const n=_bevPoort({ hybride:{ is:false, gangbaar:true } }); return n ? {niveau:n} : null; },
     uitleg:'Luchtmassa blijft laag bij hoog toerental en belasting — mogelijk vervuilde MAF of luchtfilter.'
   }),
