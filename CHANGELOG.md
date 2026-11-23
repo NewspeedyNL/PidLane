@@ -10,6 +10,12 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 23-11-2026 — Bevinding "vuile MAF" alleen bij metingen van hetzelfde moment
+ ═════════════════════════════════════════════════════
+   • CORRELATION_RULES maf: _mafLaagZelfdeMoment() vraagt twee luchtmassamonsters over ≥ 1 s, elk met toerental en belasting van binnen 1 s. De momentopname uit pidVals koppelde bij wegrijden een verse 2000 tpm aan de stationaire luchtmassa: elke testrit op de CX-5 heette vuile MAF
+   • test-kenmerk.js, blok 5, twee mutaties erbij (één anker bijgewerkt)
+
+ ═════════════════════════════════════════════════════
  22-11-2026 — Beeld-in-beeld ook zonder sensoren: de verbinding blijft in leven
  ═════════════════════════════════════════════════════
    • PLPip.besluit(): "geen sensoren" is geen reden meer om het venster niet te vragen. Op een scherm zonder ritgegevens ging PiP niet aan, viel de WebView na wegschakelen stil en kwam de verbinding niet terug

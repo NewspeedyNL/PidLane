@@ -38,6 +38,32 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Bevinding vuile MAF alleen op hetzelfde moment (23-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Wegrijden geeft geen bevinding "vuile MAF": luchtmassa, toerental en belasting moeten van hetzelfde moment zijn',
+    waarom: 'Elke testrit op de CX-5 meldde een vuile luchtmassameter, ook na reinigen: bij optrekken stond een verse 2000 tpm naast de luchtmassa van stationair van een tel eerder.',
+    proef: async function () {
+      var r = (window.CORRELATION_RULES || []).filter(function (x) { return x.id === 'maf'; })[0];
+      if (!r || typeof _mafLaagZelfdeMoment !== 'function') return { staat: 'FOUT', detail: '_mafLaagZelfdeMoment ontbreekt — oude pidlane-data.js (herladen?)' };
+      var nu = Date.now(), bew = {};
+      ['0110', '010C', '0104'].forEach(function (p) { bew[p] = pidHist[p]; });
+      try {
+        pidHist['0110'] = [{ t: nu - 2200, v: 1.4 }, { t: nu - 1200, v: 1.5 }];
+        pidHist['010C'] = [{ t: nu - 4500, v: 760 }, { t: nu - 50, v: 2100 }];
+        pidHist['0104'] = [{ t: nu - 4500, v: 22 }, { t: nu - 50, v: 62 }];
+        var weg = _mafLaagZelfdeMoment(nu);
+        pidHist['0110'] = [{ t: nu - 1500, v: 1.2 }, { t: nu - 200, v: 1.3 }];
+        pidHist['010C'] = [{ t: nu - 1500, v: 1800 }, { t: nu - 200, v: 1800 }];
+        pidHist['0104'] = [{ t: nu - 1500, v: 60 }, { t: nu - 200, v: 60 }];
+        var echt = _mafLaagZelfdeMoment(nu);
+      } finally { ['0110', '010C', '0104'].forEach(function (p) { pidHist[p] = bew[p]; }); }
+      if (weg) return { staat: 'FOUT', detail: 'wegrijden met een luchtmassa van stationair gaat weer af als vuile MAF' };
+      if (!echt) return { staat: 'FOUT', detail: 'een echt lage luchtmassa bij 1800 tpm en 60 % belasting gaat niet meer af' };
+      return { staat: 'OK', detail: 'rij: optrekken vanaf stilstand hoort geen bevinding "vuile MAF" meer te geven' };
+    }
+  },
+
   // ── Beeld-in-beeld ook zonder sensoren (22-11-2026) ──
   {
     issue: '#228',

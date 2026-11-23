@@ -155,9 +155,10 @@ console.log('\n4. Bevindingen en het blok voor de AI');
   t('… tegenproef: op een benzineauto wél', R('maf').test(), true);
   // Wegrijden op de CX-5 (23-11-2026): toerental en belasting vers, de
   // luchtmassa nog van stationair. Dat is geen vuile MAF.
-  s.pidHist['0110'] = [{ t: nu - 4000, v: 1.4 }, { t: nu - 2800, v: 1.5 }];
-  s.pidHist['010C'] = [{ t: nu - 4000, v: 760 }, { t: nu - 2800, v: 780 }, { t: nu - 300, v: 2100 }];
-  s.pidHist['0104'] = [{ t: nu - 4000, v: 22 }, { t: nu - 2800, v: 24 }, { t: nu - 300, v: 62 }];
+  // De luchtmassa ligt hier 1,1 s of meer naast elk toerental: geen paar.
+  s.pidHist['0110'] = [{ t: nu - 2200, v: 1.4 }, { t: nu - 1200, v: 1.5 }];
+  s.pidHist['010C'] = [{ t: nu - 4500, v: 760 }, { t: nu - 50, v: 2100 }];
+  s.pidHist['0104'] = [{ t: nu - 4500, v: 22 }, { t: nu - 50, v: 62 }];
   t('wegrijden: luchtmassa van stationair naast vers toerental → geen bevinding', R('maf').test(), false);
   s.pidHist['0110'] = [{ t: nu - 200, v: 1.4 }];
   t('één MAF-monster is geen bewijs', R('maf').test(), false);
