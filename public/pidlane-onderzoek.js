@@ -390,8 +390,11 @@
         var maf = gem(u.reeks['0110']), l = st.ctx.liters;
         if (maf != null && l && genoeg(u.reeks['0110'], 5)) {
           var pl = maf / l;
-          if (pl < 0.9) r.push({ h: 'maf', d: 1.5, t: 'luchtmassa ' + r1(maf) + ' g/s op ' + r1(l) + ' l — laag voor stationair' });
-          else if (pl < 3) r.push({ h: 'maf', d: -0.5, t: 'luchtmassa ' + r1(maf) + ' g/s — normaal voor stationair' });
+          // Dezelfde band als de onderdeelcheck (#232): een gezonde CX-5 2.0
+          // gaf 0,4–0,85 g/s per liter. Hier stond "laag onder 0,9", en dan
+          // telde elk onderzoek op die auto mee voor een vuile MAF (23-11-2026).
+          if (pl < 0.2) r.push({ h: 'maf', d: 1.5, t: 'luchtmassa ' + r1(maf) + ' g/s op ' + r1(l) + ' l — laag voor stationair' });
+          else if (pl <= 2.5) r.push({ h: 'maf', d: -0.5, t: 'luchtmassa ' + r1(maf) + ' g/s — normaal voor stationair' });
         }
         return r;
       } },

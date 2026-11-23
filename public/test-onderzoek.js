@@ -120,6 +120,16 @@ const stappen = (st) => st.log.filter((l) => l.soort === 'stap').map((l) => l.st
   eis(!st.v.valselucht.bewijs.some((b) => /trim/.test(b.t)), 'zonder trims geen trim-oordeel over valse lucht');
   eis(stappen(st).indexOf('toeren2500') < 0, 'de 2500-tpm-proef wordt niet gedaan zonder trim om te vergelijken');
 
+  console.log('\n6a. Luchtmassa stationair per liter (23-11-2026)');
+  {
+    const SN = O.STAPPEN.filter((x) => x.id === 'stationair')[0];
+    const mafD = (gs) => SN.beoordeel({ reeks: { '0110': Array(10).fill(gs) } }, O.nieuw({ klachten: ['onrustig'], liters: 2.0 }))
+      .filter((x) => x.h === 'maf').map((x) => x.d).reduce((a, b) => a + b, 0);
+    eis(mafD(1.2) < 0, 'gezonde CX-5 2.0 stationair (1,2 g/s): geen verdenking op de MAF', mafD(1.2));
+    eis(mafD(0.3) > 0, 'tegenproef: 0,3 g/s op 2,0 l is wél laag', mafD(0.3));
+    eis(mafD(5.6) === 0, '5,6 g/s stationair op 2,0 l: geen vrijspraak voor de MAF', mafD(5.6));
+  }
+
   console.log('\n6b. Brandstofdruk en breedbandsonde (#428)');
   {
     const S = (id) => O.STAPPEN.filter((x) => x.id === id)[0];

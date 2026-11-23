@@ -147,10 +147,23 @@ console.log('\n4. Bevindingen en het blok voor de AI');
   t('… na 15 minuten draaien wél', R('thermostaat').test(), true);
   s.vehicleInfo.brandstof = 'hybride'; s.PLKenmerk.vergeet();
   t('… maar niet op een hybride (motor gaat tussendoor uit)', R('thermostaat').test(), false);
+  const nu = Date.now(), reeks = (vs, stap) => vs.map((v, i) => ({ t: nu - (vs.length - 1 - i) * stap, v }));
   s.pidVals['0110'] = 1.2; s.pidVals['0104'] = 55; s.pidVals['010C'] = 1700;
+  s.pidHist['0110'] = reeks([1.2, 1.3, 1.2], 600); s.pidHist['010C'] = reeks([1700, 1720, 1710], 600); s.pidHist['0104'] = reeks([55, 56, 55], 600);
   t('MAF laag bij 1700 tpm en 55 % belasting: niet op een hybride (rijdt op de accu)', R('maf').test(), false);
   s.vehicleInfo.brandstof = 'benzine'; s.PLKenmerk.vergeet();
   t('… tegenproef: op een benzineauto wél', R('maf').test(), true);
+  // Wegrijden op de CX-5 (23-11-2026): toerental en belasting vers, de
+  // luchtmassa nog van stationair. Dat is geen vuile MAF.
+  // De luchtmassa ligt hier 1,1 s of meer naast elk toerental: geen paar.
+  s.pidHist['0110'] = [{ t: nu - 2200, v: 1.4 }, { t: nu - 1200, v: 1.5 }];
+  s.pidHist['010C'] = [{ t: nu - 4500, v: 760 }, { t: nu - 50, v: 2100 }];
+  s.pidHist['0104'] = [{ t: nu - 4500, v: 22 }, { t: nu - 50, v: 62 }];
+  t('wegrijden: luchtmassa van stationair naast vers toerental → geen bevinding', R('maf').test(), false);
+  s.pidHist['0110'] = [{ t: nu - 200, v: 1.4 }];
+  t('één MAF-monster is geen bewijs', R('maf').test(), false);
+  s.pidHist['0110'] = [{ t: nu - 1500, v: 22 }, { t: nu - 200, v: 24 }];
+  t('gezonde luchtmassa bij 2100 tpm → geen bevinding', R('maf').test(), false);
   s.vehicleInfo.brandstof = 'hybride'; s.PLKenmerk.vergeet();
   s.PLKenmerk.noteer('bev_x', 'Koelwater loopt op', K.geldt({ kenveldthermostaat: false }, K.profiel({ merk: 'Audi' })));
   const blok = s.PLKenmerk.blok();
