@@ -93,7 +93,13 @@
   function zonderBlok(text) {
     // Afgebroken (geen </rapport>): tot de eerste lege regel, zodat de
     // disclaimer die _withDisclaimer() erachter zet blijft staan.
-    return String(text == null ? '' : text).replace(/<rapport>[\s\S]*?(<\/rapport>|\n\s*\n|$)/i, '').replace(/\s+$/, '');
+    // Elk compleet blok eruit, en een losse </rapport> ook (23-11-2026): een
+    // herzien rapport droeg er een zonder opening, en die stond in bijlage B.
+    return String(text == null ? '' : text)
+      .replace(/<rapport>[\s\S]*?<\/rapport>/gi, '')
+      .replace(/<rapport>[\s\S]*?(\n\s*\n|$)/i, '')
+      .replace(/<\/?rapport>/gi, '')
+      .replace(/\s+$/, '');
   }
 
   function jsonUit(s) {
@@ -152,7 +158,12 @@
   /* {velden, rest, fout}. rest = de tekst zonder blok (bijlage B). */
   function leesAI(text) {
     const t = String(text == null ? '' : text);
-    const m = t.match(/<rapport>([\s\S]*?)<\/rapport>/i);
+    // Het láátste blok met een JSON-object telt: een herziening noemt het
+    // blok soms eerst in de tekst ("ook het <rapport>-blok") of laat het oude staan.
+    const blokken = t.match(/<rapport>[\s\S]*?<\/rapport>/gi) || [];
+    const metJson = blokken.filter(b => b.indexOf('{') >= 0);
+    const laatste = metJson.length ? metJson[metJson.length - 1] : blokken[blokken.length - 1];
+    const m = laatste ? laatste.match(/<rapport>([\s\S]*?)<\/rapport>/i) : null;
     const rest = zonderBlok(t).trim();
     let velden = null, fout = '';
     if (m) {

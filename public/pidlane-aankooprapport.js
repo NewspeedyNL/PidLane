@@ -416,7 +416,11 @@
   }
   /* Een antwoord van de AI gaat alleen als platte tekst het rapport in. */
   function schoonAI(t) {
-    return tekst(t).replace(/<[^>]*>/g, '').replace(/[*#_`]+/g, '').replace(/^\s*[-•]\s+/gm, '').replace(/\n{3,}/g, '\n\n').slice(0, 1500).trim();
+    const s = tekst(t).replace(/<[^>]*>/g, '').replace(/[*#_`]+/g, '').replace(/^\s*[-•]\s+/gm, '').replace(/\n{3,}/g, '\n\n').trim();
+    // Te lang: afkappen op het laatste zinseinde, niet midden in een woord (23-11-2026).
+    if (s.length <= 1500) return s;
+    const kort = s.slice(0, 1500), eind = Math.max(kort.lastIndexOf('. '), kort.lastIndexOf('.\n'), kort.lastIndexOf('! '), kort.lastIndexOf('? '));
+    return (eind > 600 ? kort.slice(0, eind + 1) : kort.replace(/\s+\S*$/, '') + ' …').trim();
   }
   function metAI(mod, t) {
     return model(Object.assign({}, mod.invoer, { ai: schoonAI(t) }));

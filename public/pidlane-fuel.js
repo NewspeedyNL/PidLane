@@ -70,12 +70,8 @@ async function runFuelAnalysis(){
       'Brandstofefficiëntie: waar gaat er brandstof verloren en wat levert het op om dat te verhelpen?','brandstof'));
     const text=PLRapport.zonderBlok(ruw);
     const secs=[{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'GEVONDEN INEFFICIËNTIES',i:'🔍',c:'orange'},{k:'BESPAARTIPS',i:'💡',c:'green'},{k:'TOTALE BESPARING',i:'💶',c:'purple'},{k:'RIJSTIJL TIPS',i:'🚗',c:'blue'}];
-    const found=[];
-    secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
-    found.sort((a,b)=>a.idx-b.idx);
     let html='<div class="ai-res">';
-    found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${s.k}\\s*([\\s\\S]*?)${next?`(?=${next.k})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
-    if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">💡 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
+    html+=_aiSectieHtml(text, secs, _aiSecties(text, secs).some(d=>d.s)?'':'💡 Analyse');
     html+=`<div style="margin-top:8px"><button class="btn" onclick="exportFuelReport()" style="width:100%;justify-content:center">💾 Exporteer rapport</button></div></div>`;
     document.getElementById('fuelResults').innerHTML=html;
     renderAIText(ruw,document.getElementById('aiContent'));
@@ -708,6 +704,40 @@ function _fmtReportBody(body){
   }
   return out;
 }
+// Deelt een AI-tekst op in secties (23-11-2026). Een kop telt alleen als
+// hij een regel opent — na markdown, emoji, nummer of streepje — en daarna
+// niets of ':', '—' of '**' volgt. Midden in een zin is "geen foutcodes en
+// geen recall" geen kop: zo knipte het scherm een zin doormidden en zette de
+// rest onder "Foutcodes". Een kop met tekst erachter telt alleen in
+// hoofdletters ("ADVIES: …"), anders is "Advies: vraag het boekje op" ook een
+// kop. Wat vóór de eerste kop staat gaat mee als sectie zonder kop (k:null):
+// voorheen viel dat weg. Elke kop telt, ook een tweede keer dezelfde.
+function _aiSecties(text, secs){
+  var regels=String(text==null?'':text).split('\n'), uit=[], huidig={s:null,regels:[]};
+  regels.forEach(function(r){
+    var kaal=r.replace(/\*\*/g,'').replace(/^[^A-Za-zÀ-ÿ]*/,'');
+    var hit=null;
+    for(var j=0;j<secs.length&&!hit;j++){
+      var k=secs[j].k, kop=kaal.slice(0,k.length);
+      if(kop.toUpperCase()!==k) continue;
+      var rest=kaal.slice(k.length);
+      if(/^[\s:—–\-]*$/.test(rest)) hit={s:secs[j],rest:''};
+      else if(kop===k && /^\s*[:—–]/.test(rest)) hit={s:secs[j],rest:rest.replace(/^\s*[:—–]\s*/,'')};
+    }
+    if(hit){ uit.push(huidig); huidig={s:hit.s,regels:hit.rest?[hit.rest]:[]}; return; }
+    huidig.regels.push(r);
+  });
+  uit.push(huidig);
+  return uit.map(function(d){ return {s:d.s, body:d.regels.join('\n').trim()}; }).filter(function(d){ return d.body; });
+}
+// HTML voor die secties; een stuk zonder kop krijgt de kop uit `zonder`.
+function _aiSectieHtml(text, secs, zonder){
+  return _aiSecties(text, secs).map(function(d){
+    var s=d.s||{k:null,c:'blue'};
+    var kop=s.k?_titleCase(s.k):zonder;
+    return '<div class="ai-sec '+s.c+'">'+(kop?'<div class="ai-sh '+s.c+'">'+kop+'</div>':'')+'<div class="ai-sb">'+_fmtReportBody(d.body)+'</div></div>';
+  }).join('');
+}
 function _titleCase(k){ var s=String(k).toLowerCase(); return s.charAt(0).toUpperCase()+s.slice(1); }
 function _scoreHeader(text){
   var g=function(re){ var m=String(text).match(re); return m?m[1]:null; };
@@ -740,18 +770,10 @@ function _systemBars(text){
 function _aiReportHtml(text){
   text=PLRapport.zonderBlok(text);   // het <rapport>-blok is voor de PDF, niet voor het scherm
   const secs=[{k:'VOERTUIGGEGEVENS',i:'',c:'blue'},{k:'SYSTEEMSTATUS',i:'',c:'blue'},{k:'FOUTCODES',i:'',c:'orange'},{k:'SENSORANALYSE',i:'',c:'blue'},{k:'WAARSCHIJNLIJKE OORZAAK',i:'',c:'red'},{k:'KOSTENINDICATIE',i:'',c:'purple'},{k:'AANBEVOLEN VERVOLGONDERZOEK',i:'',c:'green'},{k:'SAMENVATTING',i:'📋',c:'blue'},{k:'BEVINDINGEN',i:'🔍',c:'orange'},{k:'PRIORITEIT ACTIES',i:'⚡',c:'red'},{k:'REPARATIE STAPPEN',i:'🔧',c:'orange'},{k:'KAN IK HET ZELF?',i:'🛠️',c:'green'},{k:'KOSTEN SCHATTING',i:'💶',c:'purple'},{k:'GESCHATTE KOSTEN',i:'💶',c:'purple'},{k:'URGENTIE',i:'🚨',c:'red'},{k:'HUIDIGE SITUATIE',i:'📊',c:'blue'},{k:'ONDERHOUDSADVIES',i:'🔧',c:'green'},{k:'MOGELIJKE OORZAAK',i:'🎯',c:'red'},{k:'DATA-OORDEEL',i:'📊',c:'blue'},{k:'ADVIES',i:'💡',c:'green'},{k:'REPRODUCEER',i:'🔁',c:'orange'}];
-  const found=[];
-  secs.forEach(s=>{if(text.toLowerCase().includes(s.k.toLowerCase()))found.push({...s,idx:text.toLowerCase().indexOf(s.k.toLowerCase())});});
-  found.sort((a,b)=>a.idx-b.idx);
   const v=aiVerdict(text);
-  // Sectie-keys regex-escapen: 'KAN IK HET ZELF?' bevat een regex-metateken
-  // ('?'); zonder escapen matcht dat verkeerd en een key met '(' zou zelfs
-  // een exception gooien waardoor het hele rapport niet rendert.
-  const _reEsc=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   let html='<div class="ai-res">';html+=_scoreHeader(text)+_systemBars(text);
   html+=`<div class="ai-verdict" style="background:${v.bg};border:1px solid ${v.clr}55"><b style="color:${v.clr};font-size:14px">${v.vt}</b></div>`;
-  found.forEach((s,i)=>{const next=found[i+1];const re=new RegExp(`${_reEsc(s.k)}\\s*([\\s\\S]*?)${next?`(?=${_reEsc(next.k)})`:'$'}`,'i');const m=text.match(re);if(!m)return;const body=m[1].replace(/^\s*:\s*/,'').trim();if(!body)return;html+=`<div class="ai-sec ${s.c}"><div class="ai-sh ${s.c}">${_titleCase(s.k)}</div><div class="ai-sb">${_fmtReportBody(body)}</div></div>`;});
-  if(!found.length)html+=`<div class="ai-sec blue"><div class="ai-sh blue">📋 Analyse</div><div class="ai-sb">${_fmtReportBody(text)}</div></div>`;
+  html+=_aiSectieHtml(text, secs, _aiSecties(text, secs).some(d=>d.s)?'':'📋 Analyse');
   html+='</div>';
   return html;
 }

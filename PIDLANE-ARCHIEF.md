@@ -14,6 +14,27 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 23-11-2026 — AI-rapport knipte zinnen op kopwoorden
+
+Gemeld met een screenshot van een koop/verkooprapport (Mazda): onder Advies
+eindigde "technische meting toont gezonde motor, geen", en onder een kop
+**Foutcodes** ging het verder met "en geen recall". `_aiReportHtml()` zocht
+elke sectiekop met `indexOf` op de héle tekst, hoofdletterongevoelig, en sneed
+daar. Elk kopwoord in een zin ("foutcodes", "advies", "urgentie") kon zo een
+sectie beginnen; de eerste keer telde, tekst vóór de eerste kop viel weg. Het
+brandstofrapport had een kopie van dezelfde lus. Nu één `_aiSecties()` die
+alleen koppen aan het begin van een regel leest.
+
+In dezelfde PDF stond een losse `</rapport>` in bijlage B en "geen JSON-object
+in het rapportblok": een herzien rapport (`aiReplyRevise`). De ruwe AI-tekst is
+niet bewaard, dus waaróm het blok leeg was is niet vastgesteld. `zonderBlok()`
+haalt nu elke tag weg en `leesAI()` neemt het laatste blok mét JSON.
+
+Nog open, niet gerepareerd: in het scherm stond "Bij 152 km" waar bijlage B
+"152.000 km" heeft. Dat zijn twee verschillende AI-teksten (origineel en
+herziening); of de AI zelf "152 km" schreef is zonder de ruwe tekst niet te
+zeggen.
+
 
 
 
