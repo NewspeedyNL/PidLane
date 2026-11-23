@@ -38,6 +38,20 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── AI-rapport: koppen alleen aan het begin van een regel (23-11-2026) ──
+  {
+    issue: '—',
+    naam: 'AI-rapport: "geen foutcodes" midden in een zin wordt geen sectiekop',
+    waarom: 'Het AI-venster knipte "gezonde motor, geen | foutcodes en geen recall" doormidden en zette de rest onder een kop Foutcodes.',
+    proef: async function () {
+      if (typeof window._aiSecties !== 'function') return { staat: 'FOUT', detail: '_aiSecties ontbreekt (herladen?)' };
+      var d = window._aiSecties('ADVIES\nGezonde motor, geen\nfoutcodes en geen recall.', [{ k: 'FOUTCODES', c: 'orange' }, { k: 'ADVIES', c: 'green' }]);
+      if (d.some(function (x) { return x.s && x.s.k === 'FOUTCODES'; })) return { staat: 'FOUT', detail: 'een woord midden in een zin werd weer een kop' };
+      if (!d.some(function (x) { return x.s && x.s.k === 'ADVIES' && /geen recall/.test(x.body); })) return { staat: 'FOUT', detail: 'de zin staat niet heel onder Advies' };
+      return { staat: 'OK', detail: 'zin blijft heel · rij: open een AI-rapport en lees of geen sectie midden in een zin begint' };
+    }
+  },
+
   // ── Onderzoek: luchtmassa stationair per liter (23-11-2026) ──
   {
     issue: '—',

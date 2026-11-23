@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 23-11-2026 — AI-rapport knipt geen zinnen meer op kopwoorden
+ ═════════════════════════════════════════════════════
+   • pidlane-fuel.js: _aiSecties() deelt het AI-venster en het brandstofrapport op; een kop telt alleen aan het begin van een regel. "geen foutcodes en geen recall" werd een sectie Foutcodes, de zin ervoor brak af. Tekst vóór de eerste kop viel weg, nu niet meer
+   • pidlane-rapport.js: losse </rapport> uit bijlage B; bij meerdere blokken telt het laatste met JSON
+   • pidlane-dossier.js: DTC-indicatie breekt af i.p.v. afkappen op 110 tekens; pidlane-aankooprapport.js: AI-tekst > 1500 tekens stopt op een zinseinde
+   • test-aisecties.js, blok 5, drie mutaties
+
+ ═════════════════════════════════════════════════════
  23-11-2026 — Onderzoek: luchtmassa stationair met dezelfde band als de onderdeelcheck
  ═════════════════════════════════════════════════════
    • pidlane-onderzoek.js, stap stationair: laag onder 0,2 g/s per liter (was 0,9), normaal tot en met 2,5 (was < 3). Een gezonde CX-5 2.0 (0,4–0,85 g/s/l) telde elk onderzoek mee voor een vuile MAF
