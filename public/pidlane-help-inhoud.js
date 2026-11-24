@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-22', app: '3.5.0' },
+  gecontroleerd: { datum: '2026-11-24', app: '3.6.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },

@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 24-11-2026 — Versie 3.6.0 voor de release; versie en verversen altijd in beeld
+ ═════════════════════════════════════════════════════
+   • `APP_VERSION` en `package.json` naar 3.6.0; PLAY-INZENDING.md: caravancoach en aandrijfaccu-check in §3, release notes 3.6 in §14 (§4 verwijst ernaar), §16b voor 3.6
+   • Inlogscherm: versie en 🔄 Nieuwste versie laden altijd zichtbaar onder de kaart (stonden achter Geavanceerd); Meer → Hulp heeft dezelfde regel met het versienummer
+   • PLVersie.markeer(): bij een nieuwere deploy worden knop en menuregel groen ("Nieuwe versie klaar"), ook als de kaart niet mag (verbonden, Later)
+   • Opruimen: de onbereikbare aircotakken uit de klimaatcheck
+
+ ═════════════════════════════════════════════════════
  23-11-2026 — Aircocheck weg: niet professioneel genoeg
  ═════════════════════════════════════════════════════
    • Stap 4b (Airco) uit de koopcheck, de keuze "Warm weer en airco" uit de wizard, de airco-knop uit de seizoenscheck
