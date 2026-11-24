@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 24-11-2026 — Staand vult de meter het scherm: Hyperlane, Temperatuur en Verbruik
+ ═════════════════════════════════════════════════════
+   • Gewone weergave, staand: Hyperlane neemt de staande opbouw van het volle scherm over (ringen naast elkaar, midden eronder) in plaats van een 2:1-strook met ringen van 140 px
+   • Temperatuur (buizen groeien mee) en Verbruik (groter getal, ruimere rijen) vullen de hoogte tot de knoppen; liggend en volledig scherm ongewijzigd
+   • bproef-vulling.js met twee mutaties
+
+ ═════════════════════════════════════════════════════
  24-11-2026 — Versie 3.6.0 voor de release; versie en verversen altijd in beeld
  ═════════════════════════════════════════════════════
    • `APP_VERSION` en `package.json` naar 3.6.0; PLAY-INZENDING.md: caravancoach en aandrijfaccu-check in §3, release notes 3.6 in §14 (§4 verwijst ernaar), §16b voor 3.6
