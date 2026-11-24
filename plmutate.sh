@@ -3002,7 +3002,7 @@ MUTATIES=(
 "public/pidlane-fuel.js@@watVoor:'de verbruiksanalyse', naRit:runFuelAnalysis});@@watVoor:'de verbruiksanalyse'});@@test-verzamelroutes.js@@na de rijtest voor de verbruiksanalyse komt de analyse niet terug"
 "public/pidlane-datalog.js@@  const uit=await PLVerzamel.meet({bron, watVoor:'de datalog-analyse'});@@  const uit=await PLVerzamel.meet({watVoor:'de datalog-analyse'});@@test-verzamelroutes.js@@de datalog-analyse meet opnieuw in plaats van de datalog te tonen"
 "public/pidlane-caravan.js@@  if(!uit || !uit.ai) ai='(Geen AI-analyse@@  if(false) ai='(Geen AI-analyse@@test-verzamelroutes.js@@nee op het scherm na een caravanrit vraagt toch de AI"
-"public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = (airco@@  if(true){\n    try{\n      const prompt = (airco@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
+"public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = buildWinterPrompt@@  if(true){\n    try{\n      const prompt = buildWinterPrompt@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(letters<1) return /^(#\\d{1,3}|\\d[\\d-]{1,5}\\+?)$/.test(t);@@  if(letters<1) return false;@@test-rdwnaam.js@@elke Peugeot heet weer een onbetrouwbare modelnaam"
 "public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"

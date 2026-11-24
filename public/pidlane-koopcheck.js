@@ -2,7 +2,7 @@
    Laadt als <script src> op exact de oorspronkelijke positie in de
    documentvolgorde; top-level declaraties zijn in klassieke scripts
    globaal over blokgrenzen heen, dus alle bestaande aanroepen blijven
-   ongewijzigd werken. Inhoud: koopcheck-module incl. RDW-datavalidatie, onderhoud plannen, EV/hybride-check, lange-rit-voorbereiding en airco/winter-check. */
+   ongewijzigd werken. Inhoud: koopcheck-module incl. RDW-datavalidatie, onderhoud plannen, EV/hybride-check, lange-rit-voorbereiding en winter-check. */
 // ══════════════════════════════════════════════════════
 // KOOPCHECK MODULE — v1.0  //  Datum: 2026-06-13
 // RDW lookup · Onderhoudcheck · AI prijsschatting · Scan log
@@ -1459,18 +1459,18 @@ function CLIMATE_THERMO_SVG(accent){
 }
 
 // ══════════════════════════════════════════════════════════════════
-// AIRCO & WINTER CHECK — herbruikbare module
-// Meet primair via OBD-sensoren (RPM-dip, motorbelasting, temperaturen).
+// WINTERCHECK — de klimaatcheck (tot 23-11-2026 ook een aircocheck)
+// Meet via OBD-sensoren (koelvloeistof, olie, accu, toerental).
 // Thermometer (bijv. een kinder-/oorthermometer) is optionele 2e bron,
-// gemarkeerd als minder betrouwbaar. Aanroepbaar vanuit elke mode via
-// openClimateCheck('airco') of openClimateCheck('winter').
+// gemarkeerd als minder betrouwbaar. openClimateCheck() negeert zijn
+// argument: een oude aanroep met 'airco' opent de wintercheck.
 // ══════════════════════════════════════════════════════════════════
-let _climateMode='airco';      // 'airco' | 'winter'
+let _climateMode='winter';
 let _climateTimer=null;
 let _climateData={};
 
-function openClimateCheck(mode='winter'){
-  mode='winter';   // aircocheck weg (23-11-2026); een oude link opent de wintercheck
+function openClimateCheck(){
+  const mode='winter';
   _climateMode=mode;
   _climateData={ mode, t0:null, samples:[], thermoT1:null, thermoT2:null };
   document.getElementById('welcomeScreen')?.classList.add('hidden');
@@ -1485,19 +1485,11 @@ function closeClimateCheck(){
   const ov=document.getElementById('climateDash'); if(ov) ov.style.display='none';
 }
 
-function climateIntroHTML(mode){
-  const airco = mode==='airco';
-  const icon = airco?'❄️':'🔥';
-  const titel = airco?'Airco Check':'Wintercheck';
-  const sub = airco
-    ? 'Hoe goed koelt de airco? We meten het koelvermogen via de auto-sensoren, met optioneel een thermometer als tweede check.'
-    : 'Werkt de thermostaat en warmt de motor goed op? We volgen koelvloeistof, olie en accu tijdens het opwarmen.';
-  const stappen = airco ? [
-    ['1','Motor uit, contact aan','Zet het contact aan zonder de motor te starten. We lezen de begintemperatuur.'],
-    ['2','Start motor + airco','Start de motor, zet de airco op het koudste standje en de ventilator laag.'],
-    ['3','60 seconden meten','We meten de RPM-dip van de compressor en de temperatuurdaling.'],
-    ['4','Oordeel','Werkt de airco goed, zwak, of slaat de compressor niet aan?'],
-  ] : [
+function climateIntroHTML(){
+  const icon = '🔥';
+  const titel = 'Wintercheck';
+  const sub = 'Werkt de thermostaat en warmt de motor goed op? We volgen koelvloeistof, olie en accu tijdens het opwarmen.';
+  const stappen = [
     ['1','Koude start','Start de meting met een koude motor (bij voorkeur \u2019s ochtends).'],
     ['2','Start motor','Start de motor en laat hem stationair draaien. Niet wegrijden.'],
     ['3','Opwarmen volgen','We volgen koelvloeistof en olie tot bedrijfstemperatuur (~90\u00b0C).'],
@@ -1513,16 +1505,15 @@ function climateIntroHTML(mode){
 }
 
 async function climateStart(){
-  const airco = _climateMode==='airco';
   // Activeer de relevante sensoren
-  const pids = airco ? ['010C','0104','010F','0105','010B'] : ['0105','015C','010C','0142','010F'];
+  const pids = ['0105','015C','010C','0142','010F'];
   try{ await ensurePIDListActive(pids); }catch(e){ log('Sensoren niet actief gezet vóór de klimaatcheck — de meting kan op oude data starten: '+(e.message||e),'warn'); _plSensorVlag('De klimaatsensoren'); }
   // Baseline na korte stabilisatie
   _climateData.t0 = Date.now();
   _climateData.samples = [];
   _climateData.baseline = climateSnapshot();
   climateRenderLive();
-  const DUUR = airco ? 60 : 600; // airco 60s, winter tot 10 min (of eerder klaar)
+  const DUUR = 600; // tot 10 min, of eerder klaar op bedrijfstemperatuur
   _climateData.duur = DUUR;
   if(_climateTimer) clearInterval(_climateTimer);
   _climateTimer = setInterval(()=>{
@@ -1532,9 +1523,9 @@ async function climateStart(){
     const elapsed = (Date.now()-_climateData.t0)/1000;
     // Winter: stop zodra koelvloeistof bedrijfstemp bereikt (>=88) of tijd om
     const coolant = snap.coolant;
-    if(!airco && coolant!=null && coolant>=88){ climateFinish(); return; }
+    if(coolant!=null && coolant>=88){ climateFinish(); return; }
     if(elapsed>=DUUR){ climateFinish(); }
-  }, airco?2000:3000);
+  }, 3000);
 }
 
 // Welke sleutel van climateSnapshot() welke PID is — één tabel, zodat het
@@ -1555,8 +1546,7 @@ function climateSnapshot(){
 
 function climateRenderLive(){
   const ov=document.getElementById('climateDash'); if(!ov) return;
-  const airco=_climateMode==='airco';
-  const accent=airco?'#22d3ee':'#60a5fa';
+  const accent='#60a5fa';
   const s=climateSnapshot();
   const b=_climateData.baseline||{};
   const elapsed=Math.floor((Date.now()-_climateData.t0)/1000);
@@ -1569,39 +1559,31 @@ function climateRenderLive(){
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <div style="font-size:16px;font-weight:800;color:#f1f5f9">${airco?'\u2744\ufe0f Airco meten\u2026':'\u{1F525} Opwarmen volgen\u2026'}</div>
+      <div style="font-size:16px;font-weight:800;color:#f1f5f9">\u{1F525} Opwarmen volgen\u2026</div>
       <button onclick="climateFinish()" style="padding:6px 12px;border-radius:8px;border:1px solid ${accent}55;background:${accent}18;color:${accent};font-family:var(--f);font-size:12px;font-weight:700;cursor:pointer">Nu stoppen</button>
     </div>
     <div style="height:6px;background:rgba(255,255,255,.08);border-radius:99px;overflow:hidden;margin-bottom:4px"><div style="height:100%;width:${pct}%;background:${accent};transition:width .4s"></div></div>
     <div style="font-size:12px;color:#96a2bb;text-align:right;margin-bottom:14px">${elapsed}s / ${duur}s</div>
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:4px 14px;margin-bottom:14px">
-      ${airco?`
-        ${row('Compressor RPM-dip', rpmDip==null?'\u2014':(rpmDip>0?'+':'')+f(rpmDip), 'RPM', rpmDip!=null&&rpmDip<-30?'compressor belast de motor \u2014 goed teken':'wachten op inschakeling')}
-        ${row('Motorbelasting', f(s.load), '%', loadDelta!=null?`\u0394 ${loadDelta>0?'+':''}${f(loadDelta)}%`:'')}
-        ${row('Inlaatlucht temp', f(s.iat), '\u00b0C', 'referentie omgeving')}
-        ${row('Toerental', f(s.rpm), 'RPM','')}
-      `:`
         ${row('Koelvloeistof', f(s.coolant), '\u00b0C', s.coolant!=null&&s.coolant>=88?'bedrijfstemperatuur bereikt':'opwarmen\u2026 (doel ~90\u00b0C)')}
         ${row('Motorolie temp', f(s.oil), '\u00b0C', 'volgt koelvloeistof met vertraging')}
         ${row('Accuspanning', f(s.volt,1), 'V', s.volt!=null&&s.volt<12?'laag \u2014 koude accu':'')}
         ${row('Toerental', f(s.rpm), 'RPM', 'koude stationairtoeren liggen hoger')}
-      `}
     </div>
-    <div style="font-size:12px;color:#96a2bb;text-align:center">De meting stopt ${airco?'na 60 seconden':'zodra ~90\u00b0C is bereikt'} automatisch.</div>
+    <div style="font-size:12px;color:#96a2bb;text-align:center">De meting stopt zodra ~90\u00b0C is bereikt automatisch.</div>
   </div>`;
 }
 
 function climateFinish(){
   if(_climateTimer){ clearInterval(_climateTimer); _climateTimer=null; }
   _climateData.eind = climateSnapshot();
-  // Vraag optioneel thermometer-meting (alleen airco standaard, winter optioneel)
+  // Vraag optioneel een thermometer-meting
   climateRenderThermoPrompt();
 }
 
 function climateRenderThermoPrompt(){
   const ov=document.getElementById('climateDash'); if(!ov) return;
-  const airco=_climateMode==='airco';
-  const accent=airco?'#22d3ee':'#60a5fa';
+  const accent='#60a5fa';
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
     <div style="text-align:center;margin-bottom:16px">
@@ -1616,8 +1598,7 @@ function climateRenderThermoPrompt(){
 
 function climateShowThermoGuide(){
   const ov=document.getElementById('climateDash'); if(!ov) return;
-  const airco=_climateMode==='airco';
-  const accent=airco?'#22d3ee':'#60a5fa';
+  const accent='#60a5fa';
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
@@ -1627,13 +1608,13 @@ function climateShowThermoGuide(){
     ${CLIMATE_THERMO_SVG(accent)}
     <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;margin:14px 0">
       <div style="font-size:13px;color:#cbd5e1;line-height:1.6">
-        1. Steek de thermometer in het ${airco?'koudste':'warmste'} ventilatierooster.<br>
+        1. Steek de thermometer in het warmste ventilatierooster.<br>
         2. Wacht tot de meting stabiel is (~10\u201315 sec).<br>
         3. Lees de temperatuur af en voer hem hieronder in.
       </div>
     </div>
     <label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:6px">Gemeten uitblaastemperatuur (\u00b0C)</label>
-    <input id="climateThermoInput" type="number" step="0.1" placeholder="bijv. ${airco?'7':'55'}" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-family:var(--f);font-size:15px;margin-bottom:12px;box-sizing:border-box">
+    <input id="climateThermoInput" type="number" step="0.1" placeholder="bijv. 55" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#f1f5f9;font-family:var(--f);font-size:15px;margin-bottom:12px;box-sizing:border-box">
     <button onclick="climateSaveThermo()" style="width:100%;padding:14px;border-radius:11px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:14px;font-weight:800;cursor:pointer">Opslaan \u2192 oordeel</button>
   </div>`;
 }
@@ -1646,52 +1627,28 @@ function climateSaveThermo(){
 
 async function climateVerdict(){
   const ov=document.getElementById('climateDash'); if(!ov) return;
-  const airco=_climateMode==='airco';
-  const accent=airco?'#22d3ee':'#60a5fa';
+  const accent='#60a5fa';
   ov.innerHTML=`<div style="max-width:520px;margin:0 auto;padding:40px 16px;text-align:center">
     <div style="font-size:38px;margin-bottom:10px">\u{1F9E0}</div>
     <div style="font-size:14px;color:#cbd5e1">AI beoordeelt de meting\u2026</div>
   </div>`;
   // Lokaal oordeel (altijd beschikbaar, ook zonder AI-sleutel)
-  const local = airco ? aircoLocalVerdict() : winterLocalVerdict();
+  const local = winterLocalVerdict();
   // Eerst de uitslag van de klimaatmeting, dan pas de AI (#443). Nee op de
   // AI: het lokale oordeel komt er gewoon.
   const monsters=(_climateData.samples||[]).map(m=>Object.assign({}, m, { t:m.t*1000 }));
-  const uit=await PLVerzamel.meet({ bron:{ naam:airco?'de aircometing':'de opwarmmeting',
+  const uit=await PLVerzamel.meet({ bron:{ naam:'de opwarmmeting',
       hist:PLVerzamel.histUit(monsters, CLIMATE_PID), sec:Math.round(((monsters[monsters.length-1]||{}).t||0)/1000), rijSec:null },
-    watVoor:airco?'de aircocheck':'de wintercheck', aiTekst:'🤖 Laat de AI de meting beoordelen' });
+    watVoor:'de wintercheck', aiTekst:'🤖 Laat de AI de meting beoordelen' });
   let aiText='';
   if(uit && uit.ai){
     try{
-      const prompt = (airco ? buildAircoPrompt(local) : buildWinterPrompt(local)) + PLVerzamel.promptBlok(uit.sam,{sec:uit.sec});
+      const prompt = buildWinterPrompt(local) + PLVerzamel.promptBlok(uit.sam,{sec:uit.sec});
       aiText = await apiFetch(prompt, 600, null, null, PLVerzamel.aanlevering(uit,
-        airco ? 'Aircocheck: koelt de airco zoals hij hoort?' : 'Wintercheck: warmt de motor op zoals hij hoort?')) || '';
+        'Wintercheck: warmt de motor op zoals hij hoort?')) || '';
     }catch(e){ console.warn('Klimaatcheck: de AI-beoordeling kwam niet — het lokale oordeel staat er wel', e); aiText=''; }
   }
   climateRenderResult(local, aiText);
-}
-
-function aircoLocalVerdict(){
-  const samples=_climateData.samples||[];
-  const b=_climateData.baseline||{}, e=_climateData.eind||{};
-  // RPM-dip: laagste RPM tov baseline tijdens meting
-  let minRpm=b.rpm, maxLoad=b.load;
-  samples.forEach(s=>{ if(s.rpm!=null&&(minRpm==null||s.rpm<minRpm)) minRpm=s.rpm; if(s.load!=null&&(maxLoad==null||s.load>maxLoad)) maxLoad=s.load; });
-  const rpmDip = (b.rpm!=null&&minRpm!=null)? (b.rpm-minRpm):null;     // positief = compressor belast
-  const loadRise = (b.load!=null&&maxLoad!=null)? (maxLoad-b.load):null;
-  const compressorAan = (rpmDip!=null&&Math.abs(rpmDip)>25) || (loadRise!=null&&loadRise>5);
-  // Thermometer delta (T1 omgeving ~ baseline IAT, T2 uitblaas)
-  const t1 = _climateData.thermoT1 ?? b.iat;
-  const t2 = _climateData.thermoT2;
-  const deltaT = (t1!=null&&t2!=null)? (t1-t2):null;
-  let oordeel, kleur;
-  if(deltaT!=null){
-    if(deltaT>=15){ oordeel='Airco werkt goed'; kleur='#22c55e'; }
-    else if(deltaT>=8){ oordeel='Airco zwak \u2014 mogelijk laag koudemiddel'; kleur='#f59e0b'; }
-    else { oordeel='Airco probleem \u2014 check koudemiddel/compressor'; kleur='#ef4444'; }
-  } else if(compressorAan){ oordeel='Compressor slaat aan \u2014 koelvermogen niet gemeten'; kleur='#22c55e'; }
-  else { oordeel='Compressor lijkt niet in te schakelen'; kleur='#ef4444'; }
-  return { type:'airco', rpmDip, loadRise, compressorAan, t1, t2, deltaT, oordeel, kleur };
 }
 
 function winterLocalVerdict(){
@@ -1724,21 +1681,6 @@ function winterLocalVerdict(){
   return { type:'winter', startCoolant, eindCoolant, tijd88, bereiktBedrijfstemp, oilFollows, voltKoud, accu, oordeel:thermostaat, kleur };
 }
 
-function buildAircoPrompt(v){
-  return `Je bent een Nederlandse autotechnicus. Beoordeel een airco-meting kort.
-RPM-dip bij inschakelen compressor: ${v.rpmDip==null?'onbekend':v.rpmDip.toFixed(0)+' RPM'}
-Stijging motorbelasting: ${v.loadRise==null?'onbekend':v.loadRise.toFixed(0)+'%'}
-Compressor schakelt in: ${v.compressorAan?'ja':'niet gedetecteerd'}
-Thermometer omgeving T1: ${v.t1==null?'n.v.t.':v.t1.toFixed(1)+'\u00b0C'}
-Thermometer uitblaas T2: ${v.t2==null?'n.v.t.':v.t2.toFixed(1)+'\u00b0C'}
-Delta T: ${v.deltaT==null?'niet gemeten (alleen sensoren)':v.deltaT.toFixed(1)+'\u00b0C'}
-Voorlopig oordeel: ${v.oordeel}
-
-Geef max 90 woorden Nederlands:
-OORDEEL: [1 zin]
-UITLEG: [wat de cijfers betekenen, max 50 woorden]
-ADVIES: [concrete vervolgstap]`;
-}
 function buildWinterPrompt(v){
   return `Je bent een Nederlandse autotechnicus. Beoordeel een winter-/opwarmmeting kort.
 Koelvloeistof start: ${v.startCoolant==null?'?':v.startCoolant.toFixed(0)+'\u00b0C'}
@@ -1756,17 +1698,9 @@ ADVIES: [concrete vervolgstap]`;
 
 function climateRenderResult(v, aiText){
   const ov=document.getElementById('climateDash'); if(!ov) return;
-  const airco=_climateMode==='airco';
-  const accent=airco?'#22d3ee':'#60a5fa';
+  const accent='#60a5fa';
   const f=(x,d=0)=>x==null?'\u2014':x.toFixed(d);
-  const stat = airco ? `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0">
-      ${climateStatCard('Compressor RPM-dip', v.rpmDip==null?'\u2014':f(v.rpmDip)+' RPM', accent)}
-      ${climateStatCard('Belasting +', v.loadRise==null?'\u2014':'+'+f(v.loadRise)+'%', accent)}
-      ${climateStatCard('Omgeving T1', v.t1==null?'\u2014':f(v.t1,1)+'\u00b0C', accent)}
-      ${climateStatCard('Uitblaas T2', v.t2==null?'niet gemeten':f(v.t2,1)+'\u00b0C', accent)}
-      ${v.deltaT!=null?`<div style="grid-column:1/-1">${climateStatCard('\u0394 Temperatuurdaling', f(v.deltaT,1)+'\u00b0C', v.kleur)}</div>`:''}
-    </div>` : `
+  const stat = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0">
       ${climateStatCard('Koelvloeistof eind', f(v.eindCoolant)+'\u00b0C', accent)}
       ${climateStatCard('Opwarmtijd', v.tijd88==null?'>tijd':v.tijd88+'s', accent)}
@@ -1776,29 +1710,27 @@ function climateRenderResult(v, aiText){
   ov.innerHTML=`
   <div style="max-width:520px;margin:0 auto;padding:18px 16px 60px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:${accent};text-transform:uppercase">${airco?'Airco Check':'Wintercheck'} \u2014 resultaat</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:${accent};text-transform:uppercase">Wintercheck \u2014 resultaat</div>
       <button onclick="closeClimateCheck()" style="background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer">\u2715</button>
     </div>
     <div style="background:${v.kleur}14;border:1px solid ${v.kleur}55;border-radius:14px;padding:16px;text-align:center;margin-bottom:6px">
       <div style="font-size:14px;font-weight:800;color:${v.kleur}">${v.oordeel}</div>
-      ${!airco?`<div style="font-size:12px;color:#cbd5e1;margin-top:5px">Accu: ${v.accu}</div>`:''}
+      <div style="font-size:12px;color:#cbd5e1;margin-top:5px">Accu: ${v.accu}</div>
     </div>
     ${stat}
-    ${v.deltaT==null&&airco?`<div style="font-size:12px;color:#fbbf24;text-align:center;margin-bottom:8px">\u26a0\ufe0f Geen thermometer gebruikt \u2014 oordeel op sensoren (compressorwerking), niet op koelvermogen.</div>`:''}
     ${aiText?`<div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:13px;font-size:13px;color:#cbd5e1;line-height:1.6;white-space:pre-line">${aiText.replace(/</g,'&lt;')}</div>`:''}
     <div style="display:flex;gap:8px;margin-top:14px">
-      <button onclick="openClimateCheck('${_climateMode}')" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#e2e8f0;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">\u21ba Opnieuw</button>
+      <button onclick="openClimateCheck()" style="flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#e2e8f0;font-family:var(--f);font-size:13px;font-weight:700;cursor:pointer">\u21ba Opnieuw</button>
       <button onclick="closeClimateCheck()" style="flex:1;padding:12px;border-radius:10px;border:none;background:${accent};color:#04101a;font-family:var(--f);font-size:13px;font-weight:800;cursor:pointer">Klaar</button>
     </div>
   </div>`;
-  try{ scanLogAdd?.({ type:_climateMode==='airco'?'aircocheck':'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){ console.warn('Klimaatcheck-resultaat niet in het scanlog gezet', e); }
+  try{ scanLogAdd?.({ type:'wintercheck', msg:`${v.oordeel}${v.deltaT!=null?' (\u0394T '+v.deltaT.toFixed(1)+'\u00b0C)':''}` }); }catch(e){ console.warn('Klimaatcheck-resultaat niet in het scanlog gezet', e); }
   // 15-07: klimaatcheck ook in het 📄 Rapporten-archief (lokaal oordeel + evt. AI-toelichting)
   try{
-    const _cl=[(airco?'AIRCO CHECK':'WINTERCHECK')+' — lokaal oordeel: '+v.oordeel];
-    if(airco){ if(v.deltaT!=null)_cl.push('Delta T: '+v.deltaT.toFixed(1)+' °C (T1 '+(v.t1==null?'—':v.t1.toFixed(1))+' → T2 '+(v.t2==null?'—':v.t2.toFixed(1))+')'); _cl.push('Compressor schakelt in: '+(v.compressorAan?'ja':'niet gedetecteerd')); }
-    else { _cl.push('Koelvloeistof eind: '+(v.eindCoolant==null?'—':v.eindCoolant.toFixed(0))+' °C · tijd tot 88°C: '+(v.tijd88==null?'niet bereikt':v.tijd88+'s')+' · accu koud: '+(v.voltKoud==null?'—':v.voltKoud.toFixed(1))+' V ('+v.accu+')'); }
+    const _cl=['WINTERCHECK — lokaal oordeel: '+v.oordeel];
+    _cl.push('Koelvloeistof eind: '+(v.eindCoolant==null?'—':v.eindCoolant.toFixed(0))+' °C · tijd tot 88°C: '+(v.tijd88==null?'niet bereikt':v.tijd88+'s')+' · accu koud: '+(v.voltKoud==null?'—':v.voltKoud.toFixed(1))+' V ('+v.accu+')');
     if(aiText) _cl.push('','AI-TOELICHTING:',aiText);
-    registerSessionReport({type:'ai', title:(airco?'Airco check':'Wintercheck')+' — '+v.oordeel, text:_plSensorTekstregel()+_withDisclaimer(_cl.join('\n'))});
+    registerSessionReport({type:'ai', title:'Wintercheck — '+v.oordeel, text:_plSensorTekstregel()+_withDisclaimer(_cl.join('\n'))});
   }catch(e){ console.warn('Klimaatcheck niet in het rapportarchief gezet', e); }
 }
 
