@@ -198,7 +198,8 @@ Vragen: support@pidlane.nl
 
 ## 4. Grafisch materiaal
 
-**Sinds 02-11-2026 staat alles in de repo**, in `marketing/play/uit/`. Bron:
+**Sinds 02-11-2026 staat alles in de repo**, in `marketing/play/uit/`; opnieuw
+opgenomen op 24-11-2026 voor 3.6.0 (Hyperlane staand vult nu het scherm). Bron:
 `marketing/play/opname.js` neemt de echte app op in demomodus (de
 meekijkschermen komen uit `marketing/meekijken/opname.js`), `schermen.html` en
 `grafiek.html` zetten er een kop en lijst omheen, `render.js` maakt de PNG's.
