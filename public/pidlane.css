@@ -3279,6 +3279,14 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv .lg-nieuw b{ color:var(--bl); font-weight:800; }
 .ov#loginOv .lg-foot{ margin-top:18px; font-size:11.5px; line-height:1.65; }
 .ov#loginOv .lg-fris{ font-size:11.5px; padding:6px 14px; }
+/* Versie en verversen altijd in beeld (24-11-2026), los onder de kaart. Bij
+   een nieuwere deploy (PLVersie.markeer) licht de knop op. */
+.ov#loginOv .lg-versie{ position:relative; z-index:1; flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; margin-top:16px; color:var(--tx3); font-size:12px; }
+.ov#loginOv .lg-fris{ min-height:36px; }
+.ov#loginOv .lg-fris.nieuw{ border-color:var(--gn); color:var(--gn); background:rgba(0,255,136,.08); font-weight:700; }
+.kebab-item.kb-versie{ display:flex; align-items:center; gap:8px; }
+.kebab-item.kb-versie .kb-versie-nr{ margin-left:auto; font-size:12px; color:var(--tx3); font-weight:600; }
+.kebab-menu .kebab-item.kb-versie.nieuw{ color:var(--gn); font-weight:700; }
 
 /* ══════════════════════════════════════════════════════════════════
    VERBINDSCHERM IN DE VORMTAAL VAN HET INLOGSCHERM (26-07-2026)

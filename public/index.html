@@ -174,17 +174,22 @@ else { var _pli=document.getElementById('plIntro'); if(_pli) _pli.hidden=true; c
       <a href="#" class="lg-nieuw" onclick="event.preventDefault();PLKlant.openRegistratie()">Nog geen account? <b>Gratis aanmaken</b></a>
     </div>
   </div>
+  <!-- Versie en "Nieuwste versie laden" altijd in beeld (24-11-2026): wie de
+       app voor een rit opent, moet zonder Geavanceerd kunnen zien welke versie
+       hij draait en hem kunnen verversen. PLVersie.markeer() laat de knop
+       oplichten zodra er een nieuwere deploy live staat. -->
+  <div class="lg-versie" id="lgVersie">
+    <span id="loginVer">v…</span>
+    <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
+  </div>
   <div class="lg-foot lg-geav">
-    PidLane <span id="loginVer">v…</span> — AI Car Diagnostics<br>
+    PidLane — AI Car Diagnostics<br>
     <!-- Tweede, gedempte regel: wat er nodig is om te zien of deze build vers
          is. Bewust NIET op de productregel erboven: die is wat een Play-reviewer
          leest en die hoort v3.0.0 te tonen, niet "testrun 4.9". -->
     <span id="loginBuild" style="font-size:10px;opacity:.55;letter-spacing:.3px"></span><br>
     <a href="https://www.pidlane.nl" target="_blank" rel="noopener" class="lg-site">🌐 www.pidlane.nl</a>
     · <a href="#" class="lg-site" id="lgHandleiding" onclick="event.preventDefault();PLHelp.open()">📘 Handleiding</a>
-    <div style="padding-top:11px">
-      <button id="plFrisBtn" class="lg-fris" onclick="plHardReload(this)">🔄 Nieuwste versie laden</button>
-    </div>
   </div>
     <!-- Versie op het loginscherm. De terugval was tot 21-08 '2.1', met de
          letterlijke tekst "v2.1" in de HTML eronder. Dat is precies de plek
@@ -906,6 +911,8 @@ function closeConnOv(){
         <button class="kebab-item" id="kbHandleiding" onclick="closeKebab();PLHelp.open()">📘 Handleiding</button>
         <button class="kebab-item" onclick="closeKebab();openBugReport()">🐞 Meld een bug</button>
         <button class="kebab-item" onclick="closeKebab();openLogboek()">📜 Logboek</button>
+        <!-- Versie en verversen (24-11-2026): hetzelfde als op het inlogscherm. -->
+        <button class="kebab-item kb-versie" id="kbVersie" onclick="plHardReload(this)">🔄 Nieuwste versie laden<span class="kb-versie-nr" id="kbVersieNr"></span></button>
         <div class="kebab-sep"></div>
         <!-- 🛠️ ADMIN — één uitklapbare regel (2026-07-26). "Live view" stond
              hier los voor beheer; dat is sinds 29-09 de tab Live. -->

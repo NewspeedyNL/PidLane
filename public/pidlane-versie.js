@@ -45,6 +45,17 @@
     return !o.verbonden && !o.intro && o.zichtbaar !== false;
   }
 
+  /* Wat de vaste plekken zeggen (24-11-2026): de knop op het inlogscherm en
+     de regel in het menu. Zonder nieuwe versie: gewoon verversen. Met: hij
+     licht op, ook als de kaart er niet mag zijn (verbonden, Later gekozen) —
+     dan zie je het daar toch. Puur. */
+  function labels(nieuw, versie) {
+    var v = versie ? 'v' + versie : '';
+    return nieuw
+      ? { knop: '✨ Nieuwe versie klaar — nu laden', menu: '✨ Nieuwe versie klaar — laden', nr: v, nieuw: true }
+      : { knop: '🔄 Nieuwste versie laden', menu: '🔄 Nieuwste versie laden', nr: v, nieuw: false };
+  }
+
   // ── omgeving ─────────────────────────────────────────────────────
   function el(id) { return document.getElementById(id); }
   function isVerbonden() { try { return typeof connected !== 'undefined' && !!connected; } catch (e) { console.warn('PLVersie: connected niet te lezen', e); return false; } }
@@ -99,8 +110,24 @@
   }
   function verberg() { var k = el('plVersie'); if (k) k.hidden = true; }
 
+  function appVersie() { try { return typeof APP_VERSION !== 'undefined' ? String(APP_VERSION) : ''; } catch (e) { console.warn('PLVersie: APP_VERSION niet te lezen', e); return ''; } }
+  /* De knop op het inlogscherm en de regel in het menu bijwerken. */
+  function markeer() {
+    var l = labels(nieuwer(_geladen, _live), appVersie());
+    var k = el('plFrisBtn');
+    if (k && !k.disabled) { k.textContent = l.knop; k.classList.toggle('nieuw', l.nieuw); }
+    var m = el('kbVersie');
+    if (m) {
+      m.classList.toggle('nieuw', l.nieuw);
+      if (m.firstChild && m.firstChild.nodeType === 3) m.firstChild.nodeValue = l.menu;
+    }
+    var nr = el('kbVersieNr'); if (nr) nr.textContent = l.nr;
+    return l;
+  }
+
   /* Kaart tonen als het mag; anders blijft hij wachten tot het wel mag. */
   function beoordeel() {
+    markeer();
     var s = staat();
     if (!s.nieuw || (s.later && s.later === s.live)) { stopTik(); verberg(); return false; }
     if (magTonen(s)) { stopTik(); kaart().hidden = false; return true; }
@@ -141,6 +168,7 @@
   }
 
   function start() {
+    try { markeer(); } catch (e) { console.warn('PLVersie: de versieregel is niet gezet', e); }
     controleer();
     try {
       document.addEventListener('visibilitychange', function () { if (zichtbaar()) controleer(); });
@@ -149,9 +177,9 @@
   }
 
   window.PLVersie = {
-    start: start, controleer: controleer, nu: nu, later: later,
+    start: start, controleer: controleer, nu: nu, later: later, markeer: markeer,
     staat: function () { var s = staat(); s.geladen = _geladen; s.kaart = !!(el('plVersie') && !el('plVersie').hidden); return s; },
-    _kern: { nieuwer: nieuwer, magTonen: magTonen, ADRES: ADRES }
+    _kern: { nieuwer: nieuwer, magTonen: magTonen, labels: labels, ADRES: ADRES }
   };
   if (!window.PLVERSIE_HANDMATIG) start();
 })();
