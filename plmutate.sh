@@ -3081,7 +3081,7 @@ MUTATIES=(
 "public/pidlane-checkopmaak.js@@  el.className='plc-ov';@@  el.className='pl-check';@@test-checkopmaak.js@@de checkpagina's krijgen de klasse van de knop Check mijn auto en worden een knop"
 "public/pidlane-nav.js@@'langeRitDash', 'onderhoudDash'];@@'langeRitDash'];@@test-nav.js@@de navigatiebalk staat over de onderhoudspagina heen"
 "public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }@@@@bproef-volscherm.js@@bij Hyperlane ligt het trekpaneel over het middengetal heen"
-"public/pidlane.css@@  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(100dvh - 320px)); }@@@@bproef-vulling.js@@staand is Hyperlane in de gewone weergave weer een liggende strook met ringen van 140 px"
+"public/pidlane.css@@  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(var(--pl-vh) - 320px)); }@@@@bproef-vulling.js@@staand is Hyperlane in de gewone weergave weer een liggende strook met ringen van 140 px"
 "public/pidlane.css@@  body:not(.pl-vis-vol) .vpf-glas .vpf-tube { flex:1; height:auto; min-height:170px; width:14px; }@@@@bproef-vulling.js@@de buizen van Temperatuur blijven 170 px en de onderste helft van het scherm leeg"
 "public/pidlane-visueel.js@@function trekRijTonen(rol, pid){ return !!pid || rol==='koel'; }@@function trekRijTonen(rol, pid){ return true; }@@test-visueel.js@@een sensor die de auto niet heeft staat als lege rij met een streep in het trekpaneel"
 "public/pidlane.css@@.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@.vis-leds { display:none; }\n.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@bproef-visueel.js@@de schakellampjes staan in de tekening maar zijn nooit te zien"

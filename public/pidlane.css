@@ -2369,7 +2369,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
    opbouw van het volle scherm over: ringen naast elkaar, het midden eronder.
    Liggend en op volledig scherm verandert er niets. */
 @media (orientation:portrait) {
-  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(100dvh - 320px)); }
+  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(var(--pl-vh) - 320px)); }
   body:not(.pl-vis-vol) .vpf-hyper .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"l r" "m m"; grid-template-rows:auto 1fr;
     align-content:stretch; justify-items:center; column-gap:2cqw; gap:1.5cqh; padding:4cqh 0 9cqh; }
   body:not(.pl-vis-vol) .vpf-hyper .vhl-pod { width:min(46cqw, 30cqh); }
@@ -2390,7 +2390,7 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   /* Het standmenu onder de ringen, niet eroverheen. */
   body:not(.pl-vis-vol) .vpf-hyper .vhl-standmenu { top:37%; }
   /* Temperatuur (glas) en Verbruik (digitaal): de kaart vult, de inhoud groeit mee. */
-  body:not(.pl-vis-vol) .vpf-glas, body:not(.pl-vis-vol) .vpf-digitaal { display:flex; flex-direction:column; min-height:max(440px, calc(100dvh - 320px)); }
+  body:not(.pl-vis-vol) .vpf-glas, body:not(.pl-vis-vol) .vpf-digitaal { display:flex; flex-direction:column; min-height:max(440px, calc(var(--pl-vh) - 320px)); }
   body:not(.pl-vis-vol) .vpf-glas .vpf-buizen { flex:1; align-items:stretch; }
   body:not(.pl-vis-vol) .vpf-glas .vpf-buis { justify-content:flex-end; }
   body:not(.pl-vis-vol) .vpf-glas .vpf-tube { flex:1; height:auto; min-height:170px; width:14px; }
