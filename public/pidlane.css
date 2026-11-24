@@ -2387,6 +2387,8 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body:not(.pl-vis-vol) .vpf-hyper .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
   body:not(.pl-vis-vol) .vpf-hyper .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
   body:not(.pl-vis-vol) .vpf-hyper .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }
+  /* Het standmenu onder de ringen, niet eroverheen. */
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-standmenu { top:37%; }
   /* Temperatuur (glas) en Verbruik (digitaal): de kaart vult, de inhoud groeit mee. */
   body:not(.pl-vis-vol) .vpf-glas, body:not(.pl-vis-vol) .vpf-digitaal { display:flex; flex-direction:column; min-height:max(440px, calc(100dvh - 320px)); }
   body:not(.pl-vis-vol) .vpf-glas .vpf-buizen { flex:1; align-items:stretch; }
