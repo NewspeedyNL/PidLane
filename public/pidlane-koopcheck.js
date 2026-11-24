@@ -1249,10 +1249,14 @@ function openEVCheck(){
   const ft=(typeof vehicleFuelType==='function')?vehicleFuelType():'';
   const isEV = ft==='elektrisch'||ft==='hybride';
   ov.innerHTML=C.pagina(
-    C.kop({ icoon:'🔋', titel:'Accu & elektrisch systeem', sluit:"closeExtraDash('evDash')",
-            tekst:C.esc(v.merk?`${v.merk} ${v.model||''}`:'Verbind eerst de adapter')+' — verkorte analyse stilstaand, daarna een korte rit van 2 minuten met focus op accu en aandrijving.' })+
-    (!isEV ? C.tip("Deze auto lijkt geen EV/hybride. Veel accu-PID's zijn fabrieksspecifiek en mogelijk niet via standaard OBD2 beschikbaar — de analyse gebruikt wat de auto levert.", 'let') : '')+
-    C.tip("De check kijkt naar accuspanning/HV-systeem, laadgedrag, regeneratie en temperatuur waar beschikbaar. Standaard OBD2 toont beperkte EV-data; merk-specifieke PID's kunnen ontbreken.")+
+    // Tekst per aandrijving (24-11-2026): een benzineauto kreeg hier een oranje
+    // waarschuwing dat hij "geen EV/hybride lijkt", en een uitleg over het
+    // HV-systeem dat hij niet heeft.
+    C.kop({ icoon:'🔋', titel:isEV ? 'Accu & elektrisch systeem' : 'Accu & laadsysteem', sluit:"closeExtraDash('evDash')",
+            tekst:C.esc(v.merk?`${v.merk} ${v.model||''}`:'Verbind eerst de adapter')+' — eerst stilstaand, daarna eventueel een korte rit van 2 minuten.' })+
+    C.tip(isEV
+      ? "We kijken naar de aandrijfaccu, het laadgedrag, terugwinnen en de temperatuur, voor zover de auto die via OBD2 geeft. Merkspecifieke waarden kunnen ontbreken."
+      : "We meten de 12V-accu en het laadsysteem: de rustspanning, de laadspanning van de dynamo en hoe ver de spanning zakt onder belasting.")+
     C.knop('⚡ Stilstaande analyse', 'runEVCheck()')+
     C.knop('🚗 + 2 min rit erbij', 'runEVCheckRit()', 'sec')+
     '<div id="evResult" class="plc-resultaat"></div>');

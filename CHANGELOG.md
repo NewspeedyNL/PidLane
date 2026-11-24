@@ -15,6 +15,7 @@
    • Gewone weergave, staand: Hyperlane neemt de staande opbouw van het volle scherm over (ringen naast elkaar, midden eronder) in plaats van een 2:1-strook met ringen van 140 px
    • Temperatuur (buizen groeien mee) en Verbruik (groter getal, ruimere rijen) vullen de hoogte tot de knoppen; liggend en volledig scherm ongewijzigd
    • bproef-vulling.js met twee mutaties
+   • Accucheck: een benzine- of dieselauto heet hier Accu & laadsysteem en krijgt geen oranje "lijkt geen EV/hybride"-waarschuwing meer
 
  ═════════════════════════════════════════════════════
  24-11-2026 — Versie 3.6.0 voor de release; versie en verversen altijd in beeld
