@@ -1952,6 +1952,7 @@ MUTATIES=(
 "public/pidlane-uitgebreid.js@@starter|service battery)/.test(n)) return null;@@starter|service battery)/.test(n)) return 'soh';@@test-hvaccu.js@@een 12V-accu met een state of health telt als de HV-accu"
 "public/nepauto.js@@      if (gekozen !== proto && !op29()) {@@      if (gekozen !== proto) {@@test-hvaccu.js@@de gemengde bus van de nep-Volvo zwijgt ook op protocol 7"
 # Dienstenstand (20-11-2026, RDW 530): welke dienst stoort, één melding per omslag.
+"worker.js@@    const incident = (Array.isArray(j.incidents) ? j.incidents : []).find((i) => i && Array.isArray(i.components) && i.components.some((c) => c && c.name === "Claude API"));@@    const incident = (Array.isArray(j.incidents) ? j.incidents : [])[0];@@test-dienst.js@@elk incident op de statuspagina telt als AI-storing, ook een inlogprobleem bij claude.ai"
 "public/pidlane-dienst.js@@      if (mis >= DIENST_MIS_ROOD) s.server@@      if (mis >= 1) s.server@@test-dienst.js@@één gemiste check op 5G en de bovenbalk zegt al dat de server weg is"
 "public/pidlane-dienst.js@@      if (!was[m.dienst] && !_gemeld[m.dienst]) {@@      if (true) {@@test-dienst.js@@elke check van vijf minuten herhaalt dezelfde storingsmelding"
 "public/pidlane-dienst.js@@    if (online === false) return [{ dienst: 'net'@@    if (online === null) return [{ dienst: 'net'@@test-dienst.js@@zonder internet staan er drie storingen in plaats van één: geen internet"

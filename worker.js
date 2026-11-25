@@ -1555,7 +1555,7 @@ function dienstAi(h) {
   if (ind === "major" || ind === "critical") return { status: "storing", detail: tekst || ind };
   return { status: "onbekend", detail: "statuspagina niet te lezen" };
 }
-name(dienstAi, "dienstAi");
+__name(dienstAi, "dienstAi");
 async function handleDienst() {
   if (!_dienstStand || Date.now() - _dienstStand.ms > DIENST_CACHE_MS) {
     const [rdw, ai] = await Promise.all([bronHaal(DIENST_RDW_URL), bronHaal(DIENST_AI_URL)]);
