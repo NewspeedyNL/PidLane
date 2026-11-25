@@ -140,6 +140,13 @@ console.log('\n5. Merkcodes en hybride: geen bedrag');
   eis(K.voorCode('P1234') === null && K.kostCode('P3000') === null, 'P1/P3 → geen bedrag');
   eis(K.kostCode('P0A80') === null && s.dtcPlan('P0A80').kost === null, 'P0A80 (hybride) → geen bedrag, ook niet via dtcPlan');
   eis(K.voorCode('onzin') === null && K.voorCode('') === null, 'onzin → null');
+  // De wachter zelf: ook als een nieuwe OBDex-generatie toch een merk- of
+  // hybridecode koppelt, krijgt die geen bedrag.
+  const echt = s.PL_KOSTEN_CODES;
+  s.PL_KOSTEN_CODES = Object.assign({}, echt, { egr: echt.egr + ' P1400 P3401', sensor: echt.sensor + ' P0A80' });
+  K._reset();
+  eis(K.voorCode('P1400') === null && K.voorCode('P3401') === null && K.kostCode('P0A80') === null, 'een gekoppelde merk- of hybridecode krijgt toch geen bedrag');
+  s.PL_KOSTEN_CODES = echt; K._reset();
   const gen = Object.keys(s.PL_KOSTEN_CODES).every(id => s.PL_KOSTEN_CODES[id].split(' ').every(c => /^P[02][0-9A-F]{3}$/.test(c)));
   eis(gen, 'het gegenereerde bestand bevat alleen P0- en P2-codes');
   eis(Object.keys(s.PL_KOSTEN_CODES).every(id => K.KOSTEN[id]), 'elk onderdeel in het gegenereerde bestand staat in KOSTEN');
