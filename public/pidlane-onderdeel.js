@@ -931,6 +931,24 @@ function softwareHtml(adv){
 }
 
 /* ── Weergave ──────────────────────────────────────────────────────────── */
+/* ── WAT KOST DIT? (25-11-2026) ─────────────────────────────────────────
+   Per kandidaat het bedrag uit PLKosten en een knop naar de kostenkaart,
+   met het bewijs van hierboven erbij: de klant ziet in de kaart waaróm de
+   app op dit onderdeel uitkomt. Zonder PLKosten of zonder regel in de
+   prijstabel: niets, geen verzonnen bedrag. */
+function kostenHtml(r){
+  if(!window.PLKosten) return '';
+  var s=PLKosten.schat(r.id);
+  if(!s) return '';
+  _kostBewijs[r.id]=r.voor.slice();
+  return '<button class="od-kost" onclick="PLOnderdeel.kosten(\''+r.id+'\')">💶 '+esc(PLKosten.euro(s.totaal))+
+         ' <span>· Wat betekent dit en wat kost het?</span></button>';
+}
+var _kostBewijs={};
+function kosten(id){
+  if(!window.PLKosten) return false;
+  return PLKosten.open(id, { bewijs: _kostBewijs[id] || null });
+}
 function zekerheid(r){
   var p = r.max? Math.max(0, Math.round(r.score/r.max*100)) : 0;
   if(p>=65) return {t:'sterke aanwijzing', k:'#ef4444'};
@@ -1005,6 +1023,7 @@ function render(){
       h+='</ul>';
       if(r.onbekend) h+='<div class="od-mis">'+r.onbekend+' controle'+(r.onbekend===1?'':'s')+
         ' kon ik niet doen: daar heb ik nu geen meetwaarde voor.</div>';
+      h+=kostenHtml(r);
       h+='</div>';
     });
   }
@@ -1127,7 +1146,7 @@ window.openOnderdeelCheck = function(){
 };
 // Ook los aanroepbaar: handig voor de diagnosebundel en om de
 // uitleesfout-poort te kunnen natoetsen zonder de UI te openen.
-window.PLOnderdeel = { beoordeel:beoordeel, _regels:REGELS, motorLiters:motorLiters, scan:scan, scanMogelijk:scanMogelijk,
+window.PLOnderdeel = { kosten:kosten, beoordeel:beoordeel, _regels:REGELS, motorLiters:motorLiters, scan:scan, scanMogelijk:scanMogelijk,
   busBetrouwbaar:busBetrouwbaar, stilteBeeld:stilteBeeld, railTreffers:railTreffers,
   dtcBron:dtcBron, context:context, cadansRegels:cadansRegels, tellers:TELLER_PIDS,
   software:software, softwareHtml:softwareHtml };

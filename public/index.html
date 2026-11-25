@@ -20,6 +20,8 @@
 <!-- Config — credentials, login, Airtable, versie -->
 <script src="config.js"></script>
 <script src="pidlane-data.js"></script><!-- statische referentiedata (PIDs/DTC/kennisbank) -->
+<script src="pidlane-kostencodes.js"></script><!-- foutcode → onderdeel uit OBDex (gegenereerd door plkostencodes.js) -->
+<script src="pidlane-kosten.js"></script><!-- PLKosten: wat kost dit — prijstabel per onderdeel, schema, kostenkaart; leest DTC_PLAN pas bij aanroep -->
 <script src="pidlane-schoon.js"></script><!-- PLSchoon: schone start en account-reset — vóór elke module die opslag leest: hij wist bij de start wat er bij het afsluiten nog terugkwam -->
 <script src="pidlane-rust.js"></script><!-- PLRust (#691): schermtimers slapen als de app uit beeld is — vóór totalcheck, monitor en bulk -->
 <script src="pidlane-plfetch.js"></script><!-- plFetch: basis-URL, tokenkop, 401 en het serversaldo op één plek (#117) -->

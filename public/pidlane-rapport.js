@@ -51,6 +51,9 @@
   const UITKOMST_KLEUR = { bevestigd: 'rood', waarschijnlijk: 'oranje', onwaarschijnlijk: 'groen', uitgesloten: 'groen', open: 'grijs' };
   const URGENTIE = { direct: 'direct', binnenkort: 'binnenkort', later: 'bij gelegenheid' };
   const URGENTIE_KLEUR = { direct: 'rood', binnenkort: 'oranje', later: 'groen' };
+  const RIJDEN_KLEUR = { stop: 'rood', kort: 'oranje', plannen: 'groen' };
+  // EUR in plaats van € : de standaardletter van jsPDF kent het euroteken niet.
+  const euroTekst = a => Array.isArray(a) ? 'EUR ' + a[0].toLocaleString('nl-NL') + (a[1] !== a[0] ? '–' + a[1].toLocaleString('nl-NL') : '') : '–';
   const KORT = {
     groen: 'Geen urgente problemen gevonden',
     oranje: 'Let op — niet direct kritiek',
@@ -384,6 +387,16 @@
     if (f.advies.length) concl.push({ soort: 'tabel', titel: 'Aanbevelingen', kop: ['Wat', 'Wanneer'], breedtes: [0.75, 0.25], statusKol: 1,
       rijen: f.advies.map(a => ({ cellen: [a.wat, a.urgentie ? URGENTIE[a.urgentie] : '–'], kleur: a.urgentie ? URGENTIE_KLEUR[a.urgentie] : null })) });
     if (f.nameten.length) concl.push({ soort: 'lijst', titel: 'Nog na te meten door een monteur', items: f.nameten });
+    // Wat het kan kosten (PLKosten, 25-11-2026). De rijen maakt uitApp() uit
+    // de foutcodes en de onderdeelaanwijzer; de AI raakt geen bedrag aan.
+    const ko = c.kosten && Array.isArray(c.kosten.rijen) ? c.kosten : null;
+    if (ko && ko.rijen.length) {
+      concl.push({ soort: 'tabel', titel: 'Wat het kan kosten (indicatie)', kop: ['Onderdeel', 'Indicatie', 'Rijden'], breedtes: [0.5, 0.3, 0.2], statusKol: 2,
+        rijen: ko.rijen.map(r => ({ cellen: [r.naam + (r.codes && r.codes.length ? ' (' + r.codes.join(', ') + ')' : ''), euroTekst(r.totaal) + (r.alt ? ' — vaak ' + euroTekst(r.alt.totaal) : ''), r.rijdenKort || '–'],
+                                     kleur: RIJDEN_KLEUR[r.rijden] || null })) });
+      concl.push({ soort: 'tekst', klein: true, tekst: 'Onderdeel plus werkuren tegen het uurtarief van ' + tekst(ko.tarief) + ', incl. btw, prijspeil ' + tekst(ko.peil) +
+        '. "Vaak" is de goedkopere route die vaak volstaat. Een indicatie, geen offerte: de garage stelt de prijs vast.' });
+    }
     if (f.bron === 'tekst' && (f.conclusie || f.advies.length)) concl.push({ soort: 'tekst', klein: true, tekst: 'Conclusie en advies zijn uit de koppen van de AI-tekst gehaald; de volledige tekst staat in bijlage B.' });
     if (ai.fout) concl.push({ soort: 'tekst', klein: true, tekst: 'Let op: ' + ai.fout + '.' });
     sectie('Conclusie en aanbevelingen', concl);
@@ -509,15 +522,30 @@
     // Het stoplicht dat renderAIText() al toonde (aiVerdict). Opnieuw
     // berekenen zou de telemetrie van dat oordeel dubbel tellen.
     const verdict = { green: 'groen', amber: 'oranje', red: 'rood' }[rep.oordeel] || null;
+    let kosten = null;
+    try { kosten = kostenUit(dtc); } catch (e) { console.warn('PLRapport: kostenindicatie niet te maken', e); }
     const ctx = {
-      ts, voertuig: v, garage: garage || {}, kenteken, recall, dtc, readiness,
+      ts, voertuig: v, garage: garage || {}, kenteken, recall, dtc, readiness, kosten,
       meting,
       def: pid => (typeof getPidDef === 'function' ? getPidDef(pid) : null),
       S: window.PLSamenhang || null, grens, ai: { text: rep.text || '' }, verdict,
       disclaimer: typeof RAPPORT_DISCLAIMER !== 'undefined' ? RAPPORT_DISCLAIMER : ''
     };
-    if (ext) Object.assign(ctx, { voertuig: ext.voertuig || {}, garage: {}, kenteken: '', recall: null, dtc: null, readiness: null });
+    if (ext) Object.assign(ctx, { voertuig: ext.voertuig || {}, garage: {}, kenteken: '', recall: null, dtc: null, readiness: null, kosten: null });
     return ctx;
+  }
+
+  /* De kostenrijen voor hoofdstuk 7: eerst de onderdelen die PLOnderdeel nu
+     aanwijst (met bewijs), dan de foutcodes. Dubbelen vallen samen in
+     PLKosten.rapportRijen. Geen PLKosten = geen tabel. */
+  function kostenUit(dtc) {
+    if (!window.PLKosten) return null;
+    const items = [];
+    if (window.PLOnderdeel && typeof PLOnderdeel.beoordeel === 'function') PLOnderdeel.beoordeel().forEach(r => items.push({ id: r.id }));
+    if (dtc) [].concat(dtc.bevestigd || [], dtc.pending || [], dtc.permanent || []).forEach(c => items.push({ code: c }));
+    const t = PLKosten.tarief();
+    return { rijen: PLKosten.rapportRijen(items), tarief: t.naam.toLowerCase() + ' (EUR ' + t.exBtw + ' excl. btw per uur)',
+             peil: new Date(PLKosten.PEIL + 'T12:00:00').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' }) };
   }
 
   /* Het logo als dataURL voor jsPDF. Via een <img> en een canvas, niet met

@@ -14,6 +14,44 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 25-11-2026 — Wat kost dit? Waarom de bedragen zo tot stand komen
+
+**De vraag.** Na "wat is er mis" vraagt de klant "wat kost het en mag ik nog
+rijden". De app had daar al een antwoord op, per codefamilie (`DTC_PLAN`,
+14-10-2026), maar zonder herkomst. Een kostenkaart erbij met eigen bedragen
+zou een tweede lijst zijn geweest — dezelfde vorm die §11 en
+`PIDLANE-WERK.md` de kop kostte. Daarom is `PLKosten` de enige bron geworden
+en wijst `DTC_PLAN` naar een onderdeel. Alleen families zonder aanwijsbaar
+onderdeel (P013/P014 laten de code beslissen, P021, P050, C1) houden een
+eigen bedrag.
+
+**Wat er onderzocht is en waarom het niet werd.**
+- *Een betaalde API.* CarMD geeft per code een bedrag, maar Amerikaans en in
+  dollars. JD Power (Autovista/Eurotax) dekt Europa, alleen met contract en
+  zonder bevestigde codezoekfunctie. Voor Autobutler en Vroomly is geen
+  openbare API gevonden.
+- *Alleen OBDex.* De data is CC0 en heeft per code een bedrag in euro's,
+  maar de verhouding hoog/laag is bij de helft van de codes 15× of meer
+  (€80–€1.800) en er staat niet bij hoe het bedrag tot stand kwam. Gebruikt
+  voor de koppeling code → onderdeel en als controle op de werkuren; niet
+  voor het bedrag.
+- *OBDex blind volgen.* OBDex zet bij P0171 (systeem te arm) de lambdasonde
+  vooraan. Dat is de sensor die het meldt, niet de oorzaak; de familie zegt
+  vacuümlek. Daarom wint het familie-onderdeel van OBDex.
+
+**Waar de bedragen op rusten.** Nederlandse totaalprijzen waar ze er waren
+(ANWB, Werkspot, idgarages), anders onderdeelprijzen (Autodoc) plus de
+werkuren van OBDex. Bij elke regel staat welke; AdBlue, NOx-sensor en het
+stuurapparaat zijn schattingen en zeggen dat. Het uurtarief: €85 excl. btw
+voor een universele garage (RAI Aftermarket, augustus 2026). Voor de dealer
+zegt dezelfde bron alleen "ruim boven €100"; €110 is een aanname en de
+kostenkaart zegt dat erbij.
+
+**Wat bewust niet gebouwd is.** Een offerte-aanvraag via de Worker (vraagt
+een mailkoppeling en nieuwe privacytekst) en synchronisatie van het
+uurtarief met het account (dan moet `VOORKEUR_SPEC` en `KP_VOORKEUR` in
+`worker.js` mee). Het tarief staat per toestel.
+
 ## 24-11-2026 — Releasecheck 3.6.0: wat er gemeten is en wat er bleef liggen
 
 **Weergaves.** Alle hoofdschermen zijn in de demo op 412×892 vastgelegd. Ondermaats waren Hyperlane, Temperatuur en Verbruik in de gewone weergave, staand. Hyperlane had `aspect-ratio:2/1` voor het vak, en dat gaf staand een strook van 186 px hoog met ringen van 140 px. Temperatuur had buizen met een vaste hoogte van 170 px, en Verbruik stond op een kaart zonder minimumhoogte; bij allebei bleef de onderste helft leeg. Volledig scherm had dit al opgelost (16-11, staande opbouw). De gewone weergave nam dat niet over omdat elke regel onder `body.pl-vis-vol` stond. Bewaakt door `bproef-vulling.js`.

@@ -120,7 +120,9 @@
         kmMetMil: getal(obd.kmMetMil) ? obd.kmMetMil : null,
         odoKm: getal(obd.odoKm) && obd.odoKm > 0 ? obd.odoKm : null
       },
-      ai: tekst(i.ai) || null
+      ai: tekst(i.ai) || null,
+      // PLKosten.rapportRijen() van de gelezen codes (25-11-2026); null = niet gemaakt
+      kosten: i.kosten && Array.isArray(i.kosten.rijen) ? { rijen: i.kosten.rijen.filter(r => r && Array.isArray(r.totaal)), tarief: tekst(i.kosten.tarief), peil: tekst(i.kosten.peil) } : null
     };
   }
 
@@ -429,6 +431,21 @@
   // ── HET MODEL VOOR DE PDF ──────────────────────────────────────────
   /* Geeft een model in de vorm van PLRapport.model(), zodat PLRapport.pdf()
      het tekent. */
+  /* Wat de gelezen foutcodes kunnen kosten — voor de koper een
+     onderhandelingsargument. De som is van onder- en bovenkant apart: dat is
+     een ruime bandbreedte, en zo staat het er ook. */
+  function kostenBlokken(k) {
+    if (!k || !k.rijen.length) return [];
+    const eur = a => 'EUR ' + a[0].toLocaleString('nl-NL') + (a[1] !== a[0] ? '–' + a[1].toLocaleString('nl-NL') : '');
+    const som = k.rijen.reduce((s, r) => [s[0] + r.totaal[0], s[1] + r.totaal[1]], [0, 0]);
+    return [
+      { soort: 'tabel', titel: 'Wat deze foutcodes kunnen kosten', kop: ['Onderdeel', 'Codes', 'Indicatie'], breedtes: [0.45, 0.25, 0.3],
+        rijen: k.rijen.map(r => ({ cellen: [tekst(r.naam), lijst(r.codes).join(', ') || '–', eur(r.totaal)] })) },
+      { soort: 'tekst', klein: true, tekst: (k.rijen.length > 1 ? 'Samen ' + eur(som) + '. ' : '') +
+        'Neem dit mee in de onderhandeling, en laat een garage het vaststellen. Uurtarief: ' + (k.tarief || 'onbekend') + ', incl. btw, prijspeil ' + (k.peil || 'onbekend') + '. Een indicatie, geen offerte.' }
+    ];
+  }
+
   function model(inv) {
     const v = normaliseer(inv);
     const check = invoerCheck(inv);
@@ -478,7 +495,7 @@
         ['Warm-ups sinds wissen', o.warmupsSindsWissen !== null ? String(o.warmupsSindsWissen) : 'niet gegeven'],
         ['Zelftests', o.readiness ? (o.readiness.monitors.length - lijst(o.readiness.nietGereed).length) + ' van ' + o.readiness.monitors.length + ' afgerond' : 'niet gelezen'],
         ['Monitortests', o.mode06 ? tekst(o.mode06.tekst) : 'niet gelezen']
-      ] }] },
+      ] }, ...kostenBlokken(v.kosten)] },
       { nr: 4, titel: 'Kilometerstand', blokken: [{ soort: 'kv', regels: [
         ['Dashboard', v.opgegevenKm ? nl(v.opgegevenKm) + ' km' : 'niet ingevoerd'],
         ['Motorcomputer (01A6)', o.odoKm ? nl(o.odoKm) + ' km' : 'niet gegeven'],
@@ -578,6 +595,15 @@
     }
 
     inv.plaats = op.plaats || null;
+    try {
+      const d = inv.obd && inv.obd.dtc;
+      if (window.PLKosten && d) {
+        const t = PLKosten.tarief();
+        inv.kosten = { rijen: PLKosten.rapportRijen([].concat(d.actief || [], d.pending || [], d.permanent || []).map(c => ({ code: c }))),
+                       tarief: t.naam.toLowerCase() + ' (EUR ' + t.exBtw + ' excl. btw per uur)',
+                       peil: new Date(PLKosten.PEIL + 'T12:00:00').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' }) };
+      }
+    } catch (e) { diag('kostenindicatie niet gemaakt (' + (e.message || e) + ')', 'warn'); }
     return inv;
   }
 

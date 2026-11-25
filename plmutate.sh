@@ -1728,6 +1728,16 @@ MUTATIES=(
 "public/pidlane-bt.js@@  base.plan=(!_implausibleMisfire(code)&&typeof dtcPlan@@  base.plan=(typeof dtcPlan@@test-dtcplan.js@@een onmogelijke misfire (cilinder 6 op een viercilinder) krijgt toch een reparatieplan"
 "public/pidlane-foutcodes.js@@'<li>' + esc(t) + '</li>'@@'<li>' + t + '</li>'@@test-dtcplan.js@@stappen ongeëscapet in het venster"
 "public/pidlane-bt.js@@  if(typeof DTC_OMSCHRIJVING!=='undefined'&&DTC_OMSCHRIJVING[code]) return@@  if(false) return@@test-dtcomschrijving.js@@P0421, P2096 en de UDS-codes heten weer \"Onbekende code\" (Mazda CX-5, 15-10-2026)"
+# ── Wat kost dit? (PLKosten, pidlane-kosten.js, 25-11-2026). Zes stille fouten
+# in het bedrag: de btw kwijt, het tarief niet begrensd, OBDex vóór de familie,
+# een tweede bron in dtcPlan, een merkcode met een bedrag, de som in het
+# aankooprapport van alleen de bovenkant.
+"public/pidlane-kosten.js@@    var uur = t.exBtw * (1 + BTW);\n    return [rond5(@@    var uur = t.exBtw;\n    return [rond5(@@test-kosten.js@@de btw valt weg uit de arbeid: elk bedrag is een vijfde te laag"
+"public/pidlane-kosten.js@@isFinite(r.exBtw) && r.exBtw >= TARIEF_MIN && r.exBtw <= TARIEF_MAX)@@isFinite(r.exBtw))@@test-kosten.js@@een tikfout in het eigen tarief (5000) rekent mee in plaats van terug te vallen"
+"public/pidlane-kosten.js@@    if (f && f.onderdeel && KOSTEN[f.onderdeel]) return { onderdeel: f.onderdeel, via: 'familie' };@@@@test-kosten.js@@OBDex wint van de familie: P0171 (te arm) wordt een lambdasonde in plaats van een vacuümlek"
+"public/pidlane-data.js@@      if (window.PLKosten && typeof PLKosten.kostCode === 'function') kost = PLKosten.kostCode(c);\n      else if (p.kost)@@      if (p.kost)@@test-kosten.js@@dtcPlan rekent weer met een eigen bedrag: de foutcodelijst en de kostenkaart zeggen iets anders"
+"public/pidlane-kosten.js@@    if (/^P[13]/.test(c) || /^P0A/.test(c)) return@@    if (false) return@@test-kosten.js@@een merkcode of hybridecode krijgt een generiek bedrag via OBDex of de familie"
+"public/pidlane-aankooprapport.js@@[s[0] + r.totaal[0], s[1] + r.totaal[1]]@@[s[0] + r.totaal[1], s[1] + r.totaal[1]]@@test-kosten.js@@de som in het aankooprapport telt de bovenkant twee keer: de koper ziet geen ondergrens"
 "public/pidlane-bt.js@@(d==='1'||(d==='3'&&c[2]<'4'))@@(d==='1')@@test-dtcomschrijving.js@@P30–P33 heten weer generiek terwijl ze per merk verschillen"
 "public/pidlane-bt.js@@  const st=bron?'':_dtcStructuur(code);@@  const st='';@@test-dtcomschrijving.js@@een onbekende code zegt weer niets over wat voor code het is"
 # ── Mijn voertuigen (klantplatform, 27-09-2026). Worker: de fouten die een
