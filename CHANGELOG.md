@@ -10,6 +10,11 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 25-11-2026 — Dienststatus AI kijkt naar de Claude API, niet naar de hele statuspagina
+ ═════════════════════════════════════════════════════
+   • worker.js: /v1/dienst leest status.claude.com/api/v2/summary.json; storing/verstoord volgt de component "Claude API" en incidenten die hem raken. Zonder die component: terugval op de algemene indicator
+
+ ═════════════════════════════════════════════════════
  24-11-2026 — Staand vult de meter het scherm: Hyperlane, Temperatuur en Verbruik
  ═════════════════════════════════════════════════════
    • Gewone weergave, staand: Hyperlane neemt de staande opbouw van het volle scherm over (ringen naast elkaar, midden eronder) in plaats van een 2:1-strook met ringen van 140 px
