@@ -2360,6 +2360,46 @@ body.pl-vis-vol .vis:has(.vpf-hyper) .vis-meldingen, body.pl-vis-vol .vis:has(.v
   body.pl-vis-vol .vhl-tegel b { font-size:5.4cqh; } body.pl-vis-vol .vhl-tegel small, body.pl-vis-vol .vhl-tegel span { font-size:1.4cqh; }
   body.pl-vis-vol .vhl-score-kop { font-size:1.8cqh; }
 }
+/* ══ STAAND, GEWONE WEERGAVE: DE METER VULT HET SCHERM (24-11-2026) ═══
+   Hyperlane was hier een liggende strook (2:1) met ringen van 140 px en
+   tekst van een paar pixels; Temperatuur en Verbruik lieten de onderste helft
+   leeg. Staand vult de meter nu de ruimte tussen de lampjesbalk en de knoppen
+   eronder (de hoogte van het scherm min de bovenbalk, de tabs, de lampjes,
+   de knoppen en de navigatie: samen ± 320 px). Hyperlane neemt de staande
+   opbouw van het volle scherm over: ringen naast elkaar, het midden eronder.
+   Liggend en op volledig scherm verandert er niets. */
+@media (orientation:portrait) {
+  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(var(--pl-vh) - 320px)); }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:"l r" "m m"; grid-template-rows:auto 1fr;
+    align-content:stretch; justify-items:center; column-gap:2cqw; gap:1.5cqh; padding:4cqh 0 9cqh; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-pod { width:min(46cqw, 30cqh); }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-pod.l { grid-area:l; transform:rotateY(calc(14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-pod.r { grid-area:r; transform:rotateY(calc(-14deg + var(--vhl-ty))) rotateX(calc(-1 * var(--vhl-tx))) translateZ(-20px); }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-mid { grid-area:m; flex:none; width:100%; align-self:center; gap:1.6cqh; padding:2cqh 4cqw; transform:none; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-held-w { font-size:min(11cqh, 26cqw); }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-held-e, body:not(.pl-vis-vol) .vpf-hyper .vhl-gear { font-size:2.2cqh; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-held-l, body:not(.pl-vis-vol) .vpf-hyper .vhl-merk { font-size:1.6cqh; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-modus { font-size:2cqh; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-strook { font-size:min(2.4cqh, 4.6cqw); gap:7cqw; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-leds { gap:min(2.5cqw, 3%); max-width:70cqw; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-leds i { flex-basis:3.6cqw; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-tank { left:16cqw; right:16cqw; bottom:2.4cqh; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-tank-label { font-size:3.4cqw; gap:4cqw; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-score { width:88cqw; padding:2.4cqh 4cqw; }
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-score-tegels > .vhl-tegel { flex-basis:50%; }
+  /* Het standmenu onder de ringen, niet eroverheen. */
+  body:not(.pl-vis-vol) .vpf-hyper .vhl-standmenu { top:37%; }
+  /* Temperatuur (glas) en Verbruik (digitaal): de kaart vult, de inhoud groeit mee. */
+  body:not(.pl-vis-vol) .vpf-glas, body:not(.pl-vis-vol) .vpf-digitaal { display:flex; flex-direction:column; min-height:max(440px, calc(var(--pl-vh) - 320px)); }
+  body:not(.pl-vis-vol) .vpf-glas .vpf-buizen { flex:1; align-items:stretch; }
+  body:not(.pl-vis-vol) .vpf-glas .vpf-buis { justify-content:flex-end; }
+  body:not(.pl-vis-vol) .vpf-glas .vpf-tube { flex:1; height:auto; min-height:170px; width:14px; }
+  body:not(.pl-vis-vol) .vpf-glas .vpf-buis .vpf-w { font-size:28px; }
+  body:not(.pl-vis-vol) .vpf-digitaal { justify-content:space-evenly; }
+  body:not(.pl-vis-vol) .vpf-digitaal .vpf-lcd-groot .vpf-w { font-size:min(96px, 24vw); }
+  body:not(.pl-vis-vol) .vpf-digitaal .vpf-lcd-rijen { gap:28px 18px; }
+  body:not(.pl-vis-vol) .vpf-digitaal .vpf-lcd-rij .vpf-w { font-size:36px; }
+}
 /* Scènes (data-scene, gezet door de lus): de randstroken en de modusregel. */
 .vpf-hyper[data-scene="koud"] .vhl-rand { background:linear-gradient(transparent, #9adcff, #e6f6ff); box-shadow:0 0 22px #8fd0ff;
   transform:scaleY(var(--vhl-warm, 1)); transform-origin:bottom; opacity:.9; }
@@ -3279,6 +3319,14 @@ body:has(#loginOv.hidden):has(#connOv.hidden) #lgWaveBg{ display:none; }
 .ov#loginOv .lg-nieuw b{ color:var(--bl); font-weight:800; }
 .ov#loginOv .lg-foot{ margin-top:18px; font-size:11.5px; line-height:1.65; }
 .ov#loginOv .lg-fris{ font-size:11.5px; padding:6px 14px; }
+/* Versie en verversen altijd in beeld (24-11-2026), los onder de kaart. Bij
+   een nieuwere deploy (PLVersie.markeer) licht de knop op. */
+.ov#loginOv .lg-versie{ position:relative; z-index:1; flex:0 0 auto; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; margin-top:16px; color:var(--tx3); font-size:12px; }
+.ov#loginOv .lg-fris{ min-height:36px; }
+.ov#loginOv .lg-fris.nieuw{ border-color:var(--gn); color:var(--gn); background:rgba(0,255,136,.08); font-weight:700; }
+.kebab-item.kb-versie{ display:flex; align-items:center; gap:8px; }
+.kebab-item.kb-versie .kb-versie-nr{ margin-left:auto; font-size:12px; color:var(--tx3); font-weight:600; }
+.kebab-menu .kebab-item.kb-versie.nieuw{ color:var(--gn); font-weight:700; }
 
 /* ══════════════════════════════════════════════════════════════════
    VERBINDSCHERM IN DE VORMTAAL VAN HET INLOGSCHERM (26-07-2026)

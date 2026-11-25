@@ -150,6 +150,29 @@ const kaart = (s) => !!(s.elementen.plVersie && !s.elementen.plVersie.hidden);
     toets('het kwartier loopt via PLRust.elke, niet via setInterval', taken.length === 1 && s.intervallen.length === 0, JSON.stringify(taken));
   }
 
+  console.log('\n2b. Inlogscherm en menu (24-11-2026)');
+  {
+    const L = laad().PLVersie._kern.labels;
+    toets('zonder nieuwe versie: gewoon verversen, met het nummer', L(false, '3.6.0').knop === '🔄 Nieuwste versie laden' && L(false, '3.6.0').nr === 'v3.6.0');
+    toets('met nieuwe versie: licht op', L(true, '3.6.0').nieuw && /Nieuwe versie klaar/.test(L(true, '3.6.0').knop) && /Nieuwe versie klaar/.test(L(true, '3.6.0').menu));
+    const s = laad({ verbonden: true });
+    s.APP_VERSION = '3.6.0';
+    const knop = { textContent: '', disabled: false, cls: {}, classList: { toggle(c, aan) { knop.cls[c] = !!aan; } } };
+    const tekst = { nodeType: 3, nodeValue: '' };
+    const menu = { firstChild: tekst, cls: {}, classList: { toggle(c, aan) { menu.cls[c] = !!aan; } } };
+    const nr = { textContent: '' };
+    Object.assign(s.elementen, { plFrisBtn: knop, kbVersie: menu, kbVersieNr: nr });
+    await s.PLVersie.controleer();
+    s.PLVersie.markeer();
+    toets('het nummer staat in het menu', nr.textContent === 'v3.6.0', nr.textContent);
+    toets('zelfde versie: knop niet opgelicht', knop.cls.nieuw === false && /Nieuwste versie laden/.test(knop.textContent));
+    s.antwoord = 'B';
+    await s.PLVersie.controleer();
+    toets('nieuwe deploy, verbonden (geen kaart): knop en menu lichten tóch op', !kaart(s) && knop.cls.nieuw === true && menu.cls.nieuw === true && /klaar/.test(tekst.nodeValue), JSON.stringify({ k: knop.cls, m: menu.cls, t: tekst.nodeValue }));
+    s.PLVersie.later();
+    toets('Later: de knop blijft zeggen dat er een nieuwe is', knop.cls.nieuw === true);
+  }
+
   console.log('\n3. De worker en wrangler.toml');
   {
     const w = fs.readFileSync(path.join(__dirname, '..', 'worker.js'), 'utf8');

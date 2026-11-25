@@ -463,7 +463,7 @@ MUTATIES=(
 # dode link in een verplicht veld, een afvinklijst die een oude versie
 # bevestigt, en het woord dat de hele Data safety-form onjuist maakt.
 "PLAY-INZENDING.md@@\`\`\`\nhttps://app.pidlane.nl/privacy.html\n\`\`\`@@\`\`\`\nhttps://pidlane.nl/privacy.html\n\`\`\`@@test-playteksten.js@@de privacy-URL wijst naar een andere host dan de app zelf gebruikt"
-"package.json@@  \"version\": \"3.5.0\",@@  \"version\": \"3.6.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
+"package.json@@  \"version\": \"3.6.0\",@@  \"version\": \"3.7.0\",@@test-playteksten.js@@de afvinklijst bevestigt een versienummer dat niet meer gebouwd wordt"
 "PLAY-INZENDING.md@@| URL | \`https://app.pidlane.nl/verwijderen.html\` |@@| URL | \`https://pidlane.nl/verwijderen.html\` |@@test-playteksten.js@@de verwijder-URL wijst naar een andere host dan de app zelf gebruikt"
 "PLAY-INZENDING.md@@## 8. Ads@@De gedeelde meetdata is geanonimiseerd.\n\n## 8. Ads@@test-playteksten.js@@het inzenddocument noemt de meetdata weer anoniem in plaats van gepseudonimiseerd"
 # ── de poort voor automerge (03-09-2026) ──
@@ -780,7 +780,7 @@ MUTATIES=(
 # zonder hem in de beschrijving te noemen is precies de vorm die §16 de kop
 # kostte: twee velden die een reviewer allebei leest, met verschillende
 # beloftes. Het valt niemand op tot het in de Console staat.
-"PLAY-INZENDING.md@@Met Accu & laadsysteem en Conditiescore.@@Met Accu & laadsysteem en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
+"PLAY-INZENDING.md@@Met Caravancoach en Aandrijfaccu-check.@@Met Caravancoach en wielophangingsscanner.@@test-playteksten.js@@de release notes beloven een functie die de beschrijving niet opsomt"
 # En andersom: §3 hernoemt een functie, §14 blijft de oude naam beloven. Dat is
 # de stillere van de twee — je verbetert de beschrijving en raakt het veld
 # ernaast niet aan.
@@ -1263,7 +1263,7 @@ MUTATIES=(
 "public/pidlane-hyperlane.js@@(vorig==='ACCELERATIE' ? ACC_UIT_KMHS : ACC_KMHS)@@ACC_KMHS@@test-hyperlane.js@@het hoofdgetal knippert rond 4 km/h/s tussen ACCELERATIE en verbruik"
 "public/pidlane.css@@  body.pl-vis-vol .vhl-pod { width:min(46cqw, 27cqh); }@@  body.pl-vis-vol .vhl-pod { width:74cqw; }@@bproef-hyperlane.js@@staand lopen de ringen over elkaar en van het scherm af"
 "public/pidlane.css@@  body.pl-vis-vol .vhl-pod { width:min(46cqw, 27cqh); }@@  body.pl-vis-vol .vhl-pod { width:min(46cqw, 9cqh); }@@bproef-hyperlane.js@@staand krimpen de ringen weer tot 70 px op een telefoon met een hoge lampjesbalk (16-11-2026)"
-"public/pidlane.css@@grid-template-areas:\"l r\" \"m m\";@@grid-template-areas:\"l l\" \"m m\";@@bproef-hyperlane.js@@staand liggen de twee ringen weer op elkaar in plaats van naast elkaar"
+"public/pidlane.css@@  body.pl-vis-vol .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:\"l r\" \"m m\";@@  body.pl-vis-vol .vhl-podium { display:grid; grid-template-columns:1fr 1fr; grid-template-areas:\"l l\" \"m m\";@@bproef-hyperlane.js@@staand liggen de twee ringen weer op elkaar in plaats van naast elkaar"
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || !gear) return h;@@test-hyperlane.js@@in de stand Versnelling verdwijnt een te heet koelwater uit het midden"
 "public/pidlane-hyperlane.js@@  if(midden!=='versnelling' || sc==='alarm' || !gear) return h;@@  if(midden!=='versnelling' || sc==='alarm') return h;@@test-hyperlane.js@@een onbekende versnelling geeft een leeg midden"
 "public/pidlane-hyperlane.js@@  if(kh) kh.addEventListener('click', wissel);@@@@bproef-hyperlane.js@@een tik op het grote getal wisselt het midden niet meer"
@@ -2527,6 +2527,8 @@ MUTATIES=(
 "public/pidlane-versie.js@@    return !o.verbonden && !o.intro && o.zichtbaar !== false;@@    return !o.intro && o.zichtbaar !== false;@@test-versie.js@@de updatekaart midden in een rit: bijwerken herlaadt en verbreekt de verbinding"
 "public/pidlane-versie.js@@      _live = id;\n      return beoordeel();@@      _geladen = id; _live = id;\n      return beoordeel();@@test-versie.js@@de geladen versie schuift mee met elke controle: na een deploy komt er nooit een kaart"
 "public/pidlane-versie.js@@    if (o.later && o.later === o.live) return false;@@@@test-versie.js@@Later helpt niet: de kaart komt bij elke terugkeer naar de app terug"
+"public/pidlane-versie.js@@  function beoordeel() {\n    markeer();@@  function beoordeel() {@@test-versie.js@@een nieuwe deploy laat de knop op het inlogscherm en de menuregel niet meer oplichten"
+"public/pidlane-versie.js@@    if (k && !k.disabled) { k.textContent = l.knop; k.classList.toggle('nieuw', l.nieuw); }@@@@test-versie.js@@de knop op het inlogscherm zegt nooit dat er een nieuwe versie klaar staat"
 "public/pidlane-vriend.js@@    schrijf('');\n    if (u && u.gekoppeld)@@    if (u && u.gekoppeld)@@test-vriend.js@@de uitnodigingscode blijft na de registratie staan en vult het volgende account ook in"
 "public/pidlane-klant.js@@      const r = await klantRegistreer(email, p1, naam, uitn);@@      const r = await klantRegistreer(email, p1, naam);@@test-vriend.js@@de ingevulde uitnodigingscode gaat nooit mee naar de server"
 "public/pidlane-export.js@@  if (o.ruw || !window.PLVriend || typeof PLVriend.voet !== 'function') return tekst;@@  if (!window.PLVriend || typeof PLVriend.voet !== 'function') return tekst;@@test-vriend.js@@een testrun of logboek voor de ontwikkelaar krijgt reclame en een uitnodigingslink onderaan"
@@ -3002,7 +3004,7 @@ MUTATIES=(
 "public/pidlane-fuel.js@@watVoor:'de verbruiksanalyse', naRit:runFuelAnalysis});@@watVoor:'de verbruiksanalyse'});@@test-verzamelroutes.js@@na de rijtest voor de verbruiksanalyse komt de analyse niet terug"
 "public/pidlane-datalog.js@@  const uit=await PLVerzamel.meet({bron, watVoor:'de datalog-analyse'});@@  const uit=await PLVerzamel.meet({watVoor:'de datalog-analyse'});@@test-verzamelroutes.js@@de datalog-analyse meet opnieuw in plaats van de datalog te tonen"
 "public/pidlane-caravan.js@@  if(!uit || !uit.ai) ai='(Geen AI-analyse@@  if(false) ai='(Geen AI-analyse@@test-verzamelroutes.js@@nee op het scherm na een caravanrit vraagt toch de AI"
-"public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = (airco@@  if(true){\n    try{\n      const prompt = (airco@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
+"public/pidlane-koopcheck.js@@  if(uit && uit.ai){\n    try{\n      const prompt = buildWinterPrompt@@  if(true){\n    try{\n      const prompt = buildWinterPrompt@@test-verzamelroutes.js@@nee op het scherm van de klimaatcheck vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(!uit || !uit.ai) return;\n  try{ ['ddProgRow',@@  try{ ['ddProgRow',@@test-verzamelroutes.js@@nee op het scherm van de diepe analyse vraagt toch de AI"
 "public/pidlane-koopcheck.js@@  if(letters<1) return /^(#\\d{1,3}|\\d[\\d-]{1,5}\\+?)$/.test(t);@@  if(letters<1) return false;@@test-rdwnaam.js@@elke Peugeot heet weer een onbetrouwbare modelnaam"
 "public/pidlane-rit.js@@  if(!_uit || !_uit.ai){@@  if(false){@@test-ritrapport.js@@nee op het scherm na de rit maakt toch een betaald ritrapport"
@@ -3079,6 +3081,8 @@ MUTATIES=(
 "public/pidlane-checkopmaak.js@@  el.className='plc-ov';@@  el.className='pl-check';@@test-checkopmaak.js@@de checkpagina's krijgen de klasse van de knop Check mijn auto en worden een knop"
 "public/pidlane-nav.js@@'langeRitDash', 'onderhoudDash'];@@'langeRitDash'];@@test-nav.js@@de navigatiebalk staat over de onderhoudspagina heen"
 "public/pidlane.css@@  body.pl-vis-vol .vis:has(.vpf-hyper):has(.vtp) .vhl-mid { visibility:hidden; }@@@@bproef-volscherm.js@@bij Hyperlane ligt het trekpaneel over het middengetal heen"
+"public/pidlane.css@@  body:not(.pl-vis-vol) .vpf-hyper { aspect-ratio:auto; height:max(440px, calc(var(--pl-vh) - 320px)); }@@@@bproef-vulling.js@@staand is Hyperlane in de gewone weergave weer een liggende strook met ringen van 140 px"
+"public/pidlane.css@@  body:not(.pl-vis-vol) .vpf-glas .vpf-tube { flex:1; height:auto; min-height:170px; width:14px; }@@@@bproef-vulling.js@@de buizen van Temperatuur blijven 170 px en de onderste helft van het scherm leeg"
 "public/pidlane-visueel.js@@function trekRijTonen(rol, pid){ return !!pid || rol==='koel'; }@@function trekRijTonen(rol, pid){ return true; }@@test-visueel.js@@een sensor die de auto niet heeft staat als lege rij met een streep in het trekpaneel"
 "public/pidlane.css@@.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@.vis-leds { display:none; }\n.vis-leds circle { fill:rgba(255,255,255,.08); transition:fill .12s; }@@bproef-visueel.js@@de schakellampjes staan in de tekening maar zijn nooit te zien"
 "public/pidlane-rapport.js@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'grijs';@@      let kleur = gemeten.length ? STATUS_KLEUR[ergste.oordeel] : 'groen';@@test-rapport.js@@het analyserapport kleurt een systeem zonder data groen: niet gemeten leest als goed"

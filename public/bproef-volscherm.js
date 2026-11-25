@@ -173,8 +173,10 @@ const SAB = 48;
     let b = await buiten();
     toets('caravanrit in Overzicht: de pil staat er, het trekpaneel niet', b.pil && /Caravanrit/.test(b.tekst) && !b.paneel, JSON.stringify(b));
     toets('de pil staat boven de navigatiebalk', b.onder !== null && b.onder <= b.h - SAB, JSON.stringify(b));
-    await app.ev(`setPidView('visueel'); true`); await W(1800);
-    b = await buiten();
+    await app.ev(`setPidView('visueel'); true`);
+    // Wachten op de toestand, niet op de klok (#761): de pil gaat met de tik van
+    // één seconde weg, en op een drukke CI-runner was 1,8 s soms te kort.
+    for (let i = 0; i < 30; i++) { await W(200); b = await buiten(); if (!b.pil && b.paneel) break; }
     toets('in Slim visueel geen pil: daar staat het paneel', !b.pil && b.paneel, JSON.stringify(b));
     await situatie(false); await W(2500);
     await app.ev(`setPidView('overzicht'); openMonitorView(); true`);

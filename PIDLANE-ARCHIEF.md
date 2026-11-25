@@ -14,6 +14,14 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 24-11-2026 — Releasecheck 3.6.0: wat er gemeten is en wat er bleef liggen
+
+**Weergaves.** Alle hoofdschermen zijn in de demo op 412×892 vastgelegd. Ondermaats waren Hyperlane, Temperatuur en Verbruik in de gewone weergave, staand. Hyperlane had `aspect-ratio:2/1` voor het vak, en dat gaf staand een strook van 186 px hoog met ringen van 140 px. Temperatuur had buizen met een vaste hoogte van 170 px, en Verbruik stond op een kaart zonder minimumhoogte; bij allebei bleef de onderste helft leeg. Volledig scherm had dit al opgelost (16-11, staande opbouw). De gewone weergave nam dat niet over omdat elke regel onder `body.pl-vis-vol` stond. Bewaakt door `bproef-vulling.js`.
+
+**Rechten.** Alle routes van de worker zijn nagelopen: elke `/admin/*`-route gaat door `adminOnly` of controleert `s.r === "admin"`, meetopdrachten en uitkomsten vragen de beheerdersrol, en `/api/config` geeft alleen feature-vlaggen terug (geen sleutels). In de echte app ziet een klant geen adminblok; modulecommando's weigeren zelf zonder `isAdmin()`. Er is niets veranderd.
+
+**Bewust gelaten.** Er staan 5,5 MB aan JavaScript in de boot. Kleiner maken vraagt een buildstap, en die is hier uitgesloten. #690 haalde de testrun er al uit. Video's en Play-beelden in `marketing/` zijn samen 28 MB; die horen bij de repo. Het standmenu op volledig scherm staand staat nog over de ringen (#767).
+
 ## 23-11-2026 — AI-rapport knipte zinnen op kopwoorden
 
 Gemeld met een screenshot van een koop/verkooprapport (Mazda): onder Advies

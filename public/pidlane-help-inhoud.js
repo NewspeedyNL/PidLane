@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-22', app: '3.5.0' },
+  gecontroleerd: { datum: '2026-11-24', app: '3.6.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -437,7 +437,7 @@ var PL_HULP = {
         '</ul>' +
         '<p>Met een klantaccount staan daaronder je standaarden voor elke keer dat je inlogt, met <b>Bewaren</b>. De <b>⚙️ Versnellingsindicator</b> staat bij je auto in <b>Mijn voertuigen</b>.</p>' +
         '<p><b>Hulp</b></p>' +
-        '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li></ul>' +
+        '<ul><li><b>📘 Handleiding</b> — dit scherm.</li><li><b>🐞 Meld een bug</b></li><li><b>📜 Logboek</b></li><li><b>🔄 Nieuwste versie laden</b> — met rechts het versienummer. Staat er een nieuwe versie klaar, dan wordt de regel groen; op het inlogscherm staat dezelfde knop.</li></ul>' +
         '<p>Onderaan: <a data-hulp="afsluiten">Afsluiten</a>. Welke regels je ziet hangt af van je account.</p>',
       zie: ['uitroeptekens', 'garagemodus'] },
 

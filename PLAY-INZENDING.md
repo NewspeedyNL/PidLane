@@ -7,7 +7,9 @@ en §14; beeld-in-beeld in §13 en §16b) en 08-10-2026 (3.2.0: één contactadr
 (3.3.0: lampjesgids met foto in §3 en §11, kenteken-check en conditiescore in
 §3, nieuwe release notes in §14, §16b voor 3.3) en 22-10-2026 (3.4.0:
 aankooprapport en wintercheck in §3, nieuwe release notes in §14, §16b voor
-3.4) en 06-11-2026 (3.5.0: nieuwe release notes in §14, §16b voor 3.5). Dit
+3.4) en 06-11-2026 (3.5.0: nieuwe release notes in §14, §16b voor 3.5) en
+24-11-2026 (3.6.0: caravancoach en aandrijfaccu-check in §3, aircocheck weg, nieuwe
+release notes in §14 en §4, §16b voor 3.6). Dit
 bestand is
 **kopieerwerk**: elk kopje hieronder is
 een veld in de Play Console, en wat eronder staat gaat er letterlijk in.
@@ -114,9 +116,8 @@ JE AUTO, ZOALS JE HEM NOG NOOIT ZAG
 
 Hyperlane maakt van je dashboard een lichttunnel die meestroomt met je
 snelheid: links het toerental, rechts de snelheid, in het midden wat er nu
-toe doet, met schakellampjes en een 0–100-meting. Kies je stand —
-Eco, Sport of Cruise — en je ziet per stand de sensoren die ertoe doen, of
-laat Auto vanzelf meeschakelen.
+toe doet, met schakellampjes en een 0–100-meting. Kies Eco, Sport of
+Cruise, of laat Auto meeschakelen.
 
 JE MONTEUR KIJKT LIVE MEE
 
@@ -135,9 +136,8 @@ WAT PIDLANE NOG MEER DOET
   bereik erbij.
 • Grafieken — het verloop, met het normale bereik als band.
 • Accu & laadsysteem — laadspanning, startdip en trend.
-• Waakronde — loopt rustig langs de sensoren die je niet bekijkt en meldt
-  alleen wat je zou moeten weten.
-• Ritmonitor — let tijdens het rijden op uitval en uitschieters.
+• Waakronde — let op de sensoren die je niet bekijkt, ook tijdens de rit,
+  en meldt alleen wat je moet weten.
 • Koopcheck — verraden de readiness-monitors dat er kort geleden fouten
   zijn gewist?
 • Aankooprapport — de koopcheck als PDF, met een oordeel uit vaste regels.
@@ -146,7 +146,9 @@ WAT PIDLANE NOG MEER DOET
 • Kenteken-check — APK, verzekering en terugroepacties (RDW).
 • Mijn voertuigen — tot drie auto's, met rapporten, ritten en je eigen
   sensoren per auto.
-• Wintercheck — banden, ruitensproeier en het weerbericht.
+• Wintercheck — opwarmen, thermostaat, banden en het weerbericht.
+• Caravancoach — schakeladvies bergop en lampjes op het koppelbereik.
+• Aandrijfaccu-check — hybride of EV: de gezondheid (SoH) van de accu.
 • Conditiescore — hoe je auto ervoor staat, uit onderhoud en ritten.
 
 WAT JE NODIG HEBT
@@ -196,7 +198,8 @@ Vragen: support@pidlane.nl
 
 ## 4. Grafisch materiaal
 
-**Sinds 02-11-2026 staat alles in de repo**, in `marketing/play/uit/`. Bron:
+**Sinds 02-11-2026 staat alles in de repo**, in `marketing/play/uit/`; opnieuw
+opgenomen op 24-11-2026 voor 3.6.0 (Hyperlane staand vult nu het scherm). Bron:
 `marketing/play/opname.js` neemt de echte app op in demomodus (de
 meekijkschermen komen uit `marketing/meekijken/opname.js`), `schermen.html` en
 `grafiek.html` zetten er een kop en lijst omheen, `render.js` maakt de PNG's.
@@ -234,14 +237,7 @@ app is een afwijzingsgrond.
 "Wat is er nieuw" en de datum "Laatst geüpdatet" veranderen alleen met een
 nieuwe build in de Console; wat via de server live gaat, ziet de Store niet.
 
-```
-Nieuw in PidLane:
-• Hyperlane: je dashboard als lichttunnel die meestroomt met je snelheid, met schakellampjes.
-• Kies je stand: Eco, Sport of Cruise — per stand de sensoren die ertoe doen.
-• Sensoren per auto overzichtelijk in drie tabbladen; banden en wielen met één vinkje.
-• Waakronde slimmer: geen vals alarm meer bij sensoren zonder waarde.
-• Accu & laadsysteem: laadspanning, startdip en trend.
-```
+Dit is dezelfde tekst als §14 — die is de bron.
 
 ---
 
@@ -732,19 +728,28 @@ toetst hij niet.
 **Eén taal, en dat is een besluit** — zie de regel onder §0. Dit veld had tot
 10-09-2026 ook een en-US-blok, net als §2, terwijl §3 er geen had (#177).
 
-```
-Versie 3.5
-Met Accu & laadsysteem en Conditiescore.
+**Nagelezen tegen de code op 24-11-2026, voor 3.6.0.** De caravancoach is
+`pidlane-caravan.js` met het trekpaneel in `pidlane-visueel.js` en
+`schakelTrek()` in `pidlane-berekend.js` (#742, #743), de aandrijfvorm
+`pidlane-aandrijving.js` met de SoH in `pidlane-koopcheck.js` (#751), Klassiek
+`pidlane-werkgebied.js`, de accuspanning via de adapter `plAccuViaAdapter()` in
+`pidlane-plload.js` en de versiemelding `pidlane-versie.js`. De aircocheck is
+weg (23-11-2026): niet professioneel genoeg.
 
-- Hyperlane: een lichttunnel die meestroomt met je snelheid.
-- Accu- en dynamotest met live laaddata en trend.
-- Het startscherm zelf indelen, met één hoofdknop.
-- Je verkoper of garage als vaste expert die mag meekijken.
-- Een foto van je auto bij het kenteken.
-- Kanteling en sensoren zonder spookwaarden.
+```
+Versie 3.6
+Met Caravancoach en Aandrijfaccu-check.
+
+- Schakeladvies bergop en lampjes op het koppelbereik met een caravan.
+- Hybride en EV: de gezondheid van de aandrijfaccu (SoH).
+- Slim visueel: profiel Klassiek voor een oudere auto.
+- Accuspanning ook als de auto hem niet doorgeeft.
+- Een melding zodra er een nieuwe versie klaarstaat.
 
 Geen adapter? Probeer de demomodus op het startscherm.
 ```
+
+De vorige tekst (3.5) is nooit geüpload; hij staat in `git log` van dit bestand.
 
 ---
 
@@ -805,7 +810,7 @@ zijn.
 
 | punt | bewaakt door |
 |---|---|
-| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.5.0) | `test-playteksten.js` |
+| `versionName` in `package.json`, `public/config.js` en dit document gelijk (3.6.0) | `test-playteksten.js` |
 | Geen locatie: manifest, code en de drie verklaringen zeggen hetzelfde | `test-geen-gps.js` |
 | Foutpagina in de schil als de app niet laadt (`server.errorPath`) | `test-foutpagina.js` |
 | `feat_demo` dekt beide demoknoppen — geen dode knop op het loginscherm | `test-demo-toegang.js` |
@@ -835,7 +840,7 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 > buildnummer bij waarop je het gezien hebt. Staat er een ouder nummer dan de
 > build hierboven, dan is dat punt niet nagekeken.
 >
-> **Upload-build: nog te bouwen  (datum: —, versie 3.5.0)** — de vorige was `#559` (22-10-2026, 3.4.0)
+> **Upload-build: nog te bouwen  (datum: —, versie 3.6.0)** — de vorige was `#559` (22-10-2026, 3.4.0)
 
 | punt | laatst bewezen op |
 |---|---|
@@ -860,6 +865,12 @@ want hij gaat over één bepaalde bundel. Vul hem dus bij, tik hem niet af.
 | Beeld-in-beeld-klokje (sinds 3.4.0): vierkant venster met naald; de stopknop van Android verbreekt de verbinding en sluit het venster | nog niet bewezen |
 | Wintercheck (sinds 3.4.0): winterkaart op het startscherm, plaats uit de lijst, weerbericht komt binnen zonder locatiepermissie | nog niet bewezen |
 | Herverbinden (08-10-2026, #453): adapter even uit de OBD-poort trekken met de motor aan, terugsteken, niets aanraken — de app hervat zonder protocolvraag. Daarna blok 5 draaien | nog niet bewezen |
+
+**Let op bij 3.6.0.** 3.5.0 is nooit geüpload, dus alles sinds 22-10 is nieuw
+voor de Store: Hyperlane, de accu- en dynamotest, het startscherm in lagen, en
+sinds 06-11 de caravancoach, de aandrijfvorm met SoH, Klassiek, de versiemelding
+en de rapporten-ring. De aircocheck is weg — controleer dat Seizoenscheck op
+Home meteen de wintercheck opent.
 
 **Let op bij 3.5.0.** Tussen 22-10 en 06-11 kwamen Hyperlane, de accu- en
 dynamotest, de meetcoach, rapporten aanvragen, de vaste expert, de autofoto en

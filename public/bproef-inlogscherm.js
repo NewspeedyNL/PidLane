@@ -46,17 +46,21 @@ function toets(naam, waar, uitleg) {
     toets('Geavanceerd staat ernaast', await zie('#lgMeer'));
     toets('Try demo blijft zichtbaar (Play-reviewnotitie)', await zie('#btnDemoLogin'));
     toets('Nog geen account staat er direct (registreren niet achter Geavanceerd)', await zie('#loginOv .lg-nieuw'));
-    toets('versie, website en Nieuwste versie laden zijn weg', !(await zie('#loginOv .lg-foot')) && !(await zie('#plFrisBtn')));
+    toets('website en buildregel zijn weg', !(await zie('#loginOv .lg-foot')));
+    toets('versie en Nieuwste versie laden staan er altijd (24-11-2026)', await zie('#loginVer') && await zie('#plFrisBtn') && /^v\d+\.\d+\.\d+$/.test(await app.ev(`document.getElementById('loginVer').textContent`)),
+      await app.ev(`document.getElementById('loginVer').textContent`));
     toets('Geavanceerd zegt dat hij dicht is', await app.ev(`document.getElementById('lgMeer').getAttribute('aria-expanded') === 'false'`));
 
     console.log('\n2. Open');
     await app.ev(`document.getElementById('lgMeer').click(); true`);
-    toets('versie en Nieuwste versie laden verschijnen', await zie('#loginVer') && await zie('#plFrisBtn'));
+    toets('website en handleiding verschijnen', await zie('#loginOv .lg-foot') && await zie('#lgHandleiding'));
     toets('Geavanceerd zegt dat hij open is', await app.ev(`document.getElementById('lgMeer').getAttribute('aria-expanded') === 'true'`));
 
     console.log('\n3. Weer dicht');
     await app.ev(`document.getElementById('lgMeer').click(); true`);
-    toets('alles weer weg, registreren blijft', !(await zie('#plFrisBtn')) && await zie('#loginOv .lg-nieuw'));
+    toets('voet weer weg, versie en registreren blijven', !(await zie('#loginOv .lg-foot')) && await zie('#plFrisBtn') && await zie('#loginOv .lg-nieuw'));
+    toets('het menu heeft de regel met het versienummer', await app.ev(`!!document.getElementById('kbVersie') && /^v\\d/.test(document.getElementById('kbVersieNr').textContent)`),
+      await app.ev(`(document.getElementById('kbVersieNr')||{}).textContent`));
     toets('het verbindscherm heeft zijn eigen voet nog (geen lg-geav daar)', await app.ev(`!document.querySelector('#connOv .lg-geav')`));
     toets('geen JS-fouten', app.fouten.length === 0, app.fouten.slice(0, 3).join(' | '));
   } finally {
