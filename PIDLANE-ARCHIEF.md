@@ -14,6 +14,22 @@ Verplaatst op 02-09-2026. Snijlijn: alles gedateerd op of vóór 19-08-2026.
 
 ---
 
+## 26-11-2026 — Diensten meldde een AI-verstoring die bij claude.ai lag
+
+Het venster Diensten gaf "Anthropic meldt een verstoring" terwijl de API in
+orde was. Oorzaak: Anthropic hernoemde de component op status.claude.com van
+"Claude API" naar "Claude API (api.anthropic.com)". `dienstAi()` zocht de
+exacte naam, vond niets en viel terug op de algemene indicator — en die stond
+op `minor` door een storing bij claude.ai (de Microsoft 365-add-in). Precies
+het geval dat de componentkeuze van 25-11 moest uitsluiten, langs een andere
+deur.
+
+Twee wijzigingen: de naam matcht op het begin (`/^Claude API\b/`), en een
+leesbare componentenlijst zónder API-component is nu "onbekend" (geen
+banner) in plaats van de algemene indicator. Hernoemen ze hem nog eens, dan
+zie je een grijze "onbekend" in plaats van een vals alarm. De indicator telt
+alleen nog als er helemaal geen componentenlijst is.
+
 ## 25-11-2026 — Wat kost dit? Waarom de bedragen zo tot stand komen
 
 **De vraag.** Na "wat is er mis" vraagt de klant "wat kost het en mag ik nog
