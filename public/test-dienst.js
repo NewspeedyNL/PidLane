@@ -67,6 +67,19 @@ const WK = new Function('BRON_TRAAG_MS', 'bronJson', '__name',
   t('summary: Claude API degraded/partial/major', ['degraded_performance', 'partial_outage', 'major_outage'].map(x => sm(x).status).join(','), 'verstoord,storing,storing');
   t('summary: operational met een incident op de Claude API = verstoord, met de naam',
     JSON.stringify(sm('operational', { incidents: [{ name: 'Verhoogde fouten', components: [{ name: 'Claude API' }] }] })), JSON.stringify({ status: 'verstoord', detail: 'Verhoogde fouten' }));
+  // 26-11-2026, echte stand van status.claude.com: de component is hernoemd en
+  // claude.ai is verstoord. De oude exacte naam viel terug op "minor" = verstoord.
+  const echt = (api, inc) => WK.dienstAi({ http: 200, tekst: JSON.stringify({
+    status: { indicator: 'minor', description: 'Partially Degraded Service' },
+    components: [{ name: 'claude.ai', status: 'degraded_performance' }, { name: 'Claude API (api.anthropic.com)', status: api }, { name: 'Claude Code', status: 'operational' }],
+    incidents: inc || [{ name: 'Claude for Microsoft 365 add-in missing', components: [{ name: 'claude.ai' }] }] }) });
+  t('hernoemde component "Claude API (api.anthropic.com)" operational, claude.ai verstoord = goed', echt('operational').status, 'goed');
+  t('hernoemde component degraded = verstoord', echt('degraded_performance').status, 'verstoord');
+  t('incident op de hernoemde component = verstoord', echt('operational', [{ name: 'Fouten', components: [{ name: 'Claude API (api.anthropic.com)' }] }]).status, 'verstoord');
+  t('"Claude APIs-portaal" of "Claude Code" telt niet als de API', WK.dienstAi({ http: 200, tekst: JSON.stringify({ status: { indicator: 'minor' },
+    components: [{ name: 'Claude APIs-portaal', status: 'major_outage' }, { name: 'Claude Code', status: 'major_outage' }], incidents: [] }) }).status, 'onbekend');
+  t('lijst zonder API-component = onbekend, niet de algemene indicator', WK.dienstAi({ http: 200, tekst: JSON.stringify({ status: { indicator: 'minor' },
+    components: [{ name: 'claude.ai', status: 'degraded_performance' }], incidents: [] }) }).status, 'onbekend');
   t('summary: een incident op alleen claude.ai raakt ons niet',
     sm('operational', { incidents: [{ name: 'Login', components: [{ name: 'claude.ai' }] }] }).status, 'goed');
 

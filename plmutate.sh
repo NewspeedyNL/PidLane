@@ -1960,6 +1960,8 @@ MUTATIES=(
 "public/pidlane-dienst.js@@      if (mis >= DIENST_MIS_ROOD) s.server@@      if (mis >= 1) s.server@@test-dienst.js@@één gemiste check op 5G en de bovenbalk zegt al dat de server weg is"
 "public/pidlane-dienst.js@@      if (!was[m.dienst] && !_gemeld[m.dienst]) {@@      if (true) {@@test-dienst.js@@elke check van vijf minuten herhaalt dezelfde storingsmelding"
 "public/pidlane-dienst.js@@    if (online === false) return [{ dienst: 'net'@@    if (online === null) return [{ dienst: 'net'@@test-dienst.js@@zonder internet staan er drie storingen in plaats van één: geen internet"
+"worker.js@@/^Claude API\\b/.test(c.name)@@c.name === \"Claude API\"@@test-dienst.js@@de hernoemde component \"Claude API (api.anthropic.com)\" wordt niet gevonden en een storing bij claude.ai heet weer een AI-verstoring (26-11-2026)"
+"worker.js@@  if (heeftLijst && !api) return { status: \"onbekend\", detail: \"component Claude API niet gevonden op de statuspagina\" };\n@@@@test-dienst.js@@een lijst zonder API-component valt terug op de algemene indicator, die vooral over claude.ai gaat"
 "worker.js@@  return { status: \"onbekend\", detail: \"statuspagina niet te lezen\" };@@  return { status: \"storing\", detail: \"statuspagina niet te lezen\" };@@test-dienst.js@@is de statuspagina van Anthropic zelf weg, dan meldt de app een AI-storing"
 "worker.js@@  if (h.http === 429) return { status: \"traag\", detail: \"overbelast (429)\" };\n@@@@test-dienst.js@@het RDW dat even afremt (429) heet een storing"
 "public/pidlane-plfetch.js@@ && window.PLDienst) PLDienst.zie('rdw', resp.status); }@@ && false) PLDienst.zie('rdw', resp.status); }@@test-dienst.js@@plFetch geeft een RDW-storing niet meer door: de bovenbalk blijft groen bij 530"

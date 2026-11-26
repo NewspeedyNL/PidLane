@@ -1532,15 +1532,23 @@ __name(dienstRdw, "dienstRdw");
 // De statuspagina van Anthropic (summary.json). De app hangt alleen aan de
 // component "Claude API": staat die niet op operational, of loopt er een
 // incident dat hem raakt, dan zegt de app dat. Een storing bij claude.ai of
-// Claude Code is niet die van ons. Ontbreekt de component, dan valt hij terug
-// op de algemene indicator. Is de pagina zelf weg, dan weten we het niet —
-// en dat is geen alarm.
+// Claude Code is niet die van ons. Is de pagina zelf weg, dan weten we het
+// niet — en dat is geen alarm.
+// 26-11-2026: de component heet sinds kort "Claude API (api.anthropic.com)".
+// Een exacte naam vond hem niet meer, de app viel terug op de algemene
+// indicator en meldde dagenlang een verstoring die bij claude.ai lag. Daarom
+// matcht de naam op het begin, en is een leesbare lijst zonder API-component
+// "onbekend" in plaats van de algemene indicator: die gaat vooral over
+// claude.ai. Alleen zonder componentenlijst telt de indicator nog.
 function dienstAi(h) {
   const j = h && h.http === 200 ? bronJson(h.tekst) : undefined;
-  const comps = j && Array.isArray(j.components) ? j.components : [];
-  const api = comps.find((c) => c && c.name === "Claude API");
+  const heeftLijst = !!(j && Array.isArray(j.components) && j.components.length);
+  const comps = heeftLijst ? j.components : [];
+  const isApi = (c) => !!(c && typeof c.name === "string" && /^Claude API\b/.test(c.name));
+  const api = comps.find(isApi);
+  if (heeftLijst && !api) return { status: "onbekend", detail: "component Claude API niet gevonden op de statuspagina" };
   if (api) {
-    const incident = (Array.isArray(j.incidents) ? j.incidents : []).find((i) => i && Array.isArray(i.components) && i.components.some((c) => c && c.name === "Claude API"));
+    const incident = (Array.isArray(j.incidents) ? j.incidents : []).find((i) => i && Array.isArray(i.components) && i.components.some(isApi));
     const tekst = String(incident && incident.name || "").slice(0, 120);
     const st = api.status;
     if (st === "partial_outage" || st === "major_outage") return { status: "storing", detail: tekst || st };
