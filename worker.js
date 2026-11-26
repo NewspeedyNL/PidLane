@@ -1518,7 +1518,7 @@ __name(handleProxy, "handleProxy");
 // klant: een vaste vraag naar één rij.
 var DIENST_CACHE_MS = 6e4;
 var DIENST_RDW_URL = "https://opendata.rdw.nl/resource/m9d7-ebf2.json?$limit=1&$select=kenteken";
-var DIENST_AI_URL = "https://status.anthropic.com/api/v2/status.json";
+var DIENST_AI_URL = "https://status.claude.com/api/v2/summary.json";
 var _dienstStand = null;
 // Puur: één uitslag van bronHaal() naar goed | traag | storing.
 function dienstRdw(h) {
@@ -1529,10 +1529,25 @@ function dienstRdw(h) {
   return h.ms > BRON_TRAAG_MS ? { status: "traag", detail: Math.round(h.ms / 100) / 10 + " s" } : { status: "goed", detail: "" };
 }
 __name(dienstRdw, "dienstRdw");
-// De statuspagina van Anthropic: none = goed, minor = verstoord, major/critical
-// = storing. Is die pagina zelf weg, dan weten we het niet — en dat is geen alarm.
+// De statuspagina van Anthropic (summary.json). De app hangt alleen aan de
+// component "Claude API": staat die niet op operational, of loopt er een
+// incident dat hem raakt, dan zegt de app dat. Een storing bij claude.ai of
+// Claude Code is niet die van ons. Ontbreekt de component, dan valt hij terug
+// op de algemene indicator. Is de pagina zelf weg, dan weten we het niet —
+// en dat is geen alarm.
 function dienstAi(h) {
   const j = h && h.http === 200 ? bronJson(h.tekst) : undefined;
+  const comps = j && Array.isArray(j.components) ? j.components : [];
+  const api = comps.find((c) => c && c.name === "Claude API");
+  if (api) {
+    const incident = (Array.isArray(j.incidents) ? j.incidents : []).find((i) => i && Array.isArray(i.components) && i.components.some((c) => c && c.name === "Claude API"));
+    const tekst = String(incident && incident.name || "").slice(0, 120);
+    const st = api.status;
+    if (st === "partial_outage" || st === "major_outage") return { status: "storing", detail: tekst || st };
+    if (st === "degraded_performance" || st === "under_maintenance") return { status: "verstoord", detail: tekst || st };
+    if (incident) return { status: "verstoord", detail: tekst };
+    if (st === "operational") return { status: "goed", detail: "" };
+  }
   const ind = j && j.status && j.status.indicator;
   const tekst = j && j.status && String(j.status.description || "").slice(0, 120);
   if (ind === "none") return { status: "goed", detail: "" };

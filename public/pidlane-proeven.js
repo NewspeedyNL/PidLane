@@ -38,6 +38,25 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Wat kost dit? (PLKosten, 25-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Wat kost dit: P0171 kost hetzelfde in de foutcodelijst als op de kostenkaart, en wijst naar een vacuümlek',
+    waarom: 'Bedragen kwamen uit DTC_PLAN per familie; sinds de kostenkaart is PLKosten de enige bron. Twee bronnen lopen uit de pas, en OBDex zegt bij P0171 "lambdasonde".',
+    proef: async function () {
+      var K = window.PLKosten;
+      if (!K || typeof window.dtcPlan !== 'function') return { staat: 'FOUT', detail: 'PLKosten of dtcPlan ontbreekt (herladen?)' };
+      var v = K.voorCode('P0171'), p = window.dtcPlan('P0171');
+      if (!v || v.onderdeel !== 'vacuumlek') return { staat: 'FOUT', detail: 'P0171 wijst naar ' + (v && v.onderdeel) + ' in plaats van een vacuümlek' };
+      if (!p || JSON.stringify(p.kost) !== JSON.stringify(K.schat('vacuumlek').totaal)) return { staat: 'FOUT', detail: 'foutcodelijst ' + JSON.stringify(p && p.kost) + ' ≠ kostenkaart ' + JSON.stringify(K.schat('vacuumlek').totaal) };
+      if (!K.open('vacuumlek')) return { staat: 'FOUT', detail: 'de kostenkaart opent niet' };
+      var ok = !!document.querySelector('#plKostOv .pk-schema') && /€/.test((document.querySelector('#plKostOv .pk-bedrag') || {}).textContent || '');
+      K.sluit();
+      if (!ok) return { staat: 'FOUT', detail: 'kostenkaart zonder schema of bedrag' };
+      return { staat: 'OK', detail: 'één bedrag, kaart met schema · rij: lees een code uit, tik op "Wat betekent dit en wat kost het?" en kies een ander uurtarief — het bedrag in de lijst gaat mee' };
+    }
+  },
+
   // ── AI-rapport: koppen alleen aan het begin van een regel (23-11-2026) ──
   {
     issue: '—',

@@ -58,6 +58,17 @@ const WK = new Function('BRON_TRAAG_MS', 'bronJson', '__name',
   const a = (ind) => WK.dienstAi({ http: 200, tekst: JSON.stringify({ status: { indicator: ind, description: 'x' } }) }).status;
   t('Anthropic none/minor/major/critical', ['none', 'minor', 'major', 'critical'].map(a).join(','), 'goed,verstoord,storing,storing');
   t('statuspagina zelf weg = onbekend, geen alarm', WK.dienstAi({ http: 0 }).status, 'onbekend');
+  // summary.json (25-11-2026): alleen de component "Claude API" telt, en een
+  // incident dat hem raakt. claude.ai plat en de API in orde = goed.
+  const sm = (api, extra) => WK.dienstAi({ http: 200, tekst: JSON.stringify(Object.assign({
+    status: { indicator: 'major', description: 'Partial outage' },
+    components: [{ name: 'claude.ai', status: 'major_outage' }, { name: 'Claude API', status: api }], incidents: [] }, extra || {})) });
+  t('summary: claude.ai plat, Claude API operational = goed (de algemene indicator telt niet)', sm('operational').status, 'goed');
+  t('summary: Claude API degraded/partial/major', ['degraded_performance', 'partial_outage', 'major_outage'].map(x => sm(x).status).join(','), 'verstoord,storing,storing');
+  t('summary: operational met een incident op de Claude API = verstoord, met de naam',
+    JSON.stringify(sm('operational', { incidents: [{ name: 'Verhoogde fouten', components: [{ name: 'Claude API' }] }] })), JSON.stringify({ status: 'verstoord', detail: 'Verhoogde fouten' }));
+  t('summary: een incident op alleen claude.ai raakt ons niet',
+    sm('operational', { incidents: [{ name: 'Login', components: [{ name: 'claude.ai' }] }] }).status, 'goed');
 
   console.log('\n2. De tekst bij een mislukte RDW-vraag');
   const s = bouw();

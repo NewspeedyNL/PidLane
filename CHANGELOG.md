@@ -10,6 +10,21 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 25-11-2026 — Wat kost dit? Een kostenkaart per onderdeel, en één bron voor alle bedragen
+ ═════════════════════════════════════════════════════
+   • pidlane-kosten.js (PLKosten): per onderdeel onderdeelprijs + werkuren × uurtarief incl. btw, goedkopere route, rijadvies (stop/binnenkort/inplannen), uitleg, schema "waar zit het", bronnen en prijspeil
+   • Uurtarief kiesbaar: universele garage (€ 85 ex), dealer (€ 110 ex, aanname boven € 100) of eigen tarief; geldt overal
+   • DTC_PLAN wijst per familie naar een onderdeel; dtcPlan().kost komt uit PLKosten. Codes buiten de families via OBDex (pidlane-kostencodes.js, gegenereerd door plkostencodes.js)
+   • Knop "Wat betekent dit en wat kost het?" bij foutcodes en bij elke verdachte in Welk onderdeel?; delen met de garage zonder VIN of kenteken
+   • PLRapport §7 en PLAankoop §3: tabel "Wat het kan kosten"; het aankooprapport telt de som op als onderhandelingsargument
+   • test-kosten.js (49 toetsen, prijspeil-poort), zes mutaties, blok 5-proef; test-dtcplan en test-expertwerk lezen het bedrag uit dezelfde bron
+
+ ═════════════════════════════════════════════════════
+ 25-11-2026 — Dienststatus AI kijkt naar de Claude API, niet naar de hele statuspagina
+ ═════════════════════════════════════════════════════
+   • worker.js: /v1/dienst leest status.claude.com/api/v2/summary.json; storing/verstoord volgt de component "Claude API" en incidenten die hem raken. Zonder die component: terugval op de algemene indicator
+
+ ═════════════════════════════════════════════════════
  24-11-2026 — Staand vult de meter het scherm: Hyperlane, Temperatuur en Verbruik
  ═════════════════════════════════════════════════════
    • Gewone weergave, staand: Hyperlane neemt de staande opbouw van het volle scherm over (ringen naast elkaar, midden eronder) in plaats van een 2:1-strook met ringen van 140 px

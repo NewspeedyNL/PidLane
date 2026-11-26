@@ -28,7 +28,7 @@
    ══════════════════════════════════════════════════════════════════ */
 var PL_HULP = {
 
-  gecontroleerd: { datum: '2026-11-24', app: '3.6.0' },
+  gecontroleerd: { datum: '2026-11-25', app: '3.6.0' },
 
   groepen: [
     { id: 'start', titel: 'Beginnen' },
@@ -215,6 +215,10 @@ var PL_HULP = {
         '<li><b>🩺 Grondiger laten kijken</b></li>' +
         '</ul>' +
         '<p><b>💾 Bewaren</b> legt de uitlezing vast.</p>' +
+        '<p>Wijst een code naar een onderdeel, dan staat eronder de knop <b>Wat betekent dit en wat kost het?</b> (onder <b>🔩 Welk onderdeel?</b> staat dezelfde knop bij elke verdachte). ' +
+        'Je ziet wat het onderdeel doet, waar het zit, wat er gebeurt als je het laat zitten, of je nog kunt doorrijden en een prijsindicatie: onderdeel plus werkuren. Vaak staat er een goedkopere route bij die eerst geprobeerd kan worden. ' +
+        'Onder <b>Rekenen met</b> kies je het uurtarief: een universele garage, een dealer of het tarief van je eigen garage. Die keuze geldt overal in de app, ook in de rapporten. ' +
+        'Met <b>📤 Deel met je garage</b> stuur je de kaart als tekst door; je kenteken en chassisnummer gaan niet mee. Het is een indicatie, geen offerte: de garage stelt de prijs vast. Merkcodes en hybridecodes krijgen geen bedrag.</p>' +
         '<p><b>🧩 Alle stuurapparaten</b> vraagt de foutcodes van ABS, airbag, versnellingsbak, instrumentenpaneel en carrosserie één voor één op. De gewone uitlezing hoort alleen motor en bak. ' +
         'Geeft een stuurapparaat geen antwoord, dan staat het er niet bij: dat betekent dat het op deze auto een ander adres heeft, niet dat er geen codes zijn. Alleen bij auto\'s met CAN (vrijwel alles vanaf 2008). De uitkomst staat daarna in <b>Rapporten</b>, en <b>💾 Bewaren</b> neemt hem mee.</p>' +
         '<p>Blijft een zelftest lang na het wissen op <b>niet klaar</b> staan, of meldt de auto een code die bij een verkeerde instelling hoort, dan staat bij de keuringsstatus <b>🧩 Mogelijk software, geen kapot onderdeel</b>. Hetzelfde blok staat ook onder <b>🔩 Welk onderdeel?</b>. ' +

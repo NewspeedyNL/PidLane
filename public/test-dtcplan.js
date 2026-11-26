@@ -3,7 +3,8 @@
 // in dtcInfo() (pidlane-bt.js) en planHtml() (pidlane-foutcodes.js)
 // ────────────────────────────────────────────────────────────────
 // WAT HIER TE BEWIJZEN VALT
-//   1. elke familie is geldig: kost [min ≤ max] of null, wie bekend, 2–5 stappen;
+//   1. elke familie is geldig: een onderdeel uit KOSTEN (pidlane-kosten.js) óf
+//      een eigen kost [min ≤ max] of null — nooit allebei —, wie bekend, 2–5 stappen;
 //   2. het langste voorvoegsel wint (P0128 thermostaat, niet een P012-familie);
 //   3. elke generieke code in DTCDB heeft een plan, behalve de bewust
 //      uitgesloten merkcodes — een nieuwe code zonder plan valt hier op;
@@ -36,7 +37,9 @@ function sandbox(extra) {
   s.setTimeout = () => 0; s.setInterval = () => 0; s.clearTimeout = () => { }; s.clearInterval = () => { };
   Object.assign(s, extra || {});
   vm.createContext(s);
-  vm.runInContext(fs.readFileSync(__dirname + '/pidlane-data.js', 'utf8'), s, { filename: 'pidlane-data.js' });
+  // Dezelfde volgorde als index.html: de bedragen komen sinds 25-11-2026 uit PLKosten.
+  ['pidlane-data.js', 'pidlane-kostencodes.js', 'pidlane-kosten.js'].forEach(f =>
+    vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf8'), s, { filename: f }));
   return s;
 }
 
@@ -47,8 +50,10 @@ console.log('\n1. Elke familie is geldig');
 eis(P && typeof plan === 'function', 'DTC_PLAN en dtcPlan bestaan');
 Object.keys(P).forEach(function (k) {
   const f = P[k];
-  const kostOk = f.kost === null || (Array.isArray(f.kost) && f.kost.length === 2 &&
+  const eigenKost = f.kost === null || (Array.isArray(f.kost) && f.kost.length === 2 &&
     f.kost.every(Number.isFinite) && f.kost[0] >= 0 && f.kost[0] <= f.kost[1]);
+  // Eén bron: wie een onderdeel heeft, heeft geen eigen bedrag.
+  const kostOk = f.onderdeel ? (f.kost === undefined && !!s.PLKosten.KOSTEN[f.onderdeel]) : eigenKost;
   const okSleutel = /^[PBCU][0-9A-F]{0,4}$/.test(k);
   const okStap = Array.isArray(f.stappen) && f.stappen.length >= 2 && f.stappen.length <= 5 &&
     f.stappen.every(function (t) { return typeof t === 'string' && t.length > 10; });

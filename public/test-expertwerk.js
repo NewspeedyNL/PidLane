@@ -38,7 +38,7 @@ s.navigator = {};
 s.setTimeout = (fn) => { fn(); return 0; };
 s.setInterval = () => 0; s.clearTimeout = () => { }; s.clearInterval = () => { };
 vm.createContext(s);
-['pidlane-data.js', 'pidlane-foutcodes.js', 'pidlane-mode06.js', 'pidlane-onderzoek.js', 'pidlane-voorkennis.js', 'pidlane-expertwerk.js'].forEach((f) =>
+['pidlane-data.js', 'pidlane-kostencodes.js', 'pidlane-kosten.js', 'pidlane-foutcodes.js', 'pidlane-mode06.js', 'pidlane-onderzoek.js', 'pidlane-voorkennis.js', 'pidlane-expertwerk.js'].forEach((f) =>
   vm.runInContext(fs.readFileSync(__dirname + '/' + f, 'utf8'), s, { filename: f }));
 const mt = fs.readFileSync(__dirname + '/pidlane-motortype.js', 'utf8');
 const ki = mt.indexOf('function autoKennisVoorMerk(merk, brandstof, auto){'), kj = mt.indexOf('\n}\n', ki);
@@ -103,7 +103,9 @@ console.log('\n3. Procedures voor déze auto');
   const c = metCode.find((p) => p.bron === 'code');
   toets('een foutcode krijgt zijn controleplan uit DTC_PLAN', c && /^P0128/.test(c.titel) && c.stappen.map((x) => x.tekst).join('|') === plan('P0128').stappen.join('|'),
     JSON.stringify(c));
-  toets('…met de kosten erbij', c && /€120–400/.test(c.waarom), c && c.waarom);
+  // Het bedrag komt sinds 25-11-2026 uit PLKosten; de toets eist hetzelfde bedrag als het plan.
+  const kP0128 = plan('P0128').kost;
+  toets('…met de kosten erbij, uit dezelfde bron als het plan', c && kP0128 && c.waarom.indexOf('€' + kP0128[0] + '–' + kP0128[1]) >= 0, c && c.waarom);
   toets('de code maakt ook een verdenking met bewijs (thermostaat)', metCode.some((p) => p.bron === 'kans' && /Thermostaat/.test(p.titel)), metCode.map((p) => p.titel).join(' | '));
   toets('zonder dtcPlan: geen codeprocedure, de rest blijft', EW.procedures(vk({ codes: ['P0128'] }), O, null).every((p) => p.bron !== 'code'));
   toets('zonder kennis en codes: geen procedures', EW.procedures(vk({}), O, plan).length === 0);
