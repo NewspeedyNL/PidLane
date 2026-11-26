@@ -306,48 +306,78 @@
   }
 
   // ── Het schema: waar zit het? ─────────────────────────────────────────
-  /* Eén schematische motor, links-voor naar rechts-achter: lucht → meter →
-     turbo → gasklep → spruitstuk → cilinders → uitlaat met sondes, kat,
-     roetfilter en AdBlue. Daaronder koeling, elektriciteit, brandstof en de
-     bak. Het element van het onderdeel licht op; de rest staat gedimd. Geen
-     foto's: die verschillen per auto en hebben een licentie. Kleuren via
-     currentColor en een vaste accentkleur, zodat het in beide thema's leest. */
+  /* Een doorzichtige auto in zijaanzicht, voorkant links (26-11-2026). Het
+     onderdeel licht op op zijn échte plek: motor en accu voor, kat en
+     roetfilter onder de vloer, tank onder de achterbank — een leek ziet
+     "waar in de auto" en niet alleen "waar in de motor". Lucht stroomt door
+     de grille naar binnen, uitlaatgas onder de vloer naar achteren.
+     Kleuren alleen via classes in pidlane.css (.pk-s*), op de thematokens
+     --bl en --or: een var() in een SVG-attribuut werkt niet. Geen foto's:
+     die verschillen per auto en hebben een licentie.
+     PLEKKEN: [x, y, breedte, hoogte, label] in viewBox 0 0 440 200. */
   var PLEKKEN = {
-    maf: [38, 26, 26, 14, 'Luchtmassameter'], turbo: [78, 22, 24, 22, 'Turbo'], gas: [114, 26, 20, 14, 'Gasklep'],
-    spr: [140, 20, 54, 12, 'Inlaatspruitstuk'], egr: [196, 40, 22, 12, 'EGR'], sec: [222, 56, 22, 10, 'Sec. lucht'],
-    cil: [140, 36, 54, 36, 'Cilinders'], inj: [146, 32, 8, 8, 'Injector'], vvt: [140, 74, 24, 10, 'VVT'],
-    dist: [124, 36, 12, 48, 'Distributie'], kruk: [168, 74, 26, 10, 'Krukas'], klop: [196, 56, 18, 10, 'Klopsensor'],
-    olie: [140, 88, 54, 10, 'Oliedruk'], l1: [222, 30, 10, 10, 'Lambda 1'], kat: [236, 26, 28, 18, 'Kat'],
-    l2: [268, 30, 10, 10, 'Lambda 2'], dpf: [282, 26, 26, 18, 'DPF'], scr: [312, 26, 26, 18, 'AdBlue/SCR'],
-    thermo: [100, 60, 16, 12, 'Thermostaat'], fan: [8, 56, 26, 26, 'Ventilator'], dyn: [58, 80, 22, 16, 'Dynamo'],
-    accu: [8, 92, 30, 18, 'Accu'], ecu: [206, 92, 30, 18, 'Stuurapparaat'], pomp: [262, 92, 22, 18, 'Brandstofpomp'],
-    tank: [288, 88, 50, 22, 'Tank'], bak: [140, 104, 54, 14, 'Versnellingsbak']
+    fan: [30, 100, 8, 34, 'Ventilator'], maf: [42, 93, 18, 7, 'Luchtmassameter'], turbo: [44, 122, 16, 16, 'Turbo'],
+    gas: [64, 92, 14, 8, 'Gasklep'], spr: [82, 91, 40, 8, 'Inlaatspruitstuk'], inj: [88, 100, 6, 6, 'Injector'],
+    cil: [82, 102, 40, 28, 'Cilinders'], dist: [75, 102, 6, 30, 'Distributie'], vvt: [123, 101, 8, 10, 'VVT'],
+    klop: [123, 115, 8, 8, 'Klopsensor'], kruk: [90, 130, 24, 6, 'Krukas'], olie: [82, 137, 40, 5, 'Oliedruk'],
+    thermo: [64, 104, 9, 8, 'Thermostaat'], dyn: [62, 124, 12, 12, 'Dynamo'], egr: [130, 92, 12, 8, 'EGR'],
+    sec: [44, 106, 12, 8, 'Sec. lucht'], accu: [134, 106, 16, 14, 'Accu'], ecu: [134, 124, 16, 10, 'Stuurapparaat'],
+    bak: [150, 128, 34, 12, 'Versnellingsbak'], l1: [146, 146, 6, 8, 'Lambda 1'], kat: [158, 144, 30, 12, 'Kat'],
+    l2: [194, 146, 6, 8, 'Lambda 2'], dpf: [206, 144, 30, 12, 'DPF'], scr: [242, 144, 26, 12, 'AdBlue/SCR'],
+    tank: [272, 126, 50, 16, 'Tank'], pomp: [280, 128, 12, 12, 'Brandstofpomp']
   };
+  var SCHEMA = {
+    body: 'M22 150L18 124Q18 104 34 100L144 88Q166 68 196 56L300 54Q330 58 362 86L404 92Q416 96 416 114L414 150L366 150A28 28 0 0 0 310 150L120 150A28 28 0 0 0 64 150Z',
+    ramen: 'M156 88L198 62L248 61L248 88ZM254 61L298 60Q322 64 348 86L254 88Z',
+    lijnen: 'M18 124H60M144 88L150 140M252 60V146M150 118H362M362 86L366 140M396 106H414',
+    interieur: 'M196 124L206 92L214 92L206 126ZM276 124L284 94L292 94L286 126Z',
+    lucht: 'M16 97H44M60 97H64M78 96H82M52 100V122', uit: 'M124 112Q140 118 142 150H372Q392 150 420 148',
+    luchtBaan: 'M14 97H82V104', wielen: [[92, 154], [338, 154]]
+  };
+  var _schemaNr = 0;
   function schemaSvg(id) {
-    var k = KOSTEN[id];
-    var aan = k ? k.plek : null;
-    var h = '<svg class="pk-schema" viewBox="0 0 346 126" role="img" aria-label="' +
-      esc(k ? 'Waar zit het: ' + k.naam : 'Schema van de motor') + '">';
-    // leidingen: lucht en uitlaat
-    h += '<path d="M2 33H38M64 33H78M102 33H114M134 26H140M194 33H222M232 35H236M264 35H268M278 35H282M308 35H312M338 35H344" ' +
-      'stroke="currentColor" stroke-opacity=".35" stroke-width="2" fill="none"/>';
+    var k = KOSTEN[id], aan = k ? k.plek : null, n = ++_schemaNr, S = SCHEMA;
+    var stil = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var h = '<svg class="pk-schema" viewBox="0 0 440 200" role="img" aria-label="' +
+      esc(k ? 'Waar zit het: ' + k.naam : 'Schema van de auto') + '"><defs>' +
+      '<linearGradient id="pkG' + n + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="pk-sg1"/><stop offset=".55" class="pk-sg2"/><stop offset="1" class="pk-sg3"/></linearGradient>' +
+      '<filter id="pkF' + n + '" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>';
+    h += '<ellipse class="pk-sschaduw" cx="218" cy="178" rx="200" ry="9"/>';
+    h += '<path class="pk-sbody" d="' + S.body + '" fill="url(#pkG' + n + ')"/>';
+    h += '<path class="pk-sglans" d="M40 100Q200 70 400 94"/>';
+    h += '<path class="pk-sraam" d="' + S.ramen + '"/><path class="pk-slijn" d="' + S.lijnen + '"/>';
+    h += '<path class="pk-sdeel" d="' + S.interieur + '"/><circle class="pk-slijn" cx="178" cy="98" r="7"/>';
+    h += '<path class="pk-suit" d="' + S.uit + '"/><path class="pk-slucht" d="' + S.lucht + '"/>';
     Object.keys(PLEKKEN).forEach(function (p) {
-      var r = PLEKKEN[p], on = p === aan;
-      h += '<rect x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="3" ' +
-        (on ? 'fill="#38bdf8" fill-opacity=".25" stroke="#38bdf8" stroke-width="2"' :
-          'fill="currentColor" fill-opacity=".06" stroke="currentColor" stroke-opacity=".3"') + '/>';
+      if (p === aan) return;
+      var r = PLEKKEN[p];
+      h += '<rect class="pk-sdeel" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="2"/>';
     });
-    // herkenbaarheid: cilinders, een ventilatorblad, accupolen en zonenamen
-    var dim = 'fill="currentColor" fill-opacity=".28"';
-    for (var i = 0; i < 4; i++) h += '<rect x="' + (147 + i * 12) + '" y="46" width="8" height="18" rx="2" ' + dim + '/>';
-    h += '<circle cx="21" cy="69" r="9" fill="none" stroke="currentColor" stroke-opacity=".4"/><path d="M21 60V78M12 69H30" stroke="currentColor" stroke-opacity=".4"/>';
-    h += '<text x="15" y="104" font-size="9" ' + dim + '>+ −</text>';
-    var zone = function (x, y, t) { return '<text x="' + x + '" y="' + y + '" text-anchor="middle" font-size="8" fill="currentColor" fill-opacity=".55">' + t + '</text>'; };
-    h += zone(70, 12, 'LUCHT IN →') + zone(280, 12, 'UITLAAT →') + zone(167, 12, 'MOTOR') + zone(50, 121, 'KOELING · STROOM') + zone(300, 121, 'BRANDSTOF') + zone(167, 115, 'BAK');
+    for (var i = 0; i < 4; i++) h += '<rect class="pk-szuiger" style="animation-delay:' + (i % 2 * 0.25) + 's" x="' + (86 + i * 9.5) + '" y="106" width="6" height="16" rx="1.5"/>';
+    S.wielen.forEach(function (w) {
+      var x = w[0], y = w[1];
+      h += '<circle class="pk-swiel" cx="' + x + '" cy="' + y + '" r="22"/><circle class="pk-slijn" cx="' + x + '" cy="' + y + '" r="13"/>' +
+        '<path class="pk-sspaak" d="M' + x + ' ' + (y - 13) + 'V' + (y + 13) + 'M' + (x - 13) + ' ' + y + 'H' + (x + 13) +
+        'M' + (x - 9) + ' ' + (y - 9) + 'L' + (x + 9) + ' ' + (y + 9) + 'M' + (x + 9) + ' ' + (y - 9) + 'L' + (x - 9) + ' ' + (y + 9) + '"/>';
+    });
+    if (!stil) {
+      var deeltjes = function (pad, cls, aantal, dur) {
+        for (var j = 0; j < aantal; j++) h += '<circle class="' + cls + '" r="1.7"><animateMotion dur="' + dur + 's" begin="' + (-j * dur / aantal).toFixed(2) + 's" repeatCount="indefinite" path="' + pad + '"/></circle>';
+      };
+      deeltjes(S.luchtBaan, 'pk-sdlucht', 7, 1.8);
+      deeltjes(S.uit, 'pk-sduit', 10, 2.2);
+    }
+    [[90, 80, 'MOTORRUIMTE'], [210, 176, 'ONDER DE VLOER'], [296, 118, 'ACHTERBANK']].forEach(function (z) {
+      h += '<text class="pk-szone" x="' + z[0] + '" y="' + z[1] + '" text-anchor="middle">' + z[2] + '</text>';
+    });
     if (aan && PLEKKEN[aan]) {
-      var r = PLEKKEN[aan], cx = r[0] + r[2] / 2;
-      var ty = r[1] > 60 ? r[1] - 4 : r[1] + r[3] + 11;
-      h += '<text x="' + Math.min(300, Math.max(30, cx)) + '" y="' + ty + '" text-anchor="middle" font-size="10" font-weight="700" fill="#38bdf8">' + esc(r[4]) + '</text>';
+      var r = PLEKKEN[aan], cx = r[0] + r[2] / 2, cy = r[1] + r[3] / 2;
+      var lx = Math.min(330, Math.max(70, cx + (cx < 200 ? 50 : -50))), lw = r[4].length * 6.4 + 20;
+      h += '<rect class="pk-aan" x="' + r[0] + '" y="' + r[1] + '" width="' + r[2] + '" height="' + r[3] + '" rx="2" filter="url(#pkF' + n + ')"/>';
+      for (i = 0; i < 2; i++) h += '<circle class="pk-sring" style="animation-delay:' + (i * 0.9) + 's" cx="' + cx + '" cy="' + cy + '" r="' + (Math.max(r[2], r[3]) / 2 + 3) + '"/>';
+      h += '<g class="pk-scallout"><path class="pk-sleider" d="M' + cx + ' ' + cy + 'V40H' + lx + '"/><circle class="pk-spunt" cx="' + cx + '" cy="' + cy + '" r="2.2"/>' +
+        '<rect class="pk-spil" x="' + (lx - lw / 2) + '" y="24" width="' + lw + '" height="16" rx="8"/>' +
+        '<text class="pk-slabel" x="' + lx + '" y="35.5" text-anchor="middle">' + esc(r[4]) + '</text></g>';
     }
     return h + '</svg>';
   }
