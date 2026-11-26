@@ -10,6 +10,13 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 26-11-2026 — Diensten: geen valse AI-verstoring meer bij een storing van claude.ai
+ ═════════════════════════════════════════════════════
+   • worker.js dienstAi(): component "Claude API (api.anthropic.com)" wordt weer gevonden (naam matcht op het begin)
+   • Lijst zonder API-component = "onbekend" in plaats van de algemene indicator (die ging over claude.ai)
+   • test-dienst.js met de echte stand van 26-11; twee mutaties
+
+ ═════════════════════════════════════════════════════
  26-11-2026 — Kostenkaart: "waar zit het" is een doorzichtige auto
  ═════════════════════════════════════════════════════
    • schemaSvg() tekent een glazen auto in zijaanzicht; het onderdeel licht oranje op op zijn echte plek (motorruimte, onder de vloer, achterbank) met een label en aanwijslijn
