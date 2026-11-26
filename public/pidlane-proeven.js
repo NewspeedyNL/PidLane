@@ -38,6 +38,29 @@ window.PLProevenB5 = function (T) {
 
 const PROEVEN_B5 = [
 
+  // ── Kostenkaart: het schema is een doorzichtige auto (26-11-2026) ──
+  {
+    issue: '—',
+    naam: 'Kostenkaart: de kat licht op onder de vloer van een doorzichtige auto, in de kleuren van het thema',
+    waarom: 'Het schema was een los motorschema van grijze vakjes; nu staat het onderdeel op zijn echte plek in de auto. Kleur komt via classes op --bl/--or — een var() in een SVG-attribuut zou stil zwart worden.',
+    proef: async function () {
+      var K = window.PLKosten;
+      if (!K || !K.open('kat')) return { staat: 'FOUT', detail: 'de kostenkaart opent niet (herladen?)' };
+      var s = document.querySelector('#plKostOv .pk-schema'), a = s && s.querySelector('.pk-aan');
+      var res;
+      if (!a) res = { staat: 'FOUT', detail: 'schema zonder oplichtend onderdeel' };
+      else {
+        var b = s.getBoundingClientRect(), r = a.getBoundingClientRect(), kleur = getComputedStyle(a).fill;
+        var onder = (r.top - b.top) / b.height;
+        if (onder < 0.6) res = { staat: 'FOUT', detail: 'de kat staat op ' + Math.round(onder * 100) + '% van de hoogte, niet onder de vloer' };
+        else if (!kleur || /rgb\(0, 0, 0\)|none/.test(kleur)) res = { staat: 'FOUT', detail: 'het onderdeel heeft geen themakleur (' + kleur + ')' };
+        else res = { staat: 'OK', detail: 'kat onder de vloer, ' + kleur + ' · rij: open een kostenkaart in licht én donker thema en kijk of de auto leesbaar is' };
+      }
+      K.sluit();
+      return res;
+    }
+  },
+
   // ── Wat kost dit? (PLKosten, 25-11-2026) ──
   {
     issue: '—',

@@ -62,7 +62,7 @@ console.log('\n1. Elk aanwijsbaar onderdeel heeft een hele prijsregel');
   eis(ids.length >= 25, 'REGELS van PLOnderdeel gevonden (' + ids.length + ')');
   const mist = ids.filter(id => !K.KOSTEN[id]);
   eis(!mist.length, 'elk onderdeel van PLOnderdeel staat in KOSTEN', mist.join(', '));
-  const PLEK = /fill="#38bdf8" fill-opacity=".25"/;
+  const PLEK = /class="pk-aan"/;
   Object.keys(K.KOSTEN).forEach(id => {
     const k = K.KOSTEN[id];
     const paar = (a, max) => Array.isArray(a) && a.length === 2 && a.every(Number.isFinite) && a[0] >= 0 && a[0] <= a[1] && a[1] <= max;
@@ -78,6 +78,17 @@ console.log('\n1. Elk aanwijsbaar onderdeel heeft een hele prijsregel');
   });
   eis(true, Object.keys(K.KOSTEN).length + ' regels nagelopen');
   eis(!PLEK.test(K.schemaSvg('bestaatniet')), 'onbekend onderdeel: schema zonder oplichtend element');
+  // De plek moet de échte plek in de auto zijn (26-11-2026): voor = motorruimte, onder de vloer, achterbank.
+  const vak = id => { const m = K.schemaSvg(id).match(/class="pk-aan" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"/); return m ? m.slice(1).map(Number) : null; };
+  const kat = vak('kat'), accu = vak('accu'), tank = vak('evap'), maf = vak('maf');
+  eis(kat && kat[1] >= 140, 'de kat zit onder de vloer', JSON.stringify(kat));
+  eis(accu && maf && accu[0] < 160 && maf[0] < 160, 'accu en luchtmassameter zitten in de motorruimte', JSON.stringify([accu, maf]));
+  eis(tank && tank[0] > 250, 'de tank zit achterin', JSON.stringify(tank));
+  const lab = K.schemaSvg('kat').match(/class="pk-slabel"[^>]*>([^<]*)</);
+  eis(lab && lab[1] === 'Kat', 'het label noemt het oplichtende onderdeel', lab && lab[1]);
+  const id1 = K.schemaSvg('kat').match(/id="(pkG\d+)"/)[1], id2 = K.schemaSvg('kat').match(/id="(pkG\d+)"/)[1];
+  eis(id1 !== id2, 'elk schema heeft eigen ids (twee op één pagina lenen geen verloop van elkaar)');
+  eis(!/(fill|stroke|stop-color)="var\(/.test(K.schemaSvg('kat')), 'geen var() in een SVG-attribuut (werkt daar niet; kleur via class)');
 }
 
 console.log('\n2. Prijspeil');

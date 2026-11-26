@@ -10,6 +10,14 @@
 > oplevering (zie CLAUDE.md), alleen voortaan hier.
 
  ═════════════════════════════════════════════════════
+ 26-11-2026 — Kostenkaart: "waar zit het" is een doorzichtige auto
+ ═════════════════════════════════════════════════════
+   • schemaSvg() tekent een glazen auto in zijaanzicht; het onderdeel licht oranje op op zijn echte plek (motorruimte, onder de vloer, achterbank) met een label en aanwijslijn
+   • Lucht stroomt door de grille naar binnen, uitlaatgas onder de vloer naar achteren; zuigers lopen. Bij "minder beweging" staat alles stil
+   • Kleuren alleen via .pk-s*-classes op --bl/--or: leest in licht en donker thema
+   • test-kosten.js: kat onder de vloer, accu voor, tank achter, label = onderdeel, eigen ids per schema; drie mutaties, blok 5-proef
+
+ ═════════════════════════════════════════════════════
  25-11-2026 — Wat kost dit? Een kostenkaart per onderdeel, en één bron voor alle bedragen
  ═════════════════════════════════════════════════════
    • pidlane-kosten.js (PLKosten): per onderdeel onderdeelprijs + werkuren × uurtarief incl. btw, goedkopere route, rijadvies (stop/binnenkort/inplannen), uitleg, schema "waar zit het", bronnen en prijspeil

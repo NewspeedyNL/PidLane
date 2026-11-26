@@ -1738,6 +1738,10 @@ MUTATIES=(
 "public/pidlane-data.js@@      if (window.PLKosten && typeof PLKosten.kostCode === 'function') kost = PLKosten.kostCode(c);\n      else if (p.kost)@@      if (p.kost)@@test-kosten.js@@dtcPlan rekent weer met een eigen bedrag: de foutcodelijst en de kostenkaart zeggen iets anders"
 "public/pidlane-kosten.js@@    if (/^P[13]/.test(c) || /^P0A/.test(c)) return@@    if (false) return@@test-kosten.js@@een merkcode of hybridecode krijgt een generiek bedrag via OBDex of de familie"
 "public/pidlane-aankooprapport.js@@[s[0] + r.totaal[0], s[1] + r.totaal[1]]@@[s[0] + r.totaal[1], s[1] + r.totaal[1]]@@test-kosten.js@@de som in het aankooprapport telt de bovenkant twee keer: de koper ziet geen ondergrens"
+# Het schema als doorzichtige auto (26-11-2026): het onderdeel moet op zijn échte plek oplichten.
+"public/pidlane-kosten.js@@kat: [158, 144, 30, 12, 'Kat']@@kat: [158, 104, 30, 12, 'Kat']@@test-kosten.js@@de kat licht op in de motorruimte in plaats van onder de vloer"
+"public/pidlane-kosten.js@@      h += '<rect class=\"pk-aan\" x=\"'@@      h += '<rect class=\"pk-sdeel\" x=\"'@@test-kosten.js@@het onderdeel van de kaart licht niet meer op in het schema"
+"public/pidlane-kosten.js@@'<linearGradient id=\"pkG' + n + '\"@@'<linearGradient id=\"pkG1\"@@test-kosten.js@@twee schema's op één pagina delen hetzelfde verloop-id"
 "public/pidlane-bt.js@@(d==='1'||(d==='3'&&c[2]<'4'))@@(d==='1')@@test-dtcomschrijving.js@@P30–P33 heten weer generiek terwijl ze per merk verschillen"
 "public/pidlane-bt.js@@  const st=bron?'':_dtcStructuur(code);@@  const st='';@@test-dtcomschrijving.js@@een onbekende code zegt weer niets over wat voor code het is"
 # ── Mijn voertuigen (klantplatform, 27-09-2026). Worker: de fouten die een
